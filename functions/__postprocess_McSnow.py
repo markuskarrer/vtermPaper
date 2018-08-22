@@ -1,5 +1,9 @@
 #import modulus
 import numpy as np
+import sys
+
+#from IPython.core.debugger import Tracer ; Tracer()()
+
 
 # define functions to postprocess McSnow
 
@@ -9,20 +13,89 @@ def read_mass2frdat(experiment,filestring):
     INPUT experiment: descriptor (also file name) of the experiment
     '''
     directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
-    #filestring = directory + experiment + '/mass2fr.dat'
+
     #load file from .dat
     SP_fullinfo = np.loadtxt(filestring)
     
     #create dictionary
     SP = dict()
     #names of variables in mass2fr
-    varnames_mass2frdat = ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm"]
-    #                       total   rime             ??    fall  multi-    rime     ?     crit mass  diameter  projected   monomer
-    #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity
+    varnames_mass2frdat = ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat"]
+    #                       total   rime             ??    fall  multi-    rime     ?     crit mass  diameter  projected   monomer         rime      mass of 
+    #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity     mass       water
+
+    if not SP_fullinfo[0,:].shape[0]==len(varnames_mass2frdat):
+        print "error: compare number of variables in varnames_mass2frdat with variables in MCsnows write_icefraction() from mo_output.f90"
+        sys.exit(1)
     for i,key in enumerate(varnames_mass2frdat):
         SP[key] = SP_fullinfo[:,i]
 
     return SP
+
+def average_SPlists(SP_nonaveraged):
+    '''
+    average the SP output file 'massfr2_....dat' over some timesteps
+    INPUT: SP_nonaveraged: tuple containing dictionaries with the SP-list
+    '''
+    #get number of timesteps which are averaged
+    num_timesteps = len(SP_nonaveraged)
+    SP_averaged = dict()
+
+    for key in SP_nonaveraged[0].keys():
+        SP_averaged[key]=[]
+        for i in range(0,num_timesteps):
+            SP_averaged[key] = np.concatenate((SP_averaged[key],SP_nonaveraged[i][key]))
+        
+    #divide multiplicity of merged SP-dictionary by the number of timesteps in order to receive snapshot and not a sum of the superparticle over the average time
+    roundbool = False #true-> round to integer; false -> do not round
+    if roundbool:
+        total_xi_before_round = np.sum(SP_averaged['xi'])
+        SP_averaged['xi'] = np.rint(SP_averaged['xi']/num_timesteps) #round to integer
+        total_xi_after_round =  np.sum(SP_averaged['xi'])*num_timesteps
+        print 'error made by rounding after merging of timestep:'
+        print 'total_xi_before: ',total_xi_before_round ,'total_xi_after-total_xi_before: ',total_xi_after_round-total_xi_before_round,' ratio: ',(total_xi_after_round-total_xi_before_round)/total_xi_before_round
+    else:
+        SP_averaged['xi'] = SP_averaged['xi']/num_timesteps #non-integer multiplicity is allowed
+
+
+    return SP_averaged
+
+def read_atmo(experiment):
+    '''
+    read atmospheric variables from McSnow experiment directory
+    INPUT:  experiment: specifier of experiment
+    '''
+    directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
+    filestring_atmo = directory + experiment + "/atmo.dat"
+
+    #load file from .dat
+    atmo_fullinfo = np.loadtxt(filestring_atmo)
+    
+    #create dictionary
+    atmo = dict()
+    #names of variables in atmo
+    varnames_atmo = ["z", "rho", "T", "p", "eta", "ssat", "rh", "psatw", "psati", "lwc"]
+    
+    if not atmo_fullinfo[0,:].shape[0]==len(varnames_atmo):
+        print "error: compare number of variables in varnames_atmo with variables in MCsnows plot_atmo() from mo_check.f90"
+        sys.exit(1)
+    for i,key in enumerate(varnames_atmo):
+        atmo[key] = atmo_fullinfo[:,i]
+    
+    return atmo
+
+def interpolate_atmo(atmo,heightvec):
+    '''
+    interpolate atmospheric variables given in arbitrary vertical levels to heightvec
+    INPUT:  atmo: dictionary with atmospheric variables
+            heightvec: vector on which the interpolation should be fitted
+    '''
+    
+    save_atmoz=atmo["z"] #save atmo["z"] so that it can also be interpolated as a key in atmo
+    for i,key in enumerate(atmo.keys()):
+        atmo[key] = np.interp(heightvec,save_atmoz,atmo[key])
+        
+    return atmo
 
 def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0]):
     '''
@@ -46,7 +119,9 @@ def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange
     binned_val["d_counts_no_mult"] = np.zeros([nheights,nbins]) #number of SP at each h-D bin
     binned_val["av_Frim"] = np.zeros([nheights,nbins]) #mass averaged rime fraction for each h-D bin
     binned_val["av_rhor"] = np.zeros([nheights,nbins]) #mass averaged rime density for each h-D bin
-    binned_val["av_mm"] = np.zeros([nheights,nbins]) #multiplicity weighted number
+    binned_val["av_mm"] = np.zeros([nheights,nbins]) #multiplicity weighted monomer number
+    binned_val["nav_vt"] = np.zeros([nheights,nbins]) #multiplicity weighted fall speed
+
     #get the number of particles (SP*sp_multiplicity) at each bin (binned by height and sp_diameter)
     for i in range(0,nheights-1):
         for j in range(0,nbins):
@@ -67,6 +142,8 @@ def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange
                     binned_val["av_rhor"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"]*SP["rhor"],0))/qitot_bin
                     #calc. multipl averaged
                     binned_val["av_mm"][i,j] = np.sum(np.where(condition_in_bin,SP["mm"]*SP["xi"],0))/multipl_bin
+                    #calc number averaged fall speed
+                    binned_val["nav_vt"][i,j] = np.sum(np.where(condition_in_bin,-SP["vt"]*SP["xi"],0))/multipl_bin
 
     binned_val["RPpSP"] = binned_val["d_counts"]/binned_val["d_counts_no_mult"]
 
@@ -87,3 +164,11 @@ def conv_num2numpm3(var,Vbox):
     #convert number in height bin [#] to numper per volume [#/m3]
     return var/Vbox
     
+def return_parameter_mD_AD_rel():
+    rhoi = 919.#from McSnows mo_atmo_types.f90
+    rhol = 1e3 #from McSnows mo_atmo_types.f90
+    unr_bet = 2.1
+    unr_alf = 0.0028*10.**(2.*unr_bet-3.)
+    Dth = (rhoi * np.pi/6 * 1./unr_alf)**(1./(unr_bet-3))
+    mth = np.pi/6. * rhoi * Dth**3 #from McSnows mo_mass2diam.f90
+    return mth,unr_alf,unr_bet,rhoi,rhol
