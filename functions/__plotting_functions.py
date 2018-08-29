@@ -91,6 +91,8 @@ def pcol_height_diam(ax,diam,heights,var,mincol=-999,maxcol=-999,logcol=0,cmap='
     ax.set_xscale("log")
     #TODO: give this as an input
     ax.set_xlim([10**-5,10**-1])
+    ax.set_ylim([0,heights[-1]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     #plot colorbar
     
     
@@ -104,7 +106,7 @@ def pcol_height_diam(ax,diam,heights,var,mincol=-999,maxcol=-999,logcol=0,cmap='
     ax.set_xlabel('diameter / m ')
     ax.set_ylabel('height / m ')
     return plt
-def plot_pamtra_Ze(ax,pamData):
+def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' '):
     '''
     plot pamtra output
     INPUT: pamData: dictionary with PAMTRA variables
@@ -113,19 +115,20 @@ def plot_pamtra_Ze(ax,pamData):
     #create figure for plotting of pamtra output
 
     #plot X-,Ka-,W-Band in three different colors
-    ax.plot(pamData["Ze"][:,0],pamData["height"], 'b-')
-    ax.plot(pamData["Ze"][:,1],pamData["height"], 'r-')
-    ax.plot(pamData["Ze"][:,2],pamData["height"], 'g-')
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    for i in range(0,len(pamData["frequency"])):
+        if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
+            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
+        else:
+            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
 
     #set range
-    ax.set_xlim([-20,50]) #range of Ze
+    ax.set_xlim([-20,55]) #range of Ze
     #TODO: set height flexible
     ax.set_ylim([0,pamData["height"][-1]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     ax.set_xlabel("reflectivity / dBz")
     ax.set_ylabel("height / m")
-    
-    #add legend
-    ax.legend(["9.6GHz","35.5GHz","95GHz"])
 
     return plt
 
@@ -156,7 +159,8 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
 
     #set range
     ax.set_xlim([-3,1]) #range of Ze
-
+    ax.set_ylim([0,pamData["height"][-1]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     #plot labels and create colorbar
     ax.set_xlabel("Doppler velocity / m s-1")
     ax.set_ylabel("height / m")
@@ -201,10 +205,80 @@ def plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment,cmap='viridis_r'):
 
     #set range
     ax.set_xlim([-3,1]) #range of Ze
+    
+    #change height limits and ticks
+    ax.set_ylim([0,height[-1]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
 
     #plot labels and create colorbar
     ax.set_xlabel("fall speed / m s-1")
     ax.set_ylabel("height / m")
     col = plt.colorbar(pcol)
     col.set_label("number density / m-3", rotation=90)
+    return plt
+
+def plot_twomom_moments(ax,ax2,twomom,i_timestep):
+    '''
+    plot moments (number density and mass density) over height
+    INPUT:  ax: first x-axis
+            ax2: second x-axis
+            twomom: dictionary with (McSnows) two-moment variables
+    '''
+    #plot mixing ratios
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    plotqc = ax.semilogx(twomom['qc'][i_timestep,:],twomom['heights'])
+    plotqr = ax.semilogx(twomom['qr'][i_timestep,:],twomom['heights'])
+
+    plotqi = ax.semilogx(twomom['qi'][i_timestep,:],twomom['heights'])
+    plotqs = ax.semilogx(twomom['qs'][i_timestep,:],twomom['heights'])
+    plotqg = ax.semilogx(twomom['qg'][i_timestep,:],twomom['heights'])
+    plotqh = ax.semilogx(twomom['qh'][i_timestep,:],twomom['heights'])
+
+    #plot number concentrations
+    plotqnc = ax2.semilogx(twomom['qnc'][i_timestep,:],twomom['heights'],'--')
+    plotqnr = ax2.semilogx(twomom['qnr'][i_timestep,:],twomom['heights'],'--')
+
+    plotqni = ax2.semilogx(twomom['qni'][i_timestep,:],twomom['heights'],'--')
+    plotqns = ax2.semilogx(twomom['qns'][i_timestep,:],twomom['heights'],'--')
+    plotqng = ax2.semilogx(twomom['qng'][i_timestep,:],twomom['heights'],'--')
+    plotqnh = ax2.semilogx(twomom['qnh'][i_timestep,:],twomom['heights'],'--')
+    
+    #change height limits
+    ax.set_ylim([0,twomom["heights"][0]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
+    #add labels and legend
+    ax.set_xlabel("mixing ratio (solid) / kg m-3")
+    ax2.set_xlabel("number concentration (dashed) / m-3")
+    ax.set_ylabel("height / m")
+    ax.set_xlim([ax.get_xlim()[0],ax.get_xlim()[1]*100])
+    ax2.set_xlim([ax2.get_xlim()[0],ax2.get_xlim()[1]*1000])
+
+    ax.legend(["cloud w.","rain","cloud ice","snow","graupel","hail"],loc='center right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    
+    return plt
+def plot_atmo(ax,ax2,atmo):
+    '''
+    plot atmospheric variables in one panel
+    INPUT:  ax: first x-axis
+            ax2: second x-axis
+            atmo: dictionary with atmospheric variables
+    '''
+    #plot T, RHw and RHi in one panel
+    plottemp = ax.plot(atmo['T']-273.15,atmo['z'],color='r')
+    plotRHw = ax2.plot(atmo["rh"],atmo['z'],color='b')
+    plotRHi = ax2.plot(atmo["rh"]*atmo["psatw"]/atmo["psati"],atmo['z'],color='b',linestyle='--')
+    #change height limits
+    ax.set_ylim([0,atmo['z'][-1]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
+    #add labels and legend
+    ax.set_xlabel("temperature / $^\circ$C")
+    ax2.set_xlabel("relative humidity / %")
+    ax.set_ylabel("height / m")
+    #create space for legend
+    ax.set_xlim([ax.get_xlim()[0],ax.get_xlim()[1]+0])
+    ax2.set_xlim([ax2.get_xlim()[0],ax2.get_xlim()[1]+15])
+    # added these three lines
+    handles = plottemp+plotRHw+plotRHi
+    ax.legend(handles,["T","RHw","RHi"],loc='upper right')
+    #from IPython.core.debugger import Tracer ; Tracer()()
     return plt

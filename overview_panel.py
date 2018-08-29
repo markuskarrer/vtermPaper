@@ -1,6 +1,9 @@
 '''
 create an overview panel with properties of McSnow and PAMTRA output
 '''
+
+#from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
@@ -8,14 +11,15 @@ import math
 import os
 import subprocess
 from netCDF4 import Dataset
-
+import traceback
+import sys
 #self-written functions
 from functions import __plotting_functions
 from functions import __postprocess_McSnow
 from functions import __postprocess_PAMTRA
 
 #read variables passed by shell script
-tstep = os.environ["tstep"]
+tstep = int(os.environ["tstep"])
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
@@ -23,17 +27,13 @@ av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 
 #directory of experiments
 directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
-#experiment name (this also contains a lot of information about the run
-#experiment="1d_xi100000_nz5000_lwc20_ncl0_dtc5_nrp30_rm10_rt0_vt2_h10-20_ba500"
 
 #define filestring (including timestep)
 #tstep="0300min"
-filestring = directory + experiment + "/mass2fr_" + tstep + ".dat"
 
-#read mass2fr.dat file and get SP-dictionary
-#SP = __postprocess_McSnow.read_mass2frdat(experiment,filestring)
+
 #load file
-SP_file = Dataset(directory + experiment + '/mass2fr_' + tstep + '_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
+SP_file = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
 #create dictionary for all variables from PAMTRA
 SP = dict()
 #print pam_file.variables.keys() 
@@ -70,12 +70,13 @@ maxcol_arr = [1e5,1.0,900,1000] #,-999 heighest number in colorbar
 logcol_arr = [1,0,0,1] #set to one if colorbar should be in logarithmic scale
 
 number_of_plots = len(plot_vars)
-num_pamplots = 3 #number of subplots from pamtra variables
+num_pam_SB_plots = 6 #number of subplots from pamtra variables and twomoment output
 
-figsize_height = 6.0/2.0*(number_of_plots+num_pamplots)
+figsize_height = 6.0/2.0*(number_of_plots+num_pam_SB_plots)
 fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
 
-for i,varname in enumerate(plot_vars):
+
+for i,varname in enumerate(plot_vars): #let enumerate start at 0
     print '####################'
     print 'plot: ' + varname
     print '####################'
@@ -94,7 +95,7 @@ for i,varname in enumerate(plot_vars):
     #plt.rc('ylabel', labelsize=15)
     #plt.rc('ytick', labelsize=15)
     
-    ax 	= 	plt.subplot2grid((len(plot_vars)+num_pamplots, 1), (i, 0)) #plotvars +num_pamplots -> let space for 2 PAMTRA_output plots
+    ax 	= 	plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0)) #plotvars +num_pam_SB_plots -> let space for 2 PAMTRA_output plots
     #give range of colorbar and derive ticks
     mincol = mincol_arr[i];
     
@@ -127,32 +128,103 @@ for i,varname in enumerate(plot_vars):
                                                  logcol=logcol_arr[i],cmap=cmap,
                                                  collabel=full_name[i] + ' / ' + var_units[i])
 
+'''
+create plot of athmospheric variables first and add it before the histogram plots
+'''
+ax 	= 	plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (0, 0))
+ax2 = ax.twiny()
+#read atmospheric variables
+atmo = __postprocess_McSnow.read_atmo(experiment)
+#plot athmospheric variables
+plt = __plotting_functions.plot_atmo(ax,ax2,atmo)
+#increase i, because we added a plot before the for-loop
+i+=1
 
-##############################
-#now: plot PAMTRA output below
-##############################
+try:
+    ##############################
+    #now: plot PAMTRA output below
+    ##############################
 
-#define file to read
-pam_filestring = directory + experiment + "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + tstep + '.nc'
-ax = plt.subplot2grid((len(plot_vars)+num_pamplots, 1), (i+1, 0))
+    #define file to read
+    pam_filestring = directory + experiment + "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
+    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0))
 
-#read pamtra output to pamData dictionary
-pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
+    #read pamtra output to pamData dictionary
+    pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
 
-#plot reflectivities
-plt = __plotting_functions.plot_pamtra_Ze(ax,pamData)
+    #plot spectrogram
+    plt = __plotting_functions.plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment)
+    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+2, 0))
+    plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
 
-ax = plt.subplot2grid((len(plot_vars)+num_pamplots, 1), (i+2, 0))
-#plot spectrogram
-plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
-ax = plt.subplot2grid((len(plot_vars)+num_pamplots, 1), (i+3, 0))
-plt = __plotting_functions.plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment)
+    #plot reflectivities
+    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
+
+    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData)
+
+    
+except Exception:
+	print ' \n \n in except: \n \n'
+	s = traceback.format_exc()
+   	serr = "there were errors:\n%s\n" % (s)
+    	sys.stderr.write(serr) 
+  
+#plot SB pamtra output data
+try:
+    ##############################
+    #now: plot PAMTRA output below
+    ##############################
+
+    #define file to read
+    pam_filestring = directory + experiment + "/PAMTRA_2mom_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
+    #ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+
+    #read pamtra output to pamData dictionary
+    pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
+
+    #plot reflectivities
+    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData,linestyle='--')
+    ax.plot(0,0,color='k',linestyle='-',label='McSnow')
+    ax.plot(0,0,color='k',linestyle='--',label='SB')
+    ax.legend()
+    
+    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+    #plot spectrogram
+    plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
+    
+except Exception:
+    print ' \n \n in except: \n \n'
+    s = traceback.format_exc()
+    serr = "there were errors:\n%s\n" % (s)
+    sys.stderr.write(serr) 
+
+
+
+#define filestring
+filestring = directory + experiment + "/twomom_d.dat"
+
+#load netCDF4 file
+twomom_file = Dataset(directory + experiment + '/twomom_d.ncdf',mode='r')
+#create dictionary for all variables from twomom_d.ncdf
+twomom = dict()
+
+#if necessary change name of variables
+varlist = twomom_file.variables
+#read PAMTRA variables to pamData dictionary
+for var in varlist:#read files and write it with different names in Data
+    twomom[var] = np.squeeze(twomom_file.variables[var])
+
+ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
+ax2 = ax.twiny()
+
+i_timestep=(tstep/30)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
+plt = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
 
 #save figure
 plt.tight_layout()
 if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create direktory if it dies not exists
     os.makedirs('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment)
-out_filestring = "/adaptv2_" + testcase + "_av_" + str(av_tstep) + "_t" + tstep
+out_filestring = "/adaptv2_" + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf', dpi=400)
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.png', dpi=400)
 print 'The pdf is at: ' + '/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf'

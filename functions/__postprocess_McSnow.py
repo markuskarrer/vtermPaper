@@ -10,7 +10,7 @@ import sys
 def read_mass2frdat(experiment,filestring):
     '''
     read SP-properties from the mass2fr.dat file into the SP-dictionary
-    INPUT experiment: descriptor (also file name) of the experiment
+    INPUT experiment: descriptor (also folder name) of the experiment
     '''
     directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
 
@@ -27,6 +27,7 @@ def read_mass2frdat(experiment,filestring):
     if not SP_fullinfo[0,:].shape[0]==len(varnames_mass2frdat):
         print "error: compare number of variables in varnames_mass2frdat with variables in MCsnows write_icefraction() from mo_output.f90"
         sys.exit(1)
+    #fill SP-dictionary with different variables
     for i,key in enumerate(varnames_mass2frdat):
         SP[key] = SP_fullinfo[:,i]
 
@@ -60,6 +61,35 @@ def average_SPlists(SP_nonaveraged):
 
     return SP_averaged
 
+def read_twomom_d(experiment,nz):
+    '''
+    read output from twomoment-scheme (embedded in McSnow) from the twomom_d.dat file into the twomom-dictionary
+    INPUT experiment: descriptor (also folder name) of the experiment
+    '''
+    directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
+    filestring = directory + experiment + '/twomom_d.dat'
+    
+    
+    #load file from .dat
+    twomom_fullinfo = np.loadtxt(filestring)
+    
+    #create dictionary
+    twomom = dict()
+    #names of variables in mass2fr
+    varnames_twomom = ["dz",        "rho",    "pres",          "qv",              "qc","qnc",                   "qr","qnr", "qi","qni", "qs","qns", "qg","qng", "qh","qnh" ,"ninact", "t",      "w" ,"fr","fnr","fi","fni","fs","fns","fg","fng","fh","fnh"]
+    #           (Schichtdichte, Gesamtdichte, Druck, Wasserdampfmassendichte, Wolkenwasser massen und anzahldichte, regen, Eis,       Schnee, Graupel ,    Hagel ,            IN, Temperatur, Vertikale Geschwindigkeit w, fluxes of moments)
+    if not twomom_fullinfo.shape[1]/len(varnames_twomom)==nz:
+        print "error: compare number of variables in varnames_twomom with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90"
+        sys.exit(1)
+    
+    #fill twomom-dictionary with different variables
+    for i,key in enumerate(varnames_twomom):
+        twomom[key] = np.zeros([twomom_fullinfo.shape[0],nz])
+        for timestep in range(0,twomom_fullinfo.shape[0]):
+            twomom[key][timestep,:] = twomom_fullinfo[timestep,(i*nz):(i+1)*nz] #dimension of each key is now [time,height]
+            
+    return twomom
+    
 def read_atmo(experiment):
     '''
     read atmospheric variables from McSnow experiment directory
@@ -92,10 +122,37 @@ def interpolate_atmo(atmo,heightvec):
     '''
     
     save_atmoz=atmo["z"] #save atmo["z"] so that it can also be interpolated as a key in atmo
+    reverse=1
+    if save_atmoz[1]<save_atmoz[0]: #must be increasing: if not reverse them and all variables
+        save_atmoz=save_atmoz[::-1]
+        reverse=-1 #save_atmoz=save_atmoz[::-1]
+    
     for i,key in enumerate(atmo.keys()):
-        atmo[key] = np.interp(heightvec,save_atmoz,atmo[key])
+        atmo[key] = np.interp(heightvec,save_atmoz,atmo[key][::reverse])
         
     return atmo
+
+def interpolate_2height(dictio,target_heightvec,curr_heightvec):
+    '''
+    interpolate atmospheric variables given in arbitrary vertical levels to heightvec
+    INPUT:  atmo: dictionary with atmospheric variables
+            heightvec: vector on which the interpolation should be fitted
+    '''
+    
+    if curr_heightvec[1]<curr_heightvec[0]: #must be increasing: if not reverse them and all variables
+        curr_heightvec=curr_heightvec[::-1]
+        reverse=-1 #save_atmoz=save_atmoz[::-1]
+    else:
+        reverse=1
+        
+    for i,key in enumerate(dictio.keys()):
+        try:
+            dictio[key] = np.interp(target_heightvec,curr_heightvec,dictio[key][::reverse])
+        except:
+            print 'variable: (' + key + ') could not be interpolated to heightvec'
+    
+        
+    return dictio
 
 def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0]):
     '''
