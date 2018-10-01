@@ -17,19 +17,17 @@ import sys
 from functions import __plotting_functions
 from functions import __postprocess_McSnow
 from functions import __postprocess_PAMTRA
-
+from functions import __postprocess_SB
+from functions import __general_utilities
 #read variables passed by shell script
 tstep = int(os.environ["tstep"])
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
-
+MC_dir = os.environ["MC"]
 
 #directory of experiments
-directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
-
-#define filestring (including timestep)
-#tstep="0300min"
+directory = MC_dir + "/experiments/"
 
 
 #load file
@@ -43,13 +41,14 @@ varlist = SP_file.variables
 #read PAMTRA variables to pamData dictionary
 for var in varlist:#read files and write it with different names in Data
     SP[var] = np.squeeze(SP_file.variables[var])
-
+#get maximum height for plotting
+model_top = np.nanmax(SP['height'])
 #calculate values binned to here defined h-D bins
-binned_val,heightvec,d_bound_ds,d_ds,zres = __postprocess_McSnow.seperate_by_height_and_diam(SP,nbins=100,diamrange=[-9,0],nheights=51,model_top=5000)
+binned_val,heightvec,d_bound_ds,d_ds,zres = __postprocess_McSnow.seperate_by_height_and_diam(SP,nbins=100,diamrange=[-9,0],nheights=51,model_top=model_top)
 
 #calculate volume of box
 Vbox = __postprocess_McSnow.calculate_Vbox(experiment,zres)
-#divide by box volume to acchieve [#]->[#/m3]
+#divide by box volume to achieve [#]->[#/m3]
 binned_val["d_counts"] = __postprocess_McSnow.conv_num2numpm3(binned_val["d_counts"],Vbox)
 binned_val["d_counts_no_mult"] = __postprocess_McSnow.conv_num2numpm3(binned_val["d_counts"],Vbox)
 
@@ -134,7 +133,10 @@ create plot of athmospheric variables first and add it before the histogram plot
 ax 	= 	plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (0, 0))
 ax2 = ax.twiny()
 #read atmospheric variables
-atmo = __postprocess_McSnow.read_atmo(experiment)
+filestring_atmo = directory + experiment + "/atmo.dat"
+atmo = __postprocess_McSnow.read_atmo(experiment,filestring_atmo)
+#calculate rhi (relative humidity over ice)
+atmo["rhi"] = __general_utilities.calc_rhi(atmo)
 #plot athmospheric variables
 plt = __plotting_functions.plot_atmo(ax,ax2,atmo)
 #increase i, because we added a plot before the for-loop
@@ -198,11 +200,6 @@ except Exception:
     serr = "there were errors:\n%s\n" % (s)
     sys.stderr.write(serr) 
 
-
-
-#define filestring
-filestring = directory + experiment + "/twomom_d.dat"
-
 #load netCDF4 file
 twomom_file = Dataset(directory + experiment + '/twomom_d.ncdf',mode='r')
 #create dictionary for all variables from twomom_d.ncdf
@@ -213,7 +210,9 @@ varlist = twomom_file.variables
 #read PAMTRA variables to pamData dictionary
 for var in varlist:#read files and write it with different names in Data
     twomom[var] = np.squeeze(twomom_file.variables[var])
-
+for category in ['c','i','r','s','g','h']:
+    #calculate Dmean for each category
+    twomom['D_mean_' + category] =  __postprocess_SB.calc_Dmean(twomom,category)
 ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
 ax2 = ax.twiny()
 
@@ -222,7 +221,7 @@ plt = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
 
 #save figure
 plt.tight_layout()
-if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create direktory if it dies not exists
+if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create direktory if it does not exists
     os.makedirs('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment)
 out_filestring = "/adaptv2_" + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf', dpi=400)

@@ -12,26 +12,80 @@ def read_mass2frdat(experiment,filestring):
     read SP-properties from the mass2fr.dat file into the SP-dictionary
     INPUT experiment: descriptor (also folder name) of the experiment
     '''
-    directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
-
+    
     #load file from .dat
     SP_fullinfo = np.loadtxt(filestring)
     
     #create dictionary
     SP = dict()
     #names of variables in mass2fr
-    varnames_mass2frdat = ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat"]
+    varnames = ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat"]
     #                       total   rime             ??    fall  multi-    rime     ?     crit mass  diameter  projected   monomer         rime      mass of 
     #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity     mass       water
-
-    if not SP_fullinfo[0,:].shape[0]==len(varnames_mass2frdat):
-        print "error: compare number of variables in varnames_mass2frdat with variables in MCsnows write_icefraction() from mo_output.f90"
+    #old version without mwat
+    if SP_fullinfo.shape[0]==0:
+        print "error: check if", filestring, "is empty (in postprocess_McSNow read_mass2frdat() )"
         sys.exit(1)
+    else:
+        if not SP_fullinfo[0,:].shape[0]==len(varnames):
+            print "error: compare number of variables in varnames (", len(varnames), ") with variables in MCsnows write_icefraction() (", not SP_fullinfo[0,:].shape[0], ") from mo_output.f90"
+            sys.exit(1)
     #fill SP-dictionary with different variables
-    for i,key in enumerate(varnames_mass2frdat):
+    for i,key in enumerate(varnames):
         SP[key] = SP_fullinfo[:,i]
 
     return SP
+
+def read_hei2massdens(filestring,timestep=0):
+    '''
+    read height-profiles from the mass2fr.dat file into the SP-dictionary
+    INPUT experiment: descriptor (also folder name) of the experiment
+    '''
+    
+    #load file from .dat
+    heightprofiles_fullinfo = np.loadtxt(filestring)
+    
+    #create dictionary
+    hei2massdens = dict()
+    #names of variables in hei2massdens
+    varnames = ["z", "Ns",
+                "Nd",           "Md",          "Fn",           "Fm",            "Fmono", 
+                "Nd_mm1",   "Md_mm1",           "Fn_mm1",   "Fm_mm1",       "Fmono_mm1", 
+                "Nd_unr",   "Md_unr",           "Fn_unr",   "Fm_unr",       "Fmono_unr", 
+                "Nd_grp",   "Md_grp",           "Fn_grp",   "Fm_grp",       "Fmono_grp", 
+                "Nd_liq",   "Md_liq",           "Fn_liq",   "Fm_liq",       "Fmono_liq"]
+    #        height  number of SP 
+    #         number density    mass density    number flux   mass flux     monomer flux
+    #   same values as above but only for: pristine
+    #                                      unrimed
+    #                                      graupel
+    #                                      liquid
+
+    if not heightprofiles_fullinfo[0,:].shape[0]==len(varnames):
+        print "error: compare number of variables in varnames (",len(varnames),") with variables in MCsnows write_hprofiles() (", heightprofiles_fullinfo[0,:].shape[0],")from mo_output.f90"
+        sys.exit(1)
+    #fill SP-dictionary with different variables
+    #read z-array first to crop hei2massdens array to the relevant timesteps
+    z_for_crop = heightprofiles_fullinfo[:,0]
+    index_start_of_timesteps = np.where(z_for_crop==0)[0] #this is an array with indices which indicate at which line a new timestep starts
+    i_start = index_start_of_timesteps[timestep]; 
+    #going to the beginning of next timestep and then one line back fails if the last timestep is read in -> treat this case seperately
+    if (index_start_of_timesteps.shape[0]-1)==timestep: #last timestep
+        i_end = heightprofiles_fullinfo.shape[0]
+    else: #not last timestep
+        i_end = index_start_of_timesteps[timestep+1]-1
+    
+    for i,key in enumerate(varnames):
+        hei2massdens[key] = heightprofiles_fullinfo[i_start:i_end,i]
+
+    #calculate unrimed properties as residuum
+    for prop in ["Nd","Md","Fn","Fm","Fmono"]: #loop over all properties
+        prop_tmp = hei2massdens[prop][:] #save total
+        for categ in ["mm1","unr","grp","liq"]:
+            prop_tmp = prop_tmp - hei2massdens[prop + '_' + categ][:] #subtract quantity of each category
+        hei2massdens[prop + "_rimed"] = prop_tmp[:] #save residuum for _rimed of this property
+
+    return hei2massdens
 
 def average_SPlists(SP_nonaveraged):
     '''
@@ -61,14 +115,13 @@ def average_SPlists(SP_nonaveraged):
 
     return SP_averaged
 
-def read_twomom_d(experiment,nz):
+def read_twomom_d(experiment,filestring,nz):
     '''
     read output from twomoment-scheme (embedded in McSnow) from the twomom_d.dat file into the twomom-dictionary
-    INPUT experiment: descriptor (also folder name) of the experiment
+    INPUT   experiment: descriptor (also folder name) of the experiment
+            filestring: full path of file which has the twomom_d data
+            nz: number of vertical levels in output file
     '''
-    directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
-    filestring = directory + experiment + '/twomom_d.dat'
-    
     
     #load file from .dat
     twomom_fullinfo = np.loadtxt(filestring)
@@ -79,7 +132,7 @@ def read_twomom_d(experiment,nz):
     varnames_twomom = ["dz",        "rho",    "pres",          "qv",              "qc","qnc",                   "qr","qnr", "qi","qni", "qs","qns", "qg","qng", "qh","qnh" ,"ninact", "t",      "w" ,"fr","fnr","fi","fni","fs","fns","fg","fng","fh","fnh"]
     #           (Schichtdichte, Gesamtdichte, Druck, Wasserdampfmassendichte, Wolkenwasser massen und anzahldichte, regen, Eis,       Schnee, Graupel ,    Hagel ,            IN, Temperatur, Vertikale Geschwindigkeit w, fluxes of moments)
     if not twomom_fullinfo.shape[1]/len(varnames_twomom)==nz:
-        print "error: compare number of variables in varnames_twomom with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90"
+        print "error in postprocess_McSNow.read_twomom_d: compare number of variables in varnames_twomom(", len(varnames_twomom) ,") with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90(", twomom_fullinfo.shape[1] ,"); the ratio must be a multiple of nz "
         sys.exit(1)
     
     #fill twomom-dictionary with different variables
@@ -90,13 +143,11 @@ def read_twomom_d(experiment,nz):
             
     return twomom
     
-def read_atmo(experiment):
+def read_atmo(experiment,filestring_atmo):
     '''
     read atmospheric variables from McSnow experiment directory
     INPUT:  experiment: specifier of experiment
     '''
-    directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
-    filestring_atmo = directory + experiment + "/atmo.dat"
 
     #load file from .dat
     atmo_fullinfo = np.loadtxt(filestring_atmo)
@@ -154,7 +205,7 @@ def interpolate_2height(dictio,target_heightvec,curr_heightvec):
         
     return dictio
 
-def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0]):
+def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0],calconly="None"):
     '''
     count number of real particles (RP) in height-diameter bins
     INPUT:  SP:dictionary with properties of all SP of one timestep 
@@ -162,49 +213,57 @@ def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange
             nheights: number of heights in height array
             model_top: top of model (also top of height area) [m]
             diamrange: specifies range of diameter array from 10**firstvalue to 10**secondvalue
+            calconly: 'None': calc all height bins, else calculate only height bins which starts with [<calconly-array>]
     '''
 
     #create height vector
     zres = model_top/(nheights-1) #vertical resolution
     heightvec = np.linspace(0,model_top,nheights) #start with 0+zres and go n_heigts step up to model_top
+    #heightvec[-1] = np.inf #be sure to have all particles in heighest bin
     #define arrays with sp_diam
     d_bound_ds = np.logspace(diamrange[0],diamrange[1],nbins+1) #array from 1nm to 1m
     d_ds = d_bound_ds[:-1] + 0.5*np.diff(d_bound_ds) #diameter at center of bins
     #create dictionary for binned values and fill it with zeros
     binned_val = dict()
-    binned_val["d_counts"] = np.zeros([nheights,nbins]) #number of RP at each h-D bin
-    binned_val["d_counts_no_mult"] = np.zeros([nheights,nbins]) #number of SP at each h-D bin
-    binned_val["av_Frim"] = np.zeros([nheights,nbins]) #mass averaged rime fraction for each h-D bin
-    binned_val["av_rhor"] = np.zeros([nheights,nbins]) #mass averaged rime density for each h-D bin
-    binned_val["av_mm"] = np.zeros([nheights,nbins]) #multiplicity weighted monomer number
-    binned_val["nav_vt"] = np.zeros([nheights,nbins]) #multiplicity weighted fall speed
-
+    binned_val["d_counts"] = np.zeros([nheights-1,nbins]) #number of RP at each h-D bin
+    binned_val["d_counts_no_mult"] = np.zeros([nheights-1,nbins]) #number of SP at each h-D bin
+    binned_val["av_Frim"] = np.zeros([nheights-1,nbins]) #mass averaged rime fraction for each h-D bin
+    binned_val["av_rhor"] = np.zeros([nheights-1,nbins]) #mass averaged rime density for each h-D bin
+    binned_val["av_mm"] = np.zeros([nheights-1,nbins]) #multiplicity weighted monomer number
+    binned_val["nav_vt"] = np.zeros([nheights-1,nbins]) #multiplicity weighted fall speed
+    binned_val["mass_in_bin"] = np.zeros([nheights-1,nbins]) #total mass within bin
+    
     #get the number of particles (SP*sp_multiplicity) at each bin (binned by height and sp_diameter)
     for i in range(0,nheights-1):
-        for j in range(0,nbins):
-                    condition_in_bin = np.logical_and(
-                                    np.logical_and(d_bound_ds[j]<=SP["diam"],SP["diam"]<d_bound_ds[j+1]),
-                                    np.logical_and(heightvec[i]<=SP["height"],SP["height"]<heightvec[i+1]),
-                                    )
-                    binned_val["d_counts"][i,j] = np.sum(np.where(condition_in_bin,SP["xi"],0))
-                    binned_val["d_counts_no_mult"][i,j] = np.sum(np.where(condition_in_bin,1,0))
-                    #get total number of RP per bin
-                    multipl_bin = np.sum(np.where(condition_in_bin,SP["xi"],0))            
-                    #get sum of qirim per bin
-                    qirim_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"],0))
-                    #get sum of qitot
-                    qitot_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
-                    binned_val["av_Frim"][i,j] = qirim_bin/qitot_bin #calc. mass averaged rime fraction
-                    #calc. rime mass averaged rime density
-                    binned_val["av_rhor"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"]*SP["rhor"],0))/qitot_bin
-                    #calc. multipl averaged
-                    binned_val["av_mm"][i,j] = np.sum(np.where(condition_in_bin,SP["mm"]*SP["xi"],0))/multipl_bin
-                    #calc number averaged fall speed
-                    binned_val["nav_vt"][i,j] = np.sum(np.where(condition_in_bin,-SP["vt"]*SP["xi"],0))/multipl_bin
+        if isinstance(calconly,basestring) or (heightvec[i] in calconly): #skip heights which are not needed for plotting
+            for j in range(0,nbins):
+                        condition_in_bin = np.logical_and(
+                                        np.logical_and(d_bound_ds[j]<=SP["diam"],SP["diam"]<d_bound_ds[j+1]),
+                                        np.logical_and(heightvec[i]<=SP["height"],SP["height"]<heightvec[i+1]),
+                                        )
+                        binned_val["d_counts"][i,j] = np.sum(np.where(condition_in_bin,SP["xi"],0))
+                        binned_val["d_counts_no_mult"][i,j] = np.sum(np.where(condition_in_bin,1,0))
+                        binned_val["mass_in_bin"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
+                        #get total number of RP per bin
+                        multipl_bin = np.sum(np.where(condition_in_bin,SP["xi"],0))            
+                        #get sum of qirim per bin
+                        qirim_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"],0))
+                        #get sum of qitot
+                        qitot_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
+                        binned_val["av_Frim"][i,j] = qirim_bin/qitot_bin #calc. mass averaged rime fraction
+                        #calc. rime mass averaged rime density
+                        binned_val["av_rhor"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"]*SP["rhor"],0))/qitot_bin
+                        #calc. multipl averaged
+                        binned_val["av_mm"][i,j] = np.sum(np.where(condition_in_bin,SP["mm"]*SP["xi"],0))/multipl_bin
+                        #calc number averaged fall speed
+                        binned_val["nav_vt"][i,j] = np.sum(np.where(condition_in_bin,-SP["vt"]*SP["xi"],0))/multipl_bin
+        else:
+            pass
 
     binned_val["RPpSP"] = binned_val["d_counts"]/binned_val["d_counts_no_mult"]
 
     return binned_val,heightvec,d_bound_ds,d_ds,zres
+
 
 def calculate_Vbox(experiment,zres):
     '''
@@ -229,3 +288,73 @@ def return_parameter_mD_AD_rel():
     Dth = (rhoi * np.pi/6 * 1./unr_alf)**(1./(unr_bet-3))
     mth = np.pi/6. * rhoi * Dth**3 #from McSnows mo_mass2diam.f90
     return mth,unr_alf,unr_bet,rhoi,rhol
+
+def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None"): #taken and adapted from mo_output.f90
+    '''
+    calculate the kernel estimate (adapted from McSnow's mo_output routines (f.e. write_distributions_meltdegree)
+    INPUT:  D_SP_list: list of diameters of SP
+            Dgrid: array of diameter on which the kde is calculated
+            sigmai: bandwidth of kde
+            weight: weight applied during integration
+    '''
+    number_sp = len(D_SP_list)
+    # sigma for kernel estimate, sigma = sigma0/N_s**(1/5), see Shima Sec 5.1.4
+    #sigma0 = 0.62 #from mo_sp_nml #sigma0 = 0.62_wp ! Shima 2009, Sec. 5.1.4
+    #sigmai = number_sp**0.2 / sigma0
+    
+    #radius from diameter
+    D_vec = Dgrid #radius array for results
+    D_SP_vec = D_SP_list #radius of SP
+    N_D = np.zeros_like(D_vec)
+    
+    #print "r,rad,expdiff"
+    if not isinstance(weight,basestring): #if there is a real weight
+        weight_total = sum(weight)
+    expdiff_prefactor = 1./np.sqrt(2.*np.pi)/sigmai #calculate expdiff here to save computational time
+    for i_rad,rad in enumerate(D_vec):
+        for i_SP,r in enumerate(D_SP_vec): 
+            #print i_SP,i_rad,rad,r
+            #calculate weight
+            expdiff = expdiff_prefactor * np.exp(-0.5*((rad-r)/sigmai)**2) #r and rad is already log-scaled 
+            #integrate over each SP
+            if isinstance(weight,basestring): #if there is no weight
+                N_D[i_rad] += expdiff/number_sp #ATTENTION: add sp%xi to this summation as in mo_output
+            else:
+                #print 'here',weight[i_SP],weight[i_SP]*expdiff/number_sp
+                N_D[i_rad] += weight[i_SP]*expdiff/weight_total #ATTENTION: add sp%xi to this summation as in mo_output
+            #print r,rad,expdiff
+
+    #from IPython.core.debugger import Tracer ; Tracer()()
+            
+    return N_D
+
+def kde_statsmodels_m(x, x_grid, bandwidth=0.2, **kwargs):
+    
+    from statsmodels.nonparametric.kernel_density import KDEMultivariate #for multivariate KDE
+    """Multivariate Kernel Density Estimation with Statsmodels"""
+    kde = KDEMultivariate(x, bw=np.array(bandwidth * np.ones_like(x)),
+                          var_type='c', **kwargs)
+
+    return kde.pdf(x_grid) #return the pdf evaluated at the entries of x_grid
+
+def kde_bandwidth_estimated(x,x_grid,guessed_bandwidths):
+    
+    #the next 2 packages are to estimate the bandwith by a machine learning approach    
+    from sklearn.neighbors import KernelDensity
+    from sklearn.grid_search import GridSearchCV
+    
+    grid = GridSearchCV(KernelDensity(),
+                    {'bandwidth': guessed_bandwidths},
+                    cv=5) # ...-fold cross-validation
+    #evaluate the grid to find the best parameter
+    grid.fit(x[:, None])
+    #copy result of parameter estimate to "kde"
+    kde = grid.best_estimator_
+    
+
+    #evaluate the grid to find the best parameter
+    grid.fit(x[:, None])
+    #copy result of parameter estimate to "kde"
+    #grid.best_estimator_
+    
+    return kde.bandwidth,np.exp(kde.score_samples(x_grid[:, None])) #score_samples returns the log of the pdf -> we need to exp() it

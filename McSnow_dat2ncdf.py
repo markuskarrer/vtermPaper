@@ -20,15 +20,16 @@ tstep = int(os.environ["tstep"]) #string with 4 numbers and 'min'
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"] #"more readable" string of the experiment specifications
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
+MC_dir = os.environ["MC"]
 
 #directory of experiments
-directory = "/home/mkarrer/Dokumente/McSnow/MCSNOW/experiments/"
+directory = MC_dir + "/experiments/"
 
 #read timestep from string
 dtc = int(re.search(r'dtc(.*?)_nrp', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
 
 #perform temporal averaging
-t_after_full = 0
+t_after_full = 0 #time after the timestep with the full output in seconds
 while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
     filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
     print 'reading: ' + filestring_mass2fr
@@ -61,16 +62,20 @@ for i,key in enumerate(SP.keys()):
 print "mass2fr... file created at: ",dataset.history
 dataset.close()
 
+#################################################
 #also save SB-twomoment scheme output to netCDF4
+#################################################
+
 twomom_bool = True #TODO: do not hardcode this here?
 if not twomom_bool:
     sys.exit(0)
 
 #read number of vertical levels from string
-nz = int(re.search(r'nz(.*?)_lwc', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
+nz = int(re.search(r'nz(.*?)_', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
 
 #read the twomom_d.dat file to the dictionary twomom
-twomom = __postprocess_McSnow.read_twomom_d(experiment,nz) #returns the twomom variables in a dictionary
+filestring_twomom_d = MC_dir + '/experiments/' + experiment + '/twomom_d.dat' 
+twomom = __postprocess_McSnow.read_twomom_d(experiment,filestring_twomom_d,nz) #returns the twomom variables in a dictionary
 
 #create height axis from dz (layer thickness) array
 heights = np.cumsum(twomom['dz'][0,::-1])[::-1] #fix index 0 is allowed unless level thickness change with height

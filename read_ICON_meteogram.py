@@ -1,0 +1,242 @@
+'''
+read METEOGRAM output from ICON simulation (with the SB06 two-moment scheme)
+'''
+
+#from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+
+#import modules
+import netCDF4 #for reading netCDF4
+import numpy as np 
+import pandas as pd #necessary?
+import os #for reading variables from shell script
+import re #to search in string
+import datetime
+import csv
+import matplotlib.pyplot as plt
+import sys
+import subprocess
+import scipy.signal as scisi #import argrelextrema #to find local maxima
+
+from functions import __plotting_functions
+from functions import __general_utilities
+
+#local functions
+def add_possible_initialization_heights(ax,heights):
+    '''
+    add vertical lines to the axis "as" to visualize the potential heights to initialize the model
+    INPUT:  ax: axes on which the line should be added
+            heights: y-values (in m) where the line should be added
+    '''
+    for i in range(0,len(heights)):
+        ax = plt.axhline(heights[i],color='grey',linestyle='--')
+        
+    return ax
+    
+#read variables passed by shell script
+experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
+testcase = os.environ["testcase"] #"more readable" string of the experiment specifications
+MC_dir = os.environ["MC"]
+
+
+#read time which should be analyzed from testcase string
+date = int(re.search(r'day(.*?)hour', testcase).group(1)) #this line gets the date from the testcase string
+hour = int(re.search(r'hour(.*?)min', testcase).group(1)) #this line gets the hour from the testcase string
+minute = int(re.search(r'min(.*?)s', testcase).group(1)) #this line gets the min from the testcase string
+#TODO also read in seconds
+#convert time to s to find nearest output timestep
+analyzed_time_s = hour*3600+minute*60
+
+#TODO: choose file based on experiment name
+filename = "/data/inscape/icon/experiments/tripex_220km/METEOGRAM_patch002_joyce.nc"
+
+#open netCDF4 file
+nc = netCDF4.Dataset(filename)
+#get formated string of date
+time = pd.to_datetime(netCDF4.chartostring(nc.variables['date'][:]))
+#get timestep in array for analysis
+timestep_start = np.argmin(np.absolute(nc.variables["time"][:]-analyzed_time_s))
+
+
+#initialize dictionary
+twomom = dict()
+#load some variables to dictionary
+twomom["heights"] = nc.variables["height_2"] #mid-level height (relevant for most variables (except: W,.. )
+
+#TODO: do not hardcode average time
+average_time_s = 60*30 #120 minute average
+timestep_end = np.argmin(np.absolute(nc.variables["time"][:]-analyzed_time_s-average_time_s))
+#print some info in terminal
+print 'analyzing time: ',time[timestep_start],' to: ',time[timestep_end]
+
+for new_key,icon_key in zip(["temp","pres","qv","qc","qnc","qr","qnr","qi","qni","qs","qns","qg","qng","qh","qnh","rho","rhw"],
+                            ["T",   "P",   "QV","QC","QNC","QR","QNR","QI","QNI","QS","QNS","QG","QNG","QG","QNH","RHO","REL_HUM"]):
+    twomom[new_key] = np.mean(nc.variables[icon_key][timestep_start:timestep_end,:],axis=0) #ATTENTION: from here on they are temporally averaged
+    if new_key in ("qc","qnc","qr","qnr","qi","qni","qs","qns","qg","qng","qh","qnh"):
+        twomom[new_key] = twomom[new_key][None,:] #add singleton dimension for hydrometeors because of plotting routine
+    twomom[new_key + '_std'] = np.std(nc.variables[icon_key][timestep_start:timestep_end,:],axis=0)
+    if new_key in ("qc","qnc","qr","qnr","qi","qni","qs","qns","qg","qng","qh","qnh"):
+        twomom[new_key + '_std'] = twomom[new_key + '_std'][None,:] #add singleton dimension
+
+
+#twomom["temp"]=np.ones(twomom["temp"].shape)*273.15
+
+###
+#calculate extra variables (f.e. rhi) from other atmospheric variables
+###
+iconData_atmo = dict()
+#calculate rhi (relative humidity over ice)
+iconData_atmo["T"]=twomom["temp"];iconData_atmo["rh"] = twomom["rhw"]; iconData_atmo["z"]=twomom["heights"][:]; iconData_atmo["p"]=twomom["pres"]; twomom["rhi"] = __general_utilities.calc_rhi(iconData_atmo)
+#calculate std also for rhi
+twomom["rhi_std"] = np.std(nc.variables[icon_key][timestep_start:timestep_end,:],axis=0)
+
+#ATTENTION: for testing fix atmosphere to some value
+#twomom["temp"]=np.ones(twomom["temp"].shape)*263.15
+#twomom["qv"]=np.ones(twomom["qv"].shape)*0.0010
+#twomom["pres"]=np.ones(twomom["pres"].shape)*100000.0
+#twomom["rhi"]=np.ones(twomom["rhi"].shape)*120.001
+#print "qv_before",twomom["qv"]
+#twomom["qv"] = __general_utilities.q2abs(twomom["qv"],twomom["qv"],twomom["temp"],twomom["pres"],twomom["rhw"],q_all_hydro="NaN") #qv is now in kg m-3
+#print "qv_after",twomom["qv"]
+#raw_input("")
+
+
+        
+#convert from mixing ratios [kg kg-1]/[kg-1] to absolute values [kg m-3]/[m-3]
+twomom["qi_spec"] = __general_utilities.q2abs(twomom["qi"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
+twomom["qni_spec"] = __general_utilities.q2abs(twomom["qni"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
+
+###
+#find maximum in number density to initialize McSnow
+###
+criteria = 2 #0: choose global maximum of qni 1: choose lowest local maximum of qni 2. choose heighest level with RHi>100 #TODO: give this as an input by the governing script (kind of namelist)
+#calculate anyway the initialization for all criterias to display them in panel but choose just one for the real initialization
+num_crit=3; i_crit = np.zeros(num_crit, dtype=np.int) #set number of possible criterias to choose initialization height
+qi_init = np.zeros(num_crit); qni_init = np.zeros(num_crit) ; height_init = np.zeros(num_crit) #initialize arrays which contain the values for initialization
+i_crit[0] = int(np.argmax(twomom["qni"]));  #index of initialization height after criteria 0
+
+qni_small = 1.0; i=-1
+oncemore = iter([True, False])
+i_loc_max_list = -1
+loc_max_list = scisi.argrelextrema(twomom["qni"][0], np.greater)[0]
+#from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+while (twomom["qni"][0,loc_max_list[i_loc_max_list]]<qni_small) or next(oncemore): #move on to next local minimum if qni>qni_small is not fullfiled; next(oncemore) achieves that the while-clause is also executed for the actual interesting minimum (where qni_small is exceeded first)
+    i_crit[1] = loc_max_list[i_loc_max_list] #int(scisi.argrelextrema(twomom["qni"][0], np.greater)[0][-1]) #find first/next local maxima    
+    #print i_loc_max_list,i_crit[1],twomom["qni"][0,loc_max_list[i_loc_max_list]],twomom["qi"][0,loc_max_list[i_loc_max_list]]
+    i_loc_max_list-=1
+
+#convert_atmovars(calc_something="calc_rhi",input_dict=iconData_atmo) #from __general_utilities
+try:
+    i_crit[2] = np.where(twomom["rhi"]>100)[0][0] #find heighest level with RHi> 0
+except:
+    print "WARNING: complete profile is subsaturated with reference to ice cannot find heighest level with RHi> 0 in read_ICON_meteogram.py"
+    i_crit[2] = -1
+
+
+for i in range(0,num_crit):
+    qi_init[i] = twomom["qi_spec"][0,i_crit[i]]
+    qni_init[i] = round(twomom["qni_spec"][0,i_crit[i]],0)
+    height_init[i] = round(twomom["heights"][i_crit[i]])
+
+
+#copy values from selected condition here to those who are written to file init_vals.txt later
+qi_init_sel = qi_init[criteria] 
+qni_init_sel = qni_init[criteria]
+height_init_sel = height_init[criteria]
+
+#write atmospheric variables to txt file
+with open(MC_dir + "/input/ecmwf_profile.txt","wb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+    ecmwf_writer =csv.writer(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+    for row in range(0,len(nc.variables["height_2"][:])):
+        ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [twomom["qv"][row]] )
+        #print nc.variables["height_2"][row],twomom["temp"][row],twomom["pres"][row],twomom["qv"][row]
+txtfile.close()
+#write hydrometeor init values to txt file
+with open(MC_dir + "/input/init_vals.txt","wb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+    initvals_writer = csv.writer(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+    initvals_writer.writerow(["{:010.0f}".format(height_init_sel)] + ["{:010.0f}".format(qi_init_sel*10000000)] + ["{:010.0f}".format(qni_init_sel/100)])
+txtfile.close()
+print "wrote init vals to:" + MC_dir + "/input/init_vals.txt"
+
+number_of_plots = 4
+
+flag_plot_icons_var = True #for debugging purposes, plot here icons variables (atmosphere + hydrometeors)
+if flag_plot_icons_var:
+    figsize_height = 6.0/2.0*(number_of_plots)
+    fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
+    '''
+    create plot of athmospheric variables first and add it before the histogram plots
+    '''
+    ax  = plt.subplot2grid((number_of_plots, 1), (0, 0))
+    ax2 = ax.twiny()
+    #plot_atmo in __plotting_functions.py needs special names in the dictionary
+    iconData_atmo = dict()
+    iconData_atmo["T"] = twomom["temp"];  iconData_atmo["rh"] = twomom["rhw"]; iconData_atmo["z"]=twomom["heights"]
+    iconData_atmo["T_std"] = twomom["temp_std"]; iconData_atmo["rh_std"] = twomom["rhw_std"];
+    iconData_atmo["rhi"] = twomom["rhi"]; iconData_atmo["rhi_std"] = twomom["rhi_std"];
+    #plot atmospheric variables
+    __plotting_functions.plot_atmo(ax,ax2,iconData_atmo)
+    #add lines for the heights which can be used for initialization
+    ax = add_possible_initialization_heights(ax,height_init)
+    ####################################
+    #plot mixing ratio + number density
+    ####################################
+    #number density
+    mass_num_flag = 0 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+
+    ax = plt.subplot2grid((number_of_plots, 1), (1, 0))
+    if mass_num_flag==2:
+        ax2 = ax.twiny()
+    else: #in case there is no need for a second axis, just pass the first ax twice
+        ax2 = ax
+    
+    #plot_moments in __plotting_functions.py needs special names in the dictionary
+    hei2massdens=dict() #hei2massdens stays empty here
+
+    i_timestep = 0 #dirty workaround: the variables do have just one timesteps here, because this is choose before
+    plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+    #add lines for the heights which can be used for initialization
+    ax = add_possible_initialization_heights(ax,height_init)
+    #mass density
+    mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+
+    ax = plt.subplot2grid((number_of_plots, 1), (2, 0))
+    if mass_num_flag==2:
+        ax2 = ax.twiny()
+    else: #in case there is no need for a second axis, just pass the first ax twice
+        ax2 = ax
+        
+    plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+    #add lines for the heights which can be used for initialization
+    ax = add_possible_initialization_heights(ax,height_init)
+    #add panel with some information in text form
+    ax = plt.subplot2grid((number_of_plots, 1), (3, 0))
+    ax.axis("off")
+    plt.text(0,0,'analyzing time: {} to: {}'.format(str(time[timestep_start]),str(time[timestep_end])) +
+             '\n initialize at: {:d})\n'.format(criteria) +
+             '                   0) global maximum of qni: \n' + 
+             '                                                 height:{:10.0f} m \n'.format(height_init[0]) + 
+             '                                                 qi:       {:.2E} kg m-3 \n'.format(qi_init[0]) + 
+             '                                                 qni:     {:.2E} m-3\n'.format(qni_init[0]) + 
+             '                   1) lowest local maximum of qni with qni>1: \n' + 
+             '                                                 height:{:6.0f}m\n'.format(height_init[1]) +
+             '                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[1]) + 
+             '                                                 qni:     {:.2E}m-3\n'.format(qni_init[1]) +
+             '                   2) heighest level with RHi>100%: \n' + 
+             '                                                 height:{:6.0f}m\n'.format(height_init[2]) +
+             '                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[2]) + 
+             '                                                 qni:     {:.2E}m-3\n'.format(qni_init[2])
+             )
+    
+    #save figure
+    plt.tight_layout()
+    if not os.path.exists('/home/mkarrer/Dokumente/plots/Meteogram/' + str(date)): # + testcase): #create direktory if it does not exists
+        os.makedirs('/home/mkarrer/Dokumente/plots/Meteogram/' + str(date))
+
+    if not os.path.exists('/home/mkarrer/Dokumente/plots/Meteogram/' + str(date) + '/' + testcase): #create direktory if it does not exists
+        os.makedirs('/home/mkarrer/Dokumente/plots/Meteogram/' + str(date) + '/' + testcase)
+    out_filestring = '/Meteogram_input'
+    plt.savefig('/home/mkarrer/Dokumente/plots/Meteogram/' + str(date)+ '/'  + testcase + out_filestring + '.pdf', dpi=400)
+    plt.savefig('/home/mkarrer/Dokumente/plots/Meteogram/' + str(date)+ '/'  + testcase + out_filestring + '.png', dpi=400)
+    print 'The pdf is at: ' + '/home/mkarrer/Dokumente/plots/Meteogram/' + str(date) + '/'  + testcase + out_filestring + '.pdf'
+    subprocess.Popen(['evince','/home/mkarrer/Dokumente/plots/Meteogram/' + str(date) + '/'  + testcase + out_filestring + '.pdf'])
+

@@ -34,6 +34,32 @@ def plot1Dhist(x,bins,normed=1,facecolor='blue',alpha=1,
     if len(axlims)==4:
         plt.axis(axlims)
     plt.grid(True)
+    
+def plot1Dhistline(ax,x,counts,xlabel='',ylabel='counts',title='',linelabel='',logflag=0,xlims='None',ylims='None',linestyle='-',color='r'):
+    '''
+    input: x-> x-axes of bar-plot of the histogram, counts-> corresponding counts to x-axis, facecolor, 
+    alpha-> transparency value, xlabel,ylabel,title, logflag-> 0: no 1: logx 2:logy 3:loglog
+    '''
+    
+    # the histogram of the data
+    if logflag==0:
+        ax.plot(x,counts,label=linelabel,linestyle=linestyle,color=color)
+    elif logflag==1:
+        ax.semilogx(x,counts,label=linelabel,linestyle=linestyle,color=color)
+    elif logflag==2:
+        ax.semilogy(x,counts,label=linelabel,linestyle=linestyle,color=color)
+    elif logflag==3:
+        ax.loglog(x, counts,label=linelabel,linestyle=linestyle,color=color) #, np.diff(x) , facecolor=facecolor, alpha=alpha, log=logy)
+    
+    if not ylims=='None':
+        ax.set_ylim([ylims[0],ylims[1]])
+    if not xlims=='None':
+        ax.set_xlim([xlims[0],xlims[1]])    
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+
+    return ax
 
 def plotbar(x,counts,facecolor='blue',alpha=1, 
                xlabel='',ylabel='counts',title='',logflag=0,axlims=[0]):
@@ -118,12 +144,12 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' '):
     #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])):
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
-            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
+            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
         else:
             ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
 
     #set range
-    ax.set_xlim([-20,55]) #range of Ze
+    ax.set_xlim([-40,55]) #range of Ze
     #TODO: set height flexible
     ax.set_ylim([0,pamData["height"][-1]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
@@ -217,45 +243,255 @@ def plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment,cmap='viridis_r'):
     col.set_label("number density / m-3", rotation=90)
     return plt
 
-def plot_twomom_moments(ax,ax2,twomom,i_timestep):
+def plot_twomom_moments(ax,ax2,twomom,i_timestep,add_Dmean=True):
     '''
     plot moments (number density and mass density) over height
     INPUT:  ax: first x-axis
             ax2: second x-axis
             twomom: dictionary with (McSnows) two-moment variables
+            add_Dmean (boolean): add also Dmean into plot
     '''
+    import matplotlib.ticker
     #plot mixing ratios
-    #from IPython.core.debugger import Tracer ; Tracer()()
-    plotqc = ax.semilogx(twomom['qc'][i_timestep,:],twomom['heights'])
-    plotqr = ax.semilogx(twomom['qr'][i_timestep,:],twomom['heights'])
-
-    plotqi = ax.semilogx(twomom['qi'][i_timestep,:],twomom['heights'])
-    plotqs = ax.semilogx(twomom['qs'][i_timestep,:],twomom['heights'])
-    plotqg = ax.semilogx(twomom['qg'][i_timestep,:],twomom['heights'])
-    plotqh = ax.semilogx(twomom['qh'][i_timestep,:],twomom['heights'])
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    markerlist = ["o","^","s","*","x","d"]
+    
+    axisq = [];axisDmean = []
+    for i,cat in enumerate(['c','i','r','s','g','h']):
+        axisq += ax.semilogx(twomom['q' + cat][i_timestep,:],twomom['heights'],color='r',marker=markerlist[i],markevery=20,markerfacecolor='None')
+        if add_Dmean:
+            axisDmean += ax2.semilogx(twomom['D_mean_' + cat][i_timestep,:],twomom['heights'],color='k',linestyle='',marker=markerlist[i],markevery=20,markerfacecolor='None')
 
     #plot number concentrations
-    plotqnc = ax2.semilogx(twomom['qnc'][i_timestep,:],twomom['heights'],'--')
-    plotqnr = ax2.semilogx(twomom['qnr'][i_timestep,:],twomom['heights'],'--')
+    axisqn = []
+    for i,cat in enumerate(['c','i','r','s','g','h']):
+        axisqn += ax2.semilogx(twomom['qn' + cat][i_timestep,:],twomom['heights'],color='k',marker=markerlist[i],markevery=20,markerfacecolor='None')
 
-    plotqni = ax2.semilogx(twomom['qni'][i_timestep,:],twomom['heights'],'--')
-    plotqns = ax2.semilogx(twomom['qns'][i_timestep,:],twomom['heights'],'--')
-    plotqng = ax2.semilogx(twomom['qng'][i_timestep,:],twomom['heights'],'--')
-    plotqnh = ax2.semilogx(twomom['qnh'][i_timestep,:],twomom['heights'],'--')
-    
     #change height limits
     ax.set_ylim([0,twomom["heights"][0]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     #add labels and legend
-    ax.set_xlabel("mixing ratio (solid) / kg m-3")
-    ax2.set_xlabel("number concentration (dashed) / m-3")
+    ax.set_xlabel("mixing ratio / kg m-3", color="r")
+    ax.tick_params(axis='x', colors='r')    
+    ax2.set_xlabel("mean diameter (symbols only) / m     number concentration / m-3",color="k")
     ax.set_ylabel("height / m")
-    ax.set_xlim([ax.get_xlim()[0],ax.get_xlim()[1]*100])
-    ax2.set_xlim([ax2.get_xlim()[0],ax2.get_xlim()[1]*1000])
-
-    ax.legend(["cloud w.","rain","cloud ice","snow","graupel","hail"],loc='center right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    #set a fix range of the x-axis
+    xmin=-9;xmax=1
+    x2min=-5;x2max=9
+    ax.set_xlim([10**xmin,10**xmax]) #[ax.get_xlim()[0],ax.get_xlim()[1]*100])
+    ax2.set_xlim([10**x2min,10**x2max]) #[ax2.get_xlim()[0],ax2.get_xlim()[1]*1000])
+    #set xticks
+    ax.set_xticks(np.logspace(xmin,xmax,xmax-xmin+1))
+    ax2.set_xticks(np.logspace(x2min,x2max,x2max-x2min+1))
+    #remove every second ticklabel
+    for label in ax.xaxis.get_ticklabels()[::2]:
+        label.set_visible(False)
+    for label in ax2.xaxis.get_ticklabels()[::2]:
+        label.set_visible(False)
+    
+    #add legend
+    ax.legend(axisqn,["cloud w.","cloud ice","rain","snow","graupel","hail"],loc='center right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
     
     return plt
+
+def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
+    '''
+    plot number and mass fluxes of SB and McSnow over height
+    INPUT:  ax: first x-axis
+            ax2: second x-axis
+            twomom: dictionary with (McSnows) two-moment variables
+    '''
+    import matplotlib.ticker
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    markerlist = ["^","s","*","x","d",""]
+    labellistSB = ["cloud ice","rain","snow","SB graupel","hail"]
+    labellistMC = ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
+
+    McSNow_plot_only_every = 4 #plot not every height point of the noisy McSnow fluxes (for better visibility)
+    if mass_num_flag==0:  #plot number concentrations
+        axisqn = []
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if any(twomom['fn' + cat][i_timestep,:])>0:
+                axisqn += ax2.semilogx(twomom['fn' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+        for j,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up
+            if any(hei2massdens["Fn" + cat][:])>0:
+                axisqn += ax2.semilogx(hei2massdens["Fn" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[i+j],label=labellistMC[j],linestyle='--')
+    if mass_num_flag==1:     #plot mixing ratios
+        axisq = [];axisDmean = []
+        if mass_num_flag==1:
+            color='r'
+        elif mass_num_flag==2:
+            color='r'
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if any(twomom['f' + cat][i_timestep,:])>0:
+                axisq += ax.semilogx(twomom['f' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+        for j,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up            
+            if any(hei2massdens["Fm" + cat][:])>0:
+                axisq += ax.semilogx(hei2massdens["Fm" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[i+j],label=labellistMC[j],linestyle='--')    
+    elif mass_num_flag==2:
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if any(twomom['f' + cat][i_timestep,:])>0:
+                axisq += ax.semilogx(twomom['f' + cat][i_timestep,:],twomom['heights'],color=color,marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
+        for i,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed"]): #choose "" as an entry to get all summed up            
+            if any(hei2massdens["Fm" + cat][:])>0:
+                axisq += ax2.semilogx(hei2massdens["Md" + cat][:],hei2massdens['z'],color='b',linestyle='-',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if any(twomom['fn' + cat][i_timestep,:])>0:
+                axisqn += ax2.semilogx(twomom['fn' + cat][i_timestep,:],twomom['heights'],color='k',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
+        for i,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed"]): #choose "" as an entry to get all summed up
+            if any(hei2massdens["Fn" + cat][:])>0:
+                axisqn += ax2.semilogx(hei2massdens["Fn" + cat][:],hei2massdens['z'],color='g',linestyle='--',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #change height limits and set y-label
+    ax.set_ylim([0,twomom["heights"][0]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
+    ax.set_ylabel("height / m")
+    
+    
+    #add labels and legend
+    mass_min=-8; mass_max=0
+    num_min=2; num_max=6
+    if mass_num_flag==2:
+        ax.set_xlabel("mass flux density / kg m-2 s-1", color="r")
+        ax.tick_params(axis='x', colors='r')    
+        ax2.set_xlabel("number flux density / m-2 s-1",color="k")
+        #set a fix range of the x-axis
+        xmin=mass_min;xmax=mass_max
+        x2min=num_min;x2max=num_max
+    elif mass_num_flag==0:
+        ax.set_xlabel("number flux density / m-2 s-1",color="k")
+        xmin=num_min;xmax=num_max
+    elif mass_num_flag==1:
+        ax.set_xlabel("mass flux density / kg m-2 s-1",color="k")
+        xmin=mass_min;xmax=mass_max
+    else:
+        print "error: mass_num_flag in plot_fluxes must be in [0,1,2]"
+
+
+    #set a fix range of the x-axis
+    ax.set_xlim([10**xmin,10**xmax]) #[ax.get_xlim()[0],ax.get_xlim()[1]*100])
+    ax.set_xticks(np.logspace(xmin,xmax,xmax-xmin+1)) #set xticks
+    #remove every second ticklabel
+    for label in ax.xaxis.get_ticklabels()[::2]:
+        label.set_visible(False)
+    if mass_num_flag==2: #do the same for the second x-axis if existent
+        ax2.set_xlim([10**x2min,10**x2max]) #[ax2.get_xlim()[0],ax2.get_xlim()[1]*1000])
+        ax2.set_xticks(np.logspace(x2min,x2max,x2max-x2min+1))
+        for label in ax2.xaxis.get_ticklabels()[::2]:
+            label.set_visible(False)
+    
+    #add legend
+    if mass_num_flag in [0,2]:
+        ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    else: #if there is no qn in the plot label q
+        ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    
+    return plt
+
+def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
+    '''
+    plot number and mass fluxes of SB and McSnow over height
+    INPUT:  ax: first x-axis
+            ax2: second x-axis
+            twomom: dictionary with (McSnows) two-moment variables
+    '''
+    import matplotlib.ticker
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    markerlist = ["^","s","*","x","d",""]
+    labellistSB = ["cloud ice","rain","snow","graupel","hail"]
+    labellistMC = ["pristine","unrimed","graupel","liquid","rimed","MC all"]
+
+    McSNow_plot_only_every = 4 #plot not every height point of the noisy McSnow fluxes (for better visibility)
+    if mass_num_flag==0:  #plot number concentrations
+        axisqn = []
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if ('qn' + cat) in twomom.keys() and any(twomom['qn' + cat][i_timestep,:])>0:
+                axisqn += ax2.semilogx(twomom['qn' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+                if ('qn' + cat + '_std') in twomom.keys(): #add +- standard deviation in plot if available
+                    ax2.semilogx(twomom['qn' + cat][i_timestep,:]-twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
+                    ax2.semilogx(twomom['qn' + cat][i_timestep,:]+twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
+        for j,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up
+            if ("Nd" + cat) in hei2massdens.keys() and any(hei2massdens["Nd" + cat][:])>0:
+                axisqn += ax2.semilogx(hei2massdens["Nd" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[i+j],label=labellistMC[j],linestyle='--')
+    if mass_num_flag==1:     #plot mixing ratios
+        axisq = [];axisDmean = []
+        if mass_num_flag==1:
+            color='r'
+        elif mass_num_flag==2:
+            color='r'
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if ("q" + cat) in twomom.keys() and any(twomom['q' + cat][i_timestep,:])>0:
+                axisq += ax.semilogx(twomom['q' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+                if ('q' + cat + '_std') in twomom.keys(): #add +- standard deviation in plot if available
+                    ax2.semilogx(twomom['q' + cat][i_timestep,:]-twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
+                    ax2.semilogx(twomom['q' + cat][i_timestep,:]+twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
+        for j,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up            
+            if ("Md" + cat) in hei2massdens.keys() and any(hei2massdens["Md" + cat][:])>0:
+                axisq += ax.semilogx(hei2massdens["Md" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[i+j],label=labellistMC[j],linestyle='--')
+    elif mass_num_flag==2:
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if any(twomom['f' + cat][i_timestep,:])>0:
+                axisq += ax.semilogx(twomom['f' + cat][i_timestep,:],twomom['heights'],color=color,marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
+        for i,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed"]): #choose "" as an entry to get all summed up            
+            if any(hei2massdens["Md" + cat][:])>0:
+                axisq += ax2.semilogx(hei2massdens["Md" + cat][:],hei2massdens['z'],color='b',linestyle='-',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
+        for i,cat in enumerate(['i','r','s','g','h']):
+            if any(twomom['fn' + cat][i_timestep,:])>0:
+                axisqn += ax2.semilogx(twomom['fn' + cat][i_timestep,:],twomom['heights'],color='k',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
+        for i,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed"]): #choose "" as an entry to get all summed up
+            if any(hei2massdens["Nd" + cat][:])>0:
+                axisqn += ax2.semilogx(hei2massdens["Nd" + cat][:],hei2massdens['z'],color='g',linestyle='--',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #change height limits and set y-label
+    ax.set_ylim([0,twomom["heights"][0]])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
+    ax.set_ylabel("height / m")
+    
+    
+    #add labels and legend
+    mass_min=-8; mass_max=-1
+    num_min=0; num_max=6
+    if mass_num_flag==2:
+        ax.set_xlabel("mass density / kg m-3", color="r")
+        ax.tick_params(axis='x', colors='r')    
+        ax2.set_xlabel("number density / m-3",color="k")
+        #set a fix range of the x-axis
+        xmin=mass_min;xmax=mass_max
+        x2min=num_min;x2max=num_max
+    elif mass_num_flag==0:
+        ax.set_xlabel("number density / m-3",color="k")
+        xmin=num_min;xmax=num_max
+    elif mass_num_flag==1:
+        ax.set_xlabel("mass density / kg m-3",color="k")
+        xmin=mass_min;xmax=mass_max
+    else:
+        print "error: mass_num_flag in plot_fluxes must be in [0,1,2]"
+
+
+    #set a fix range of the x-axis
+    ax.set_xlim([10**xmin,10**xmax]) #[ax.get_xlim()[0],ax.get_xlim()[1]*100])
+    ax.set_xticks(np.logspace(xmin,xmax,xmax-xmin+1)) #set xticks
+    #remove every second ticklabel
+    for label in ax.xaxis.get_ticklabels()[::2]:
+        label.set_visible(False)
+    if mass_num_flag==2: #do the same for the second x-axis if existent
+        ax2.set_xlim([10**x2min,10**x2max]) #[ax2.get_xlim()[0],ax2.get_xlim()[1]*1000])
+        ax2.set_xticks(np.logspace(x2min,x2max,x2max-x2min+1))
+        for label in ax2.xaxis.get_ticklabels()[::2]:
+            label.set_visible(False)
+    
+    labels = ax2.get_xticklabels()
+    #add legend
+    if mass_num_flag in [0,2]:
+        ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    else: #if there is no qn in the plot label q
+        ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    
+    return plt
+
 def plot_atmo(ax,ax2,atmo):
     '''
     plot atmospheric variables in one panel
@@ -264,21 +500,115 @@ def plot_atmo(ax,ax2,atmo):
             atmo: dictionary with atmospheric variables
     '''
     #plot T, RHw and RHi in one panel
-    plottemp = ax.plot(atmo['T']-273.15,atmo['z'],color='r')
-    plotRHw = ax2.plot(atmo["rh"],atmo['z'],color='b')
-    plotRHi = ax2.plot(atmo["rh"]*atmo["psatw"]/atmo["psati"],atmo['z'],color='b',linestyle='--')
+    handles = []
+    if 'T' in atmo.keys():
+        handles += ax.plot(atmo['T']-273.15,atmo['z'],color='r',label='T')
+        ax.set_xlabel("temperature / $^\circ$C")
+        if 'T_std' in atmo.keys():
+            handles += ax.plot(atmo['T']-273.15-atmo['T_std'],atmo['z'],color='r',linestyle='--',label='__none')
+            handles += ax.plot(atmo['T']-273.15-atmo['T_std'],atmo['z'],color='r',linestyle='--',label='__none')
+    if 'rh' in atmo.keys():
+        handles += ax2.plot(atmo["rh"],atmo['z'],color='b',label='RHw')
+        ax2.plot(np.ones(atmo['z'].shape)*100,atmo['z'],color='grey',linestyle='--',label='_dontshowinlegend')
+        ax2.set_xlabel("relative humidity / %")
+        if 'rh_std' in atmo.keys():
+            handles += ax2.plot(atmo["rh"]+atmo["rh_std"],atmo['z'],color='b',linestyle='--',label='__none')
+            handles += ax2.plot(atmo["rh"]-atmo["rh_std"],atmo['z'],color='b',linestyle='--',label='__none')
+    #plot rhi (if rh,psatw and psati present calculate it from them) elif rhi is there take it directly
+    #if all (key in atmo.keys() for key in ("rh","psatw","psati")):
+    #    handles += ax2.plot(atmo["rh"]*atmo["psatw"]/atmo["psati"],atmo['z'],color='b',linestyle='--',label='RHi')
+    if 'rhi' in atmo.keys():
+        handles += ax2.plot(atmo["rhi"],atmo['z'],color='g',linestyle='-',label='RHi')
+        if 'rhi_std' in atmo.keys():
+            handles += ax2.plot(atmo["rhi"]+atmo["rhi_std"],atmo['z'],color='g',linestyle='--',label='__none')
+            handles += ax2.plot(atmo["rhi"]-atmo["rhi_std"],atmo['z'],color='g',linestyle='--',label='__none')
     #change height limits
-    ax.set_ylim([0,atmo['z'][-1]])
+    ax.set_ylim([0,np.nanmax(atmo['z'])])#atmo['z'][-1]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     #add labels and legend
-    ax.set_xlabel("temperature / $^\circ$C")
-    ax2.set_xlabel("relative humidity / %")
     ax.set_ylabel("height / m")
     #create space for legend
     ax.set_xlim([ax.get_xlim()[0],ax.get_xlim()[1]+0])
-    ax2.set_xlim([ax2.get_xlim()[0],ax2.get_xlim()[1]+15])
+    low_RH=50 #define lower end of RH by hand
+    ax2.set_xlim([low_RH,ax2.get_xlim()[1]+15])
     # added these three lines
-    handles = plottemp+plotRHw+plotRHi
-    ax.legend(handles,["T","RHw","RHi"],loc='upper right')
+    labs = [h.get_label() for h in handles]
+    ax.legend(handles,labs,loc='upper right')
     #from IPython.core.debugger import Tracer ; Tracer()()
     return plt
+    
+def pcolor_timeseries(fig,ax,time,height,var,varname='',time_formatted='None',lin_log=0,unit=''):
+    '''
+    plot timeseries (written for plotting ICON-meteogram)
+    INPUT:  time-> timevector
+            height-> heightvector
+            var -> variable which should be plotted
+    '''
+    import matplotlib.colors as colors
+    
+    #####
+    #variable specific settings
+    #####
+    #default settings #these are overwritten after "specifications for variable groups or individual variables"
+    lin_log=0 #lin is default
+    cmap = "viridis" #take viridis as default colorbar
+    #if lin_log==0:
+    varmin=var.min()
+    varmax=var.max()
+    #elif lin_log==1:
+    #    varmin=max(var.min(),1e-100) #ATTENTION:max(..,1e-100) avoids only the crash of the script; define lower limit for variables for which zeros occur below
+    #    varmax=var.max()
+        
+    ###
+    #specifications for variable groups or individual variables
+    ###
+    if varname in ("qc","qr","qi","qs","qg","qh"): #these are logscaled
+        lin_log = 1 #set y-axis to logscale
+        #set limits
+        varmin = 1e-8
+        varmax = 1e-2
+    if varname in ("qnc","qnr"): #these are logscaled
+        lin_log = 1 #set y-axis to logscale
+        #set limits
+        varmin = 1e0
+        varmax = 1e12
+    if varname in ("qni","qns","qng","qnh"):#these are logscaled
+        lin_log = 1 #set y-axis to logscale
+        #set limits
+        varmin = 1e0
+        varmax = 1e6
+    if varname=="rhi":
+        #set limits
+        varmin = 80
+        varmax = 120
+        cmap = "bwr"
+    #normalize according to lin_log
+    if lin_log==0:
+        norm = colors.Normalize(vmin=varmin,vmax=varmax)
+    elif lin_log==1:
+        norm = colors.LogNorm(vmin=varmin,vmax=varmax)
+    
+    #plot
+    ax_now = ax.pcolormesh(time,height,var,rasterized=True,norm=norm,cmap=cmap)#,vmin=mincol,vmax=maxcol,rasterized=True,norm=norm,cmap=new_cmap)
+    #create colorbar
+    cbar = plt.colorbar(ax_now,ax=ax) #, format='%d')
+    cbar.ax.set_ylabel(varname + " / " + unit)
+    #ticklabels
+    #derive location of ticks dynamically depending on timeranges
+    if np.sum((time_formatted.minute==0) & (time_formatted.second==0))>15: #label every 2 hours for long timeranges (f.e. 15 hours); specify hours by the last number
+        ticklocations = np.where((time_formatted.minute==0) & (time_formatted.second==0) & ((time_formatted.hour%2)==0))[0]
+    elif 2<np.sum((time_formatted.minute==0) & (time_formatted.second==0))<15: #label every hour for delta_t_hour = [2,15]
+        ticklocations = np.where((time_formatted.minute==0) & (time_formatted.second==0))[0]
+    else:
+        print "not implemented x-axis labelling for short timeranges"
+        sys.exit(1)
+    #set location of ticks
+    ax.set_xticks(time[ticklocations])
+    #generate tick labels and set them
+    timestrings = [ "{:02d}:{:02d}".format(time_formatted[i].hour,time_formatted[i].second) for i in ticklocations]
+    ax.set_xticklabels(timestrings) #"{:2.0f}:{:2.0f}".format(time[ticklocations].hour.values,time[ticklocations].minute.values))
+    #labelling
+    ax.set_xlabel("time / UTC")
+    ax.set_ylabel("height / m")
+
+    return ax
