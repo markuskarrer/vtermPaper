@@ -34,33 +34,34 @@ while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
     filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
     print 'reading: ' + filestring_mass2fr
     if t_after_full==0: #Initialize tuple with SP dictionary for each individual timestep here
-        SP_nonaveraged = (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),)
+        SP_nonaveraged = (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),) #errstat>0 means no SP data was found and we should skip all analysis on McSnow (but SB could be analyzed)
     else:
         SP_nonaveraged = SP_nonaveraged + (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),)
     t_after_full=t_after_full+dtc
+#from IPython.core.debugger import Tracer ; Tracer()()    
+if bool(SP_nonaveraged): #skip the rest if no SP are there (f.e. when only analyzing the SB output) #the trick here is that empty dicts evaluate to False
+    #2. compute the 'average' of the SP list, which results in a longer list (approx SP_pertimestep*averaged timesteps) but approx the same number of RP
+    SP = __postprocess_McSnow.average_SPlists(SP_nonaveraged)
+    #get number of timesteps which can be averaged averaged
+    num_timesteps = len(SP_nonaveraged)
 
-#2. compute the 'average' of the SP list, which results in a longer list (approx SP_pertimestep*averaged timesteps) but approx the same number of RP
-SP = __postprocess_McSnow.average_SPlists(SP_nonaveraged)
-#get number of timesteps which can be averaged averaged
-num_timesteps = len(SP_nonaveraged)
+    #create netCDF4 file
+    dataset = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf', 'w',  format='NETCDF4_CLASSIC')
+    #Global attributes
+    dataset.description = 'list with SP and their properties'
+    dataset.history = 'Created ' + time.ctime(time.time())
 
-#create netCDF4 file
-dataset = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf', 'w',  format='NETCDF4_CLASSIC')
-#Global attributes
-dataset.description = 'list with SP and their properties'
-dataset.history = 'Created ' + time.ctime(time.time())
+    #create Dimensions
+    dim_SP_all = dataset.createDimension('dim_SP_all_av' +str((num_timesteps)*dtc),len(SP['xi']))
 
-#create Dimensions
-dim_SP_all = dataset.createDimension('dim_SP_all_av' +str((num_timesteps)*dtc),len(SP['xi']))
+    #create Variables and fill them
+    unit = ['kg','1','kg','1','kg m-3','kg','m','m','1','m2','m s-1','m2','kg','m']
+    for i,key in enumerate(SP.keys()):
+        dataset.createVariable(key,np.float32,('dim_SP_all_av' +str((num_timesteps)*dtc),)); dataset.variables[key].units = unit[i]
+        dataset.variables[key][:] = SP[key]
 
-#create Variables and fill them
-unit = ['kg','1','kg','1','kg m-3','kg','m','m','1','m2','m s-1','m2','kg','m']
-for i,key in enumerate(SP.keys()):
-    dataset.createVariable(key,np.float32,('dim_SP_all_av' +str((num_timesteps)*dtc),)); dataset.variables[key].units = unit[i]
-    dataset.variables[key][:] = SP[key]
-
-print "mass2fr... file created at: ",dataset.history
-dataset.close()
+    print "mass2fr... file created at: ",dataset.history
+    dataset.close()
 
 #################################################
 #also save SB-twomoment scheme output to netCDF4

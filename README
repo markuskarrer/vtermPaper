@@ -1,0 +1,12 @@
+###
+#this file contains some information about the folders, scripts and files in this directory which are not governed by shell scripts in the $ORG directory
+###
+
+subfolder:
+	*functions: a lot of functions which are called by the scripts in this folder (f.e. plotting/ postprocessing of the model output)
+scripts:
+	please note: just functions which are not necessarily called by the shell scripts in $ORG are listed here
+	
+	*KDE_tests: illustrated the calculation of kde with different methods/packages; play around here before implementing it in to the PAMTRA-adaption or elsewhere
+	*plot_mD_rel: plot the mass over diameter for the SB and the McSnow scheme (until now just unrimed ice particles)
+	*plot_stickeff: plot different sticking efficiencies as they are used in McSnow (including embedded SB-1D model); the .f90 files with the original code are all located in MCSNOW/src

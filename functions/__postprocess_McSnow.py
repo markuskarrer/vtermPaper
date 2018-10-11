@@ -19,20 +19,21 @@ def read_mass2frdat(experiment,filestring):
     #create dictionary
     SP = dict()
     #names of variables in mass2fr
-    varnames = ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat"]
-    #                       total   rime             ??    fall  multi-    rime     ?     crit mass  diameter  projected   monomer         rime      mass of 
-    #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity     mass       water
-    #old version without mwat
-    if SP_fullinfo.shape[0]==0:
-        print "error: check if", filestring, "is empty (in postprocess_McSNow read_mass2frdat() )"
-        sys.exit(1)
+    varnames =             ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",            "m_i",   "m_wat"]
+    #                       total   rime             ??    fall  multi-    rime     ?     crit mass  diameter  projected   monomer          mass of   mass of 
+    #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity       ice       water
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    if SP_fullinfo.shape[0]==0 or len(SP_fullinfo.shape)==1:
+        print "error: check if", filestring, "is empty or just one SP is there (in postprocess_McSNow read_mass2frdat() )"
+        print "if you want to continue anyway (f.e. for runs with only the SB-scheme) just press enter"
+        raw_input()
     else:
         if not SP_fullinfo[0,:].shape[0]==len(varnames):
             print "error: compare number of variables in varnames (", len(varnames), ") with variables in MCsnows write_icefraction() (", not SP_fullinfo[0,:].shape[0], ") from mo_output.f90"
             sys.exit(1)
-    #fill SP-dictionary with different variables
-    for i,key in enumerate(varnames):
-        SP[key] = SP_fullinfo[:,i]
+        #fill SP-dictionary with different variables
+        for i,key in enumerate(varnames):
+            SP[key] = SP_fullinfo[:,i]
 
     return SP
 
@@ -140,6 +141,13 @@ def read_twomom_d(experiment,filestring,nz):
         twomom[key] = np.zeros([twomom_fullinfo.shape[0],nz])
         for timestep in range(0,twomom_fullinfo.shape[0]):
             twomom[key][timestep,:] = twomom_fullinfo[timestep,(i*nz):(i+1)*nz] #dimension of each key is now [time,height]
+    '''
+    print "qi",twomom["qi"][timestep,:]
+    print "qni",twomom["qni"][timestep,:]
+    print "fi",twomom["fi"][timestep,:]
+    print "fni",twomom["fni"][timestep,:]
+    raw_input()
+    '''
             
     return twomom
     
@@ -205,7 +213,7 @@ def interpolate_2height(dictio,target_heightvec,curr_heightvec):
         
     return dictio
 
-def seperate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0],calconly="None"):
+def separate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0],calconly="None"):
     '''
     count number of real particles (RP) in height-diameter bins
     INPUT:  SP:dictionary with properties of all SP of one timestep 
@@ -287,9 +295,9 @@ def return_parameter_mD_AD_rel():
     unr_alf = 0.0028*10.**(2.*unr_bet-3.)
     Dth = (rhoi * np.pi/6 * 1./unr_alf)**(1./(unr_bet-3))
     mth = np.pi/6. * rhoi * Dth**3 #from McSnows mo_mass2diam.f90
-    return mth,unr_alf,unr_bet,rhoi,rhol
+    return mth,unr_alf,unr_bet,rhoi,rhol,Dth
 
-def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None"): #taken and adapted from mo_output.f90
+def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None",space='loge'): #taken and adapted from mo_output.f90
     '''
     calculate the kernel estimate (adapted from McSnow's mo_output routines (f.e. write_distributions_meltdegree)
     INPUT:  D_SP_list: list of diameters of SP
@@ -298,16 +306,12 @@ def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None"): #taken and adapted fr
             weight: weight applied during integration
     '''
     number_sp = len(D_SP_list)
-    # sigma for kernel estimate, sigma = sigma0/N_s**(1/5), see Shima Sec 5.1.4
-    #sigma0 = 0.62 #from mo_sp_nml #sigma0 = 0.62_wp ! Shima 2009, Sec. 5.1.4
-    #sigmai = number_sp**0.2 / sigma0
     
     #radius from diameter
     D_vec = Dgrid #radius array for results
     D_SP_vec = D_SP_list #radius of SP
     N_D = np.zeros_like(D_vec)
     
-    #print "r,rad,expdiff"
     if not isinstance(weight,basestring): #if there is a real weight
         weight_total = sum(weight)
     expdiff_prefactor = 1./np.sqrt(2.*np.pi)/sigmai #calculate expdiff here to save computational time
@@ -315,7 +319,12 @@ def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None"): #taken and adapted fr
         for i_SP,r in enumerate(D_SP_vec): 
             #print i_SP,i_rad,rad,r
             #calculate weight
-            expdiff = expdiff_prefactor * np.exp(-0.5*((rad-r)/sigmai)**2) #r and rad is already log-scaled 
+            if space=='loge':
+                expdiff = expdiff_prefactor * np.exp(-0.5*((np.log(rad)-np.log(r))/sigmai)**2) #r and rad is already log-scaled
+            elif space=='lin':
+                expdiff = expdiff_prefactor * np.exp(-0.5*(((rad)-(r))/sigmai)**2) #r and rad is already log-scaled 
+            elif space=='D2':
+                expdiff = expdiff_prefactor * np.exp(-0.5*(((rad)**2-(r)**2)/sigmai)**2) #r and rad is already log-scaled
             #integrate over each SP
             if isinstance(weight,basestring): #if there is no weight
                 N_D[i_rad] += expdiff/number_sp #ATTENTION: add sp%xi to this summation as in mo_output

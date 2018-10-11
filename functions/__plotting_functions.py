@@ -143,14 +143,13 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' '):
     #plot X-,Ka-,W-Band in three different colors
     #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])):
-        if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
+        if linestyle=='--': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
             ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
         else:
             ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
 
     #set range
     ax.set_xlim([-40,55]) #range of Ze
-    #TODO: set height flexible
     ax.set_ylim([0,pamData["height"][-1]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     ax.set_xlabel("reflectivity / dBz")
@@ -336,7 +335,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
                 axisq += ax.semilogx(twomom['f' + cat][i_timestep,:],twomom['heights'],color=color,marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
         for i,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed"]): #choose "" as an entry to get all summed up            
             if any(hei2massdens["Fm" + cat][:])>0:
-                axisq += ax2.semilogx(hei2massdens["Md" + cat][:],hei2massdens['z'],color='b',linestyle='-',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
+                axisq += ax2.semilogx(hei2massdens["Md" + cat][:],hei2massdens['z'],color='b',linestyle='--',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
         for i,cat in enumerate(['i','r','s','g','h']):
             if any(twomom['fn' + cat][i_timestep,:])>0:
                 axisqn += ax2.semilogx(twomom['fn' + cat][i_timestep,:],twomom['heights'],color='k',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
@@ -411,8 +410,8 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
             if ('qn' + cat) in twomom.keys() and any(twomom['qn' + cat][i_timestep,:])>0:
                 axisqn += ax2.semilogx(twomom['qn' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
                 if ('qn' + cat + '_std') in twomom.keys(): #add +- standard deviation in plot if available
-                    ax2.semilogx(twomom['qn' + cat][i_timestep,:]-twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
-                    ax2.semilogx(twomom['qn' + cat][i_timestep,:]+twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
+                    ax2.semilogx(twomom['qn' + cat][i_timestep,:]-twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='-',label='_dontshowinlegend')
+                    ax2.semilogx(twomom['qn' + cat][i_timestep,:]+twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='-',label='_dontshowinlegend')
         for j,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up
             if ("Nd" + cat) in hei2massdens.keys() and any(hei2massdens["Nd" + cat][:])>0:
                 axisqn += ax2.semilogx(hei2massdens["Nd" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[i+j],label=labellistMC[j],linestyle='--')
@@ -426,8 +425,8 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
             if ("q" + cat) in twomom.keys() and any(twomom['q' + cat][i_timestep,:])>0:
                 axisq += ax.semilogx(twomom['q' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
                 if ('q' + cat + '_std') in twomom.keys(): #add +- standard deviation in plot if available
-                    ax2.semilogx(twomom['q' + cat][i_timestep,:]-twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
-                    ax2.semilogx(twomom['q' + cat][i_timestep,:]+twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
+                    ax2.semilogx(twomom['q' + cat][i_timestep,:]-twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='-',label='_dontshowinlegend')
+                    ax2.semilogx(twomom['q' + cat][i_timestep,:]+twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='-',label='_dontshowinlegend')
         for j,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up            
             if ("Md" + cat) in hei2massdens.keys() and any(hei2massdens["Md" + cat][:])>0:
                 axisq += ax.semilogx(hei2massdens["Md" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[i+j],label=labellistMC[j],linestyle='--')
@@ -437,7 +436,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
                 axisq += ax.semilogx(twomom['f' + cat][i_timestep,:],twomom['heights'],color=color,marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])
         for i,cat in enumerate(["_mm1","_unr","_grp","_liq","_rimed"]): #choose "" as an entry to get all summed up            
             if any(hei2massdens["Md" + cat][:])>0:
-                axisq += ax2.semilogx(hei2massdens["Md" + cat][:],hei2massdens['z'],color='b',linestyle='-',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
+                axisq += ax2.semilogx(hei2massdens["Md" + cat][:],hei2massdens['z'],color='b',linestyle='--',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
         for i,cat in enumerate(['i','r','s','g','h']):
             if any(twomom['fn' + cat][i_timestep,:])>0:
                 axisqn += ax2.semilogx(twomom['fn' + cat][i_timestep,:],twomom['heights'],color='k',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistSB[i])

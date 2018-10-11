@@ -144,6 +144,19 @@ def init_particles():
                     numcon_var = 'qnh')
     return cloud_water,rain,cloud_ice,snow,graupel,hail
 
+def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail):
+
+    #convert from N(m) to N(D) space
+    for n_cat,curr_cat in enumerate((cloud_water,rain,cloud_ice,snow,graupel,hail)):	
+        curr_cat.a_ms = (1/curr_cat.a_geo)**(1/curr_cat.b_geo)
+        curr_cat.b_ms = 1/curr_cat.b_geo
+        curr_cat.mu = curr_cat.b_ms*curr_cat.nu_SB+curr_cat.b_ms-1
+        curr_cat.gam = curr_cat.b_ms*curr_cat.mu_SB
+        curr_cat.Dmax = (curr_cat.xmax/curr_cat.a_ms)**(1./curr_cat.b_ms)
+        curr_cat.Dmin = (curr_cat.xmin/curr_cat.a_ms)**(1./curr_cat.b_ms)
+    
+    return cloud_water,rain,cloud_ice,snow,graupel,hail
+
 def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     '''
     calculate the normalized number concentration (as a function of diameter) corresponding to moments of the SB06 categories
@@ -155,14 +168,7 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     '''
     cloud_water,rain,cloud_ice,snow,graupel,hail = init_particles() #get all parameters from the SB-categories
     
-    #convert from N(m) to N(D) space
-    for n_cat,curr_cat in enumerate((cloud_water,rain,cloud_ice,snow,graupel,hail)):	
-        curr_cat.a_ms = (1/curr_cat.a_geo)**(1/curr_cat.b_geo)
-        curr_cat.b_ms = 1/curr_cat.b_geo
-        curr_cat.mu = curr_cat.b_ms*curr_cat.nu_SB+curr_cat.b_ms-1
-        curr_cat.gam = curr_cat.b_ms*curr_cat.mu_SB
-        curr_cat.Dmax = (curr_cat.xmax/curr_cat.a_ms)**(1./curr_cat.b_ms)
-        curr_cat.Dmin = (curr_cat.xmin/curr_cat.a_ms)**(1./curr_cat.b_ms)
+    [cloud_water,rain,cloud_ice,snow,graupel,hail] = convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
 
         
     #select the category

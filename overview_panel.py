@@ -25,6 +25,7 @@ experiment = os.environ["experiment"] #experiment name (this also contains a lot
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
+adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
 
 #directory of experiments
 directory = MC_dir + "/experiments/"
@@ -44,7 +45,7 @@ for var in varlist:#read files and write it with different names in Data
 #get maximum height for plotting
 model_top = np.nanmax(SP['height'])
 #calculate values binned to here defined h-D bins
-binned_val,heightvec,d_bound_ds,d_ds,zres = __postprocess_McSnow.seperate_by_height_and_diam(SP,nbins=100,diamrange=[-9,0],nheights=51,model_top=model_top)
+binned_val,heightvec,d_bound_ds,d_ds,zres = __postprocess_McSnow.separate_by_height_and_diam(SP,nbins=100,diamrange=[-9,0],nheights=51,model_top=model_top)
 
 #calculate volume of box
 Vbox = __postprocess_McSnow.calculate_Vbox(experiment,zres)
@@ -141,14 +142,23 @@ atmo["rhi"] = __general_utilities.calc_rhi(atmo)
 plt = __plotting_functions.plot_atmo(ax,ax2,atmo)
 #increase i, because we added a plot before the for-loop
 i+=1
-
+#plot McSnow pamtra output
 try:
     ##############################
     #now: plot PAMTRA output below
     ##############################
 
     #define file to read
-    pam_filestring = directory + experiment + "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
+    print "adaptv:",adapt_version
+    if adapt_version==1:
+        filename = "/adaptv1_t" + str(tstep) #+ ".nc"
+    elif adapt_version==2:
+        filename = "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+    elif adapt_version==3:
+        filename = "/adaptv3_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+        
+    pam_filestring = directory + experiment + filename +".nc"
+
     ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0))
 
     #read pamtra output to pamData dictionary
@@ -162,8 +172,7 @@ try:
     #plot reflectivities
     ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
 
-    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData)
-
+    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData,linestyle='--')
     
 except Exception:
 	print ' \n \n in except: \n \n'
@@ -185,9 +194,9 @@ try:
     pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
 
     #plot reflectivities
-    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData,linestyle='--')
-    ax.plot(0,0,color='k',linestyle='-',label='McSnow')
-    ax.plot(0,0,color='k',linestyle='--',label='SB')
+    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData)
+    ax.plot(0,0,color='k',linestyle='--',label='McSnow')
+    ax.plot(0,0,color='k',linestyle='-',label='SB')
     ax.legend()
     
     ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
@@ -223,7 +232,7 @@ plt = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
 plt.tight_layout()
 if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create direktory if it does not exists
     os.makedirs('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment)
-out_filestring = "/adaptv2_" + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
+out_filestring = filename #"/adaptv2_" + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf', dpi=400)
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.png', dpi=400)
 print 'The pdf is at: ' + '/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf'

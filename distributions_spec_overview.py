@@ -25,6 +25,7 @@ experiment = os.environ["experiment"] #experiment name (this also contains a lot
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
+adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
 
 #directory of experiments
 directory = MC_dir + "/experiments/"
@@ -47,7 +48,14 @@ model_top = np.nanmax(SP['height'])
 
 
 #read pamtra output to pamData dictionary (this is done here already in order to plot the size distributions at the same heights)
-pam_file = Dataset(directory + experiment + "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc')
+#define file to read
+if adapt_version==1:
+    filename = "/adaptv1_t" + str(tstep) #+ ".nc"
+elif adapt_version==2:
+    filename = "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+elif adapt_version==3:
+    filename = "/adaptv3_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+pam_file = Dataset(directory + experiment + filename + '.nc')
 nheights = pam_file["heightbins"].shape[0]+1 #this is used in the next lines for determining the binning of the heights
 
 #####
@@ -88,16 +96,13 @@ m_ds = m_bound_ds[:-1] + 0.5*np.diff(m_bound_ds) #diameter at center of bins
 #McSnow
 #for i_height in range(0,binned_val['d_counts'].shape[0],10): #
 i_lines = 0 #counter: used to get the right color of the lines
-heightvec = np.linspace(0,model_top,nheights) #has to be calculated before seperate_by_height_and_diam to fasten calculation with calconly but is overwritten by seperate_by_height_and_diam
+heightvec = np.linspace(0,model_top,nheights) #has to be calculated before separate_by_height_and_diam to fasten calculation with calconly but is overwritten by seperate_by_height_and_diam
 heightstep=nheights/5 #plot 5 different heights #del_z is model_top/n_heights
 for i_height in range(heightstep-1,heightvec.shape[0],heightstep): #
-    print "i_height", i_height
     in_height_bin = np.logical_and(heightvec[i_height]<=SP["height"],SP["height"]<heightvec[i_height+1])
-    print sum(in_height_bin)
     [N_m,__] = np.histogram(SP["m_tot"][in_height_bin],bins=m_bound_ds,weights=SP["xi"][in_height_bin],density=False)
     binwidths = m_bound_ds[1::] - m_bound_ds[:-1]
     N_m_normed = N_m/binwidths/Vbox #get from [#]/[kg]/[m3]
-    print N_m_normed
     #from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
 
     #plot a line to the corresponding height
@@ -137,7 +142,7 @@ nbins=100;diamrange=[-6,-2]
 heightvec = np.linspace(0,model_top,nheights) #has to be calculated before seperate_by_height_and_diam to fasten calculation with calconly but is overwritten by seperate_by_height_and_diam
 heightstep = nheights/5
 calconly = heightvec[range(heightstep-1,heightvec.shape[0],heightstep)] #skip heights in seperate_by_height_and_diam calculation which are not plotted later
-binned_val,heightvec,d_bound_ds,d_ds,__ = __postprocess_McSnow.seperate_by_height_and_diam(SP,nbins=nbins,diamrange=diamrange,nheights=nheights,model_top=model_top,calconly=calconly)
+binned_val,heightvec,d_bound_ds,d_ds,__ = __postprocess_McSnow.separate_by_height_and_diam(SP,nbins=nbins,diamrange=diamrange,nheights=nheights,model_top=model_top,calconly=calconly)
 
 
 #divide by box volume to achieve [#]->[#/m3]
@@ -159,7 +164,7 @@ pylab.rcParams.update(params)
 
 #do several plots as defined above in plot_vars ...
 i_plots = 0
-#from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+dmax = 0 #initialize variable for upper x-limit of plot
 for ax, var, name,units,ylim_low_now,ylim_high_now,color in zip(axes[raw_plots::].flat, plot_vars, full_name,var_units,ylims_low,ylims_high,colors):
     #for i_plots,varname in enumerate(plot_vars): 
     print '####################'
@@ -175,14 +180,18 @@ for ax, var, name,units,ylim_low_now,ylim_high_now,color in zip(axes[raw_plots::
         #binned_val[var] = __postprocess_McSnow.kernel_estimate(binned_val[var][i_height,:],number_of_SP) #TODO:? a kernel kernel_estimate for the distribution here
 
         #plot a line to the corresponding height
-        axes[i_plots] == __plotting_functions.plot1Dhistline(ax,d_ds,binned_val[var][i_height,:],xlabel='diameter / m',ylabel=(name + ' / ' + units),linelabel="[{:5.0f}m,{:5.0f}m]".format(heightvec[i_height],heightvec[i_height+1]),logflag=3,linestyle='--',color=colors[i_lines])
+        nmin=1e5; lmin=1e-5 #define minimum of plot in y-dimension (n->number concentration; l-> mass mixing ratio)
+        dmax_new = d_ds[max(np.argwhere(binned_val["d_counts_normalized"][i_height,:]> nmin)[-1],np.argwhere(binned_val["mass_in_bin_norm"][i_height,:]> lmin)[-1])]*1.1
+        if dmax_new>dmax: #update dmax if a bigger one in this height is found
+            dmax=dmax_new
+        axes[i_plots] == __plotting_functions.plot1Dhistline(ax,d_ds,binned_val[var][i_height,:],xlabel='diameter / m',ylabel=(name + ' / ' + units),linelabel="[{:5.0f}m,{:5.0f}m]".format(heightvec[i_height],heightvec[i_height+1]),logflag=2,xlims=[0,dmax],linestyle='--',color=colors[i_lines])
         i_lines += 1
         #for debugging plot distribution at certain heights
         #print "{:6.0f}m".format(heightvec[i_height]),"d_ds[particles counted here]",d_ds[binned_val['d_counts'][i_height]>1],'counts',binned_val['d_counts'][i_height]
     #add labels to distinguish the linestyle
     ax.plot(0,0,color='k',linestyle='--',label='McSnow')
     ax.plot(0,0,color='k',linestyle='-',label='SB cloud ice')
-    ax.legend()    
+    ax.legend(ncol=3)    
     i_plots+=1
 print "#################"
 print "#calculate and plot distribution of SBs ice (and snow) in same panel as McSnows distribution"
@@ -205,12 +214,16 @@ heightstep = twomom["heights"].shape[0]/5 #100m for dz=20m
 for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #ATTENTION: if you do changes here uncomment linelabel for checking consistent height labelling with McSnow data...
     twomom["i_dist"][i_height,:],twomom["i_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'icecosmo5',d_ds,i_height=i_height,i_time=i_timestep)
     twomom["s_dist"][i_height,:],twomom["s_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'snowSBB',d_ds,i_height=i_height,i_time=i_timestep)
-    #plot a line to the corresponding height
-    axes[1] = __plotting_functions.plot1Dhistline(axes[1],d_ds,twomom["i_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[ylims_low[0],ylims_high[0]],logflag=3,color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
-    axes[2] = __plotting_functions.plot1Dhistline(axes[2],d_ds,twomom["i_dist_mass"][i_height,:],xlabel='diameter / m',ylabel='mass density / kg m-4',ylims=[ylims_low[1],ylims_high[1]],logflag=3,color=colors[i_lines], linelabel="__none") #>{:6.0f}m".format(twomom["heights"][i_height]))
+    #plot a line corresponding to a specific height
+    dmax_new = d_ds[max(np.argwhere(twomom["i_dist"][i_height,:]> nmin)[-1],np.argwhere(twomom["i_dist_mass"][i_height,:]> lmin)[-1])]
+    if dmax_new>dmax: #update dmax if a bigger one in this height is found
+        dmax=dmax_new
+    #print "dmax",dmax,"height",twomom["heights"][i_height]
+    axes[1] = __plotting_functions.plot1Dhistline(axes[1],d_ds,twomom["i_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[ylims_low[0],ylims_high[0]],logflag=2,xlims=[0,dmax],color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
+    axes[2] = __plotting_functions.plot1Dhistline(axes[2],d_ds,twomom["i_dist_mass"][i_height,:],xlabel='diameter / m',ylabel='mass density / kg m-4',ylims=[ylims_low[1],ylims_high[1]],logflag=2,xlims=[0,dmax],color=colors[i_lines], linelabel="__none") #>{:6.0f}m".format(twomom["heights"][i_height]))
     #uncomment next line to also plot the distribution of SBs snow 
     #linelabel="_none")#
-    #ax = __plotting_functions.plot1Dhistline(ax,d_ds,twomom["s_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[1e-4,1e5],logflag=3,color=colors[i_lines],linestyle=":",linelabel="_none")#
+    #ax = __plotting_functions.plot1Dhistline(ax,d_ds,twomom["s_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[1e-4,1e5],logflag=2,color=colors[i_lines],linestyle=":",linelabel="_none")#
     #print "{:6.0f}m".format(twomom["heights"][i_height]),"d_ds[particles counted here]",d_ds[twomom["i_dist"][i_height,:]>1],'counts',twomom["i_dist"][i_height,:]
     i_lines += 1
 
@@ -225,7 +238,13 @@ try:
     print "#################################"
     
     #define file to read
-    pam_filestring = directory + experiment + "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
+    #if adapt_version==3:
+    #    filename = "/adaptv1_t" + str(tstep) #+ ".nc"
+    #elif adapt_version==2:
+    #    filename = "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+    #elif adapt_version==3:
+    #    filename = "/adaptv3_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+    pam_filestring = directory + experiment + filename + '.nc'
 
     #read pamtra output to pamData dictionary
     pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
@@ -236,7 +255,7 @@ try:
     heightstep = 10 #1000m if dz=100
     for i_height in range(heightstep-1,pamData["height"].shape[0],heightstep):
         #print pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:]
-        axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],-pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=[-5,1],ylims=[-50,30],logflag=0,color=colors[i_lines],linelabel="[{:5.0f}m,{:5.0f}m]".format(pamData["height"][i_height-1],pamData["height"][i_height]),linestyle='--')
+        axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],-pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=[-5,1],ylims=[-50,30],logflag=0,color=colors[i_lines],linelabel="[{:5.0f}m,{:5.0f}m]".format(pamData["height"][i_height]-0.5*(pamData["height"][1]-pamData["height"][0]),pamData["height"][i_height]+0.5*(pamData["height"][1]-pamData["height"][0])),linestyle='--') #the labelling assumes that the pamtra-heightbins are equally spaced
         i_lines+=1
 
     
@@ -267,9 +286,10 @@ try:
         #print pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:]
         axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],-pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=[-5,1],ylims=[-60,30],logflag=0,color=colors[i_lines],linelabel="__none",linestyle='-')
         i_lines+=1
+    
     #add labels to distinguish the linestyle
     axes[len(plot_vars)+raw_plots].plot(0,0,color='k',linestyle='--',label='McSnow')
-    axes[len(plot_vars)+raw_plots].plot(0,0,color='k',linestyle='-',label='SB cloud ice')
+    axes[len(plot_vars)+raw_plots].plot(0,0,color='k',linestyle='-',label='SB')
     #plot legend
     axes[len(plot_vars)+raw_plots].legend()
 except Exception:
