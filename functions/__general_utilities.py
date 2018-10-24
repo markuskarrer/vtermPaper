@@ -76,7 +76,7 @@ def get_Pamtra_constants(constlist):
         
     return constants
 #taken from SB
-def calc_rhi(atmo): #calculate rh over ice from rh over water from saturation pressure equation in SB
+def calc_rhi(atmo): #calculate rh over ice from rh over water and saturation pressure equation in SB
     '''
     calculate the relative humidity with respect to ice from the relative humidity with respect to water and temperature
     INPUT:  atmo: dictionary which must contain numpy arrays including the keys rh and T
@@ -87,6 +87,18 @@ def calc_rhi(atmo): #calculate rh over ice from rh over water from saturation pr
     rhi = psat_w/psat_i*atmo["rh"]
     
     return rhi
+
+def calc_rh(atmo): #calculate rh over water from rh over ice(rhi) and saturation pressure equation in SB
+    '''
+    calculate the relative humidity with respect to ice from the relative humidity with respect to water and temperature
+    INPUT:  atmo: dictionary which must contain numpy arrays including the keys rh and T
+    '''
+
+    psat_w = psatw(atmo)
+    psat_i = psati(atmo)
+    rh = psat_i/psat_w*atmo["rhi"]
+
+    return rh
 
 def psatw(atmo): #PURE ELEMENTAL FUNCTION psat_water( T ) result ( psatw ) in mo_atmo.f90
     '''
@@ -106,6 +118,22 @@ def psati(atmo): #PURE ELEMENTAL FUNCTION psat_water( T ) result ( psatw ) in mo
     return constants["e_3"] * np.exp(constants["A_i"] * (atmo["T"]-constants["T_3"]) / (atmo["T"]-constants["B_i"]))
 
 #taken from McSNow
+
+def psat_water(T):
+    
+    constants = get_SB_constants(constlist=["T_3","A_w","B_w","e_3"]) #these are the same in ICON-SB and McSnow
+
+    psatw = constants["e_3"] * np.exp( constants["A_w"] * (T - constants["T_3"]) / (T - constants["B_w"]) )
+
+    return psatw
+
+def calc_qv_from_rh(rh,p,T):
+    
+    constants = get_Pamtra_constants(constlist=["r_d","r_v"]) #these are the same in PAMTRA and McSnow
+    qvsat = constants["r_d"]/constants["r_v"] * psat_water(T) / (p - (1.-constants["r_d"]/constants["r_v"])*psat_water(T))
+    qv = rh/100.*qvsat
+    
+    return qv
 
 #taken from PAMTRA
 def q2abs(spec_var,qv,t,p,q_all_hydro="NaN"):#function q2abs(spec_var,t,p,qv,q_all_hydro) in src/conversions.f90
@@ -135,7 +163,7 @@ def rh2vap(temp_p,pres_p,rh):
     '''
     calculate vapour mixing ratio "hum_massmix" from INPUT:
         INPUT:  temperature in K
-                pressure in hPa
+                pressure in Pa
                 relative humidity rh in %
     '''
     #reverse vap2rh from pamtras conversions.f90
@@ -204,8 +232,29 @@ def rh2vap(temp_p,pres_p,rh):
     ZWORK31 = np.where(ZTEMP >= tpt,np.exp(XALPW - XBETAW/ZTEMP - XGAMW*np.log(ZTEMP)),np.exp(XALPI- XBETAI/ZTEMP - XGAMI*np.log(ZTEMP))) #translated the if clause above into pythonic handling of arrays
     #reverse Eq 1
     hum_massmix = 1./100.* rh * ((mmv/mmd)*ZWORK31/(XPABSM-ZWORK31))
+    #from IPython.core.debugger import Tracer ; Tracer()()
     return hum_massmix
 
+def rh2mixr(RH,p,T):
+    '''purpose: conversion relative humidity (unitless) to mixing ratio [kg/kg]'''
+    Mw=18.0160 # molecular weight of water
+    Md=28.9660 # molecular weight of dry air
+    R =  8.31432E3 # gas constant
+    Rd = R/Md # specific gas constant for dry air
+    Rv = R/Mw # specific gas constant for vapour
+    Lv = 2.5e6 # heat release for condensation of water vapour [J kg-1]
+    eps = Mw/Md
+    es = esat(T)
+    print "es",es,"RH",RH,"p",p
+    return Mw/Md*RH*es/(p-RH*es)
+def esat(T):
+    ''' get sateration pressure (units [Pa]) for a given air temperature (units [K])'''
+    from numpy import log10
+    TK = 273.15
+    e1 = 101325.0
+    logTTK = log10(T/TK)
+    esat =  e1*10**(10.79586*(1-TK/T)-5.02808*logTTK+ 1.50474*1e-4*(1.-10**(-8.29692*(T/TK-1)))+ 0.42873*1e-3*(10**(4.76955*(1-TK/T))-1)-2.2195983) 
+    return esat
 ################
 #end:  some functions to convert atmospheric variables into  each other
 ################

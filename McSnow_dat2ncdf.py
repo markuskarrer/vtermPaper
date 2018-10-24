@@ -39,7 +39,7 @@ while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
         SP_nonaveraged = SP_nonaveraged + (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),)
     t_after_full=t_after_full+dtc
 #from IPython.core.debugger import Tracer ; Tracer()()    
-if bool(SP_nonaveraged): #skip the rest if no SP are there (f.e. when only analyzing the SB output) #the trick here is that empty dicts evaluate to False
+if bool(SP_nonaveraged[0]): #skip the rest if no SP are there (f.e. when only analyzing the SB output) #the trick here is that empty dicts evaluate to False
     #2. compute the 'average' of the SP list, which results in a longer list (approx SP_pertimestep*averaged timesteps) but approx the same number of RP
     SP = __postprocess_McSnow.average_SPlists(SP_nonaveraged)
     #get number of timesteps which can be averaged averaged

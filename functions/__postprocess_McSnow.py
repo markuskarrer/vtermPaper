@@ -24,9 +24,10 @@ def read_mass2frdat(experiment,filestring):
     #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity       ice       water
     #from IPython.core.debugger import Tracer ; Tracer()()
     if SP_fullinfo.shape[0]==0 or len(SP_fullinfo.shape)==1:
-        print "error: check if", filestring, "is empty or just one SP is there (in postprocess_McSNow read_mass2frdat() )"
-        print "if you want to continue anyway (f.e. for runs with only the SB-scheme) just press enter"
-        raw_input()
+        #print "error: check if", filestring, "is empty or just one SP is there (in postprocess_McSNow read_mass2frdat() )"
+        #print "if you want to continue anyway (f.e. for runs with only the SB-scheme) just press enter"
+        #raw_input()
+        pass
     else:
         if not SP_fullinfo[0,:].shape[0]==len(varnames):
             print "error: compare number of variables in varnames (", len(varnames), ") with variables in MCsnows write_icefraction() (", not SP_fullinfo[0,:].shape[0], ") from mo_output.f90"
@@ -37,10 +38,11 @@ def read_mass2frdat(experiment,filestring):
 
     return SP
 
-def read_hei2massdens(filestring,timestep=0):
+def read_hei2massdens(filestring,timestep=0,empty_flag=False):
     '''
     read height-profiles from the mass2fr.dat file into the SP-dictionary
-    INPUT experiment: descriptor (also folder name) of the experiment
+    INPUT   experiment: descriptor (also folder name) of the experiment
+            empty_flag: return arrays with zeros (but the same shape); this can be done to not plot McSnow data
     '''
     
     #load file from .dat
@@ -77,7 +79,10 @@ def read_hei2massdens(filestring,timestep=0):
         i_end = index_start_of_timesteps[timestep+1]-1
     
     for i,key in enumerate(varnames):
-        hei2massdens[key] = heightprofiles_fullinfo[i_start:i_end,i]
+        if empty_flag:
+            hei2massdens[key] = np.zeros_like(heightprofiles_fullinfo[i_start:i_end,i])
+        else:
+            hei2massdens[key] = heightprofiles_fullinfo[i_start:i_end,i]
 
     #calculate unrimed properties as residuum
     for prop in ["Nd","Md","Fn","Fm","Fmono"]: #loop over all properties
@@ -110,8 +115,11 @@ def average_SPlists(SP_nonaveraged):
         total_xi_after_round =  np.sum(SP_averaged['xi'])*num_timesteps
         print 'error made by rounding after merging of timestep:'
         print 'total_xi_before: ',total_xi_before_round ,'total_xi_after-total_xi_before: ',total_xi_after_round-total_xi_before_round,' ratio: ',(total_xi_after_round-total_xi_before_round)/total_xi_before_round
-    else:
+    elif roundbool: # and 'xi' in SP_averaged.keys:
         SP_averaged['xi'] = SP_averaged['xi']/num_timesteps #non-integer multiplicity is allowed
+    #elif roundbool and (not 'xi' in SP_averaged.keys):
+    #    pass #this is a workaround for just SB runs
+        
 
 
     return SP_averaged
@@ -281,21 +289,43 @@ def calculate_Vbox(experiment,zres):
     '''
     import re #for searching and selecting in strings
     #read box area from string
-    box_area = float(re.search('ba(.*)', experiment).group(1)) *1./100. #this line gets the values after ba and before /mass2fr ; 1/100m^2 is the specification of the unit in the McSnow runscripts
+    box_area = float(re.search('ba(.*)', experiment).group(1)) *1./100. #this line gets the values after ba and before /mass2fr -> should always be the last specification in the experiment-string; 1/100m^2 is the specification of the unit in the McSnow runscripts
     Vbox=box_area*zres
     return Vbox
+
 def conv_num2numpm3(var,Vbox):
     #convert number in height bin [#] to numper per volume [#/m3]
     return var/Vbox
     
-def return_parameter_mD_AD_rel():
+def return_parameter_mD_AD_rel(experiment):
+    '''
+    select the m-D and A-D relationship based on the beginnig of the experiment name
+    '''
+    import re
     rhoi = 919.#from McSnows mo_atmo_types.f90
     rhol = 1e3 #from McSnows mo_atmo_types.f90
-    unr_bet = 2.1
-    unr_alf = 0.0028*10.**(2.*unr_bet-3.)
+    #read string which specifies the m-D and A-D relationship
+    try:
+        ADmD_spec_string = re.search('1d_(.*)_xi', experiment).group(1)
+        if ADmD_spec_string=='iconinit':#this is a temporary workaround because the initialization by ICON is indicated in the same place as the special experiments
+            ADmD_spec_string=''
+    except: #this is the standard (deviations from the standard configurations should be between 1d_ and _xi
+        ADmD_spec_string=''
+    if ADmD_spec_string=='':
+        unr_bet = 2.1 ; unr_alf = 0.0028*10.**(2.*unr_bet-3.) #from McSnows mo_mass2diam.f90 #m-D
+        unr_gam = 1.88 ; unr_sig = 0.2285*10**(2.*unr_gam-4.) #A-D
+    elif ADmD_spec_string=='mDADJaggdent':
+        #   Jussi's aggregates of dendrites
+        unr_alf = 0.01243; unr_bet = 2.00000 #found commented in McSnows mo_mass_diam.f90 #m-D
+        unr_sig = 0.05625; unr_gam = 1.81000 #A-D
+    
+    
+    sph_gam = 2.0
+    sph_sig = np.pi/4.
+    print "ADmD_spec_string",ADmD_spec_string
     Dth = (rhoi * np.pi/6 * 1./unr_alf)**(1./(unr_bet-3))
     mth = np.pi/6. * rhoi * Dth**3 #from McSnows mo_mass2diam.f90
-    return mth,unr_alf,unr_bet,rhoi,rhol,Dth
+    return mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam
 
 def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None",space='loge'): #taken and adapted from mo_output.f90
     '''

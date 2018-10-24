@@ -32,7 +32,7 @@ figsize_height = 6.0/2.0*(number_of_plots)
 fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
 
 deactlist = ["111111","100000","010000","001000","000100","000010","000001"] #set values to zero to deactivate particle types; order: c,i,r,s,g,h
-linestylelist = ["-","--",":","--",":","-.","-."]
+linestylelist = ["-",":",":",":",":","-.","-."]
 markerlist = [" ","o","s","h","x","d","*"]
 labellist = ["","cloud w.","cloud ice","rain","snow","graupel","hail"]
 #plot reflectivities
@@ -41,24 +41,26 @@ for i,deact in enumerate(deactlist):
     #define file to read
     if deact=='111111':
         pam_filestring = directory + experiment + "/PAMTRA_2mom_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
+        #read pamtra output to pamData dictionary
+        pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
     else:
         pam_filestring = directory + experiment + "/PAMTRA_2mom_" + testcase + '_cat' + deact + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
-        ax.plot(0,-1000,color='k',linestyle=linestylelist[i],marker=markerlist[i],markerfacecolor="None",label=labellist[i]) #for the legend
-
+        #read pamtra output to pamData dictionary
+        pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
+        if any(pamData["Ze"].flat>-9999.): #this condition avoids the appearance of categories which are actually not present
+            ax.plot(0,-1000,color='k',linestyle=linestylelist[i],marker=markerlist[i],markerfacecolor="None",label=labellist[i]) #for the legend
+        
     #read pamtra output to pamData dictionary
     pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
-
-
-    #plot reflectivities
-    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData,linestyle=linestylelist[i],marker=markerlist[i])
-    
+    if any(pamData["Ze"].flat>-9999.):
+        #plot reflectivities
+        plt = __plotting_functions.plot_pamtra_Ze(ax,pamData,linestyle=linestylelist[i],marker=markerlist[i])
 #create legend
 ax.legend()
 
 #plot spectrograms
+i_existent=-1 #counter which provides that only the existent categories are plotted (and those on top)
 for i,deact in enumerate(deactlist): 
-    #open new panel for each category
-    ax = plt.subplot2grid((number_of_plots, 1), (i+1, 0))   
 
     #define file to read
     if deact=='111111':
@@ -69,10 +71,16 @@ for i,deact in enumerate(deactlist):
 
     #read pamtra output to pamData dictionary
     pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
-    #plot spectrogram
-    plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
-    #display category name at top left
-    plt.text(-2.8,pamData["height"][-1]*0.9,labellist[i])
+    if any(pamData["Ze"].flat>-9999.): #this condition avoids the appearance of categories which are actually not present
+        i_existent+=1
+        #open new panel for each existent category
+        ax = plt.subplot2grid((number_of_plots, 1), (i_existent+1, 0))
+
+        #plot spectrogram
+        plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
+        #display category name at top left
+        plt.text(-2.8,pamData["height"][-1]*0.9,labellist[i])
+
     
 #save figure
 plt.tight_layout()

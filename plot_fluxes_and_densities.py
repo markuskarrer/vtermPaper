@@ -25,22 +25,26 @@ experiment = os.environ["experiment"] #experiment name (this also contains a lot
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
+skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs)
 
 #directory of experiments
 directory = MC_dir + "/experiments/"
 
 #read hei2massdens to get average /summed up values per height
 filestring_hei2massdens = directory + experiment + "/hei2massdens.dat"
-timestep = tstep/30 #TODO: do not hardcode the 30 minute output interval here
-hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep)
+timestep = tstep/60 #TODO: do not hardcode the 30 minute output interval here
+if skipMC:
+    hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep,empty_flag=True) #get empty arrays with the same dimension as the true arrays in order to not plot the McSnow data
+else:
+    hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep)
 
-number_of_plots = 4
+number_of_plots = 5
 
 figsize_height = 6.0/2.0*(number_of_plots)
 fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
 
 #get timestep
-i_timestep=(tstep/30)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
+i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
 
 #######
 #read twomoment-data
@@ -84,6 +88,15 @@ else: #in case there is no need for a second axis, just pass the first ax twice
     
 plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
 
+##
+#plot normalized mixing ration (q/qn) labelling normq...
+##
+#calculate q/qn respectively Md/Nd
+ax = plt.subplot2grid((number_of_plots, 1), (2, 0))
+
+ax2 = ax
+    
+plt = __plotting_functions.plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep)
 
 ############
 #plot fluxes
@@ -91,7 +104,7 @@ plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,ma
 #number flux
 mass_num_flag = 0 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
 
-ax = plt.subplot2grid((number_of_plots, 1), (2, 0))
+ax = plt.subplot2grid((number_of_plots, 1), (3, 0))
 if mass_num_flag==2:
     ax2 = ax.twiny()
 else: #in case there is no need for a second axis, just pass the first ax twice
@@ -102,7 +115,7 @@ plt = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mas
 #mass flux
 mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
 
-ax = plt.subplot2grid((number_of_plots, 1), (3, 0))
+ax = plt.subplot2grid((number_of_plots, 1), (4, 0))
 if mass_num_flag==2:
     ax2 = ax.twiny()
 else: #in case there is no need for a second axis, just pass the first ax twice

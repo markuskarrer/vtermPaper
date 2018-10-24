@@ -203,9 +203,9 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     lam	=	(curr_cat.a_ms / q_h * n_tot * work2 / work3)**(curr_cat.gam / curr_cat.b_ms)
     N_0 = curr_cat.gam * n_tot / work3 * lam**((curr_cat.mu + 1.0) / curr_cat.gam)
     N_D	=	N_0*diam**curr_cat.mu*np.exp(-lam*diam**curr_cat.gam) #/ del_diam		#normalized number concentrations with *del_diam-> not normalized
-    #apply diameter (mass) limits
-    N_D[np.where( diam < curr_cat.Dmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
-    N_D[np.where( diam > curr_cat.Dmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
+    #apply diameter (mass) limits #or better dont because they just limit the mean mass not truncate the spectrum
+    #N_D[np.where( diam < curr_cat.Dmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
+    #N_D[np.where( diam > curr_cat.Dmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
     M_D = N_D * curr_cat.a_ms*diam**curr_cat.b_ms
     return N_D,M_D
 
@@ -245,6 +245,6 @@ def calc_fmass_distribution_from_moments(twomom,category,m_ds,i_time=0,i_height=
     A = curr_cat.mu_SB*n_tot/gamma((curr_cat.nu_SB+1)/curr_cat.mu_SB)*lam**((curr_cat.nu_SB+1)/curr_cat.mu_SB) #based on Seifert&Beheng 2006
     f_m = A*m_ds**curr_cat.nu_SB*np.exp(-lam*m_ds**curr_cat.mu_SB)
     #apply mass limits
-    f_m[np.where( m_ds < curr_cat.xmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
-    f_m[np.where( m_ds > curr_cat.xmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
+    #f_m[np.where( m_ds < curr_cat.xmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
+    #f_m[np.where( m_ds > curr_cat.xmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
     return f_m

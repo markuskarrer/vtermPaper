@@ -90,16 +90,34 @@ iconData_atmo["T"]=twomom["temp"];iconData_atmo["rh"] = twomom["rhw"]; iconData_
 twomom["rhi_std"] = np.std(nc.variables[icon_key][timestep_start:timestep_end,:],axis=0)
 
 #ATTENTION: for testing fix atmosphere to some value
-#twomom["temp"]=np.ones(twomom["temp"].shape)*263.15
-#twomom["qv"]=np.ones(twomom["qv"].shape)*0.0010
-#twomom["pres"]=np.ones(twomom["pres"].shape)*100000.0
-#twomom["rhi"]=np.ones(twomom["rhi"].shape)*120.001
+#twomom["temp"]=np.ones(twomom["temp"].shape)*250.15
+#twomom["qv"]=np.ones(twomom["qv"].shape)*0.00010
+#twomom["pres"]=np.ones(twomom["pres"].shape)*101325.0
+#twomom["rhi"]=np.ones(twomom["pres"].shape)*101.000
+#twomom["rhi_std"]=np.ones(twomom["pres"].shape)*0.0
 #print "qv_before",twomom["qv"]
 #twomom["qv"] = __general_utilities.q2abs(twomom["qv"],twomom["qv"],twomom["temp"],twomom["pres"],twomom["rhw"],q_all_hydro="NaN") #qv is now in kg m-3
 #print "qv_after",twomom["qv"]
 #raw_input("")
 
+constant_rhi_flag=True #if True define a constant rhi
+if constant_rhi_flag:
+    rhi_const=101.
+    #calculate rh (relative humidity over water) from the in the previous line defined rhi (relative humidity over ice)
+    iconData_atmo["rhi"] = np.ones_like(twomom["temp"])*rhi_const
+    #twomom["rhi"]=np.ones_like(twomom["temp"])*rhi_const
+    iconData_atmo["T"]=twomom["temp"]; iconData_atmo["z"]=twomom["heights"][:]; iconData_atmo["p"]=twomom["pres"]; twomom["rh"] = __general_utilities.calc_rh(iconData_atmo)
+    #calculate qv corresponding to the fix rhi and overwrite it
+    T_gt_0 = iconData_atmo["T"]>=273.15
+    T_lt_0 = iconData_atmo["T"]<273.15
+    twomom["qv_fixed_rhi"] = np.zeros_like(twomom["qv"])
+    #twomom["pres"]=np.ones_like(twomom["pres"])*1e3
+    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.rh2vap(twomom["temp"][T_lt_0],twomom["pres"][T_lt_0]/100,iconData_atmo["rh"][T_lt_0]) #taken from PAMTRA
+    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.rh2mixr(twomom["rh"][T_lt_0]/100.,twomom["pres"][T_lt_0],twomom["temp"][T_lt_0]) #taken from https://github.com/hendrikwout/meteo/blob/master/meteo/humidity.py
+    twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.calc_qv_from_rh(twomom["rh"][T_lt_0],twomom["pres"][T_lt_0],twomom["temp"][T_lt_0]) #taken from SB
+    twomom["qv_fixed_rhi"][T_gt_0] = twomom["qv"][T_gt_0] #treat T>0Cels differently because rhi is not defined there
 
+    #from IPython.core.debugger import Tracer ; Tracer()()
         
 #convert from mixing ratios [kg kg-1]/[kg-1] to absolute values [kg m-3]/[m-3]
 twomom["qi_spec"] = __general_utilities.q2abs(twomom["qi"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
@@ -108,7 +126,7 @@ twomom["qni_spec"] = __general_utilities.q2abs(twomom["qni"],twomom["qv"],twomom
 ###
 #find maximum in number density to initialize McSnow
 ###
-criteria = 2 #0: choose global maximum of qni 1: choose lowest local maximum of qni 2. choose heighest level with RHi>100 #TODO: give this as an input by the governing script (kind of namelist)
+criteria = 0 #0: choose global maximum of qni 1: choose lowest local maximum of qni 2. choose heighest level with RHi>100 #TODO: give this as an input by the governing script (kind of namelist)
 #calculate anyway the initialization for all criterias to display them in panel but choose just one for the real initialization
 num_crit=3; i_crit = np.zeros(num_crit, dtype=np.int) #set number of possible criterias to choose initialization height
 qi_init = np.zeros(num_crit); qni_init = np.zeros(num_crit) ; height_init = np.zeros(num_crit) #initialize arrays which contain the values for initialization
@@ -147,7 +165,7 @@ height_init_sel = height_init[criteria]
 with open(MC_dir + "/input/ecmwf_profile.txt","wb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
     ecmwf_writer =csv.writer(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
     for row in range(0,len(nc.variables["height_2"][:])):
-        ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [twomom["qv"][row]] )
+        ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [twomom["qv_fixed_rhi"][row]] )
         #print nc.variables["height_2"][row],twomom["temp"][row],twomom["pres"][row],twomom["qv"][row]
 txtfile.close()
 #write hydrometeor init values to txt file

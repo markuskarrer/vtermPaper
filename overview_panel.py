@@ -26,122 +26,126 @@ testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
 adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
+skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs) #ATTENTION: not completely implemented yet
 
 #directory of experiments
 directory = MC_dir + "/experiments/"
 
+if not skipMC:
+    #load file
+    SP_file = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
+    #create dictionary for all variables from PAMTRA
+    SP = dict()
+    #print pam_file.variables.keys() 
 
-#load file
-SP_file = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
-#create dictionary for all variables from PAMTRA
-SP = dict()
-#print pam_file.variables.keys() 
+    #if necessary change name of variables
+    varlist = SP_file.variables
+    #read PAMTRA variables to pamData dictionary
+    for var in varlist:#read files and write it with different names in Data
+        SP[var] = np.squeeze(SP_file.variables[var])
+    #get maximum height for plotting
+    model_top = np.nanmax(SP['height'])
+    #calculate values binned to here defined h-D bins
+    binned_val,heightvec,d_bound_ds,d_ds,zres = __postprocess_McSnow.separate_by_height_and_diam(SP,nbins=100,diamrange=[-9,0],nheights=51,model_top=model_top)
 
-#if necessary change name of variables
-varlist = SP_file.variables
-#read PAMTRA variables to pamData dictionary
-for var in varlist:#read files and write it with different names in Data
-    SP[var] = np.squeeze(SP_file.variables[var])
-#get maximum height for plotting
-model_top = np.nanmax(SP['height'])
-#calculate values binned to here defined h-D bins
-binned_val,heightvec,d_bound_ds,d_ds,zres = __postprocess_McSnow.separate_by_height_and_diam(SP,nbins=100,diamrange=[-9,0],nheights=51,model_top=model_top)
+    #calculate volume of box
+    Vbox = __postprocess_McSnow.calculate_Vbox(experiment,zres)
+    #divide by box volume to achieve [#]->[#/m3]
+    binned_val["d_counts"] = __postprocess_McSnow.conv_num2numpm3(binned_val["d_counts"],Vbox)
+    binned_val["d_counts_no_mult"] = __postprocess_McSnow.conv_num2numpm3(binned_val["d_counts"],Vbox)
 
-#calculate volume of box
-Vbox = __postprocess_McSnow.calculate_Vbox(experiment,zres)
-#divide by box volume to achieve [#]->[#/m3]
-binned_val["d_counts"] = __postprocess_McSnow.conv_num2numpm3(binned_val["d_counts"],Vbox)
-binned_val["d_counts_no_mult"] = __postprocess_McSnow.conv_num2numpm3(binned_val["d_counts"],Vbox)
+    ############################
+    #now: plot the binned values
+    ############################
+    cmap="viridis_r" #use one uniform colorbar
 
-############################
-#now: plot the binned values
-############################
-cmap="viridis_r" #use one uniform colorbar
-
-#list of variables from binned_val-dictionary which should be plotted
-plot_vars = ["d_counts","av_Frim","av_rhor","av_mm"] #"RPpSP",
-full_name = ["number density","rime fraction","ma rime density","na numb. monomer"] #for colorbar labelling
-var_units = ["m-3","1","kg m-3","1"]#for colorbar labelling
-#select step of colorbar ticks for each variable
-colticksstep = [50000.,0.2,100.,1] #,20000.
-maskedcon = ['0','nan','nan','nan']#,'nan' #see if maskedcon = 'nan': within for-loop
-mincol_arr = [10,0.,0,1] #0, lowest number in colorbar
-maxcol_arr = [1e5,1.0,900,1000] #,-999 heighest number in colorbar
-logcol_arr = [1,0,0,1] #set to one if colorbar should be in logarithmic scale
-
-number_of_plots = len(plot_vars)
-num_pam_SB_plots = 6 #number of subplots from pamtra variables and twomoment output
+    #list of variables from binned_val-dictionary which should be plotted
+    plot_vars = ["d_counts","av_mm"] #["d_counts","av_Frim","av_rhor","av_mm"] #"RPpSP",
+    full_name = ["number density","na numb. monomer"] #["number density","rime fraction","ma rime density","na numb. monomer"] #for colorbar labelling
+    var_units = ["m-3","1","kg m-3","1"] #["m-3","1","kg m-3","1"]#for colorbar labelling
+    #select step of colorbar ticks for each variable
+    colticksstep = [50000.,1] #[50000.,0.2,100.,1] #,20000.
+    maskedcon = ['0','nan'] #['0','nan','nan','nan']#,'nan' #see if maskedcon = 'nan': within for-loop
+    mincol_arr = [10,1] #[10,0.,0,1] #0, lowest number in colorbar
+    maxcol_arr = [1e5,1000] #[1e5,1.0,900,1000]#,-999 heighest number in colorbar
+    logcol_arr = [1,1] #[1,0,0,1] #set to one if colorbar should be in logarithmic scale
+    number_of_plots = len(plot_vars)
+else:
+    number_of_plots = 0
+    plot_vars=[]
+num_pam_SB_plots = 7 #number of subplots from pamtra variables and twomoment output
 
 figsize_height = 6.0/2.0*(number_of_plots+num_pam_SB_plots)
 fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
 
+if not skipMC:
+    for i,varname in enumerate(plot_vars): #let enumerate start at 0
+        print '####################'
+        print 'plot: ' + varname
+        print '####################'
 
-for i,varname in enumerate(plot_vars): #let enumerate start at 0
-    print '####################'
-    print 'plot: ' + varname
-    print '####################'
 
-
-    params = {'legend.fontsize': 'x-large',
-          'figure.figsize': (15, 5),
-         'axes.labelsize': 'x-large', #size: Either an relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
-         'axes.titlesize':'x-large',
-         'xtick.labelsize':'x-large',
-         'ytick.labelsize':'x-large'}
-    pylab.rcParams.update(params)
-    #plt.rc('xtick', labelsize=15) 
-    #plt.rc('ytick', labelsize=15)
-    #plt.rc('axes', titelsize=15)
-    #plt.rc('ylabel', labelsize=15)
-    #plt.rc('ytick', labelsize=15)
-    
-    ax 	= 	plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0)) #plotvars +num_pam_SB_plots -> let space for 2 PAMTRA_output plots
-    #give range of colorbar and derive ticks
-    mincol = mincol_arr[i];
-    
-    #derive step of colorbar ticks automatically for colticksstep=-999
-    if colticksstep[i]==-999:
-        colticksstep[i]=np.floor(np.nanmax(binned_val["av_mm"])/10)
-
-    #calculate maxcol from array or use predefined
-    if maxcol_arr[i]==-999:
-        maxcol=math.ceil(np.nanmax(binned_val[varname]) / colticksstep[i]) * colticksstep[i] #maxcol is rounded to the next tickstep to have round values in the colorbar
-    else:
-        maxcol=maxcol_arr[i]
-    
+        params = {'legend.fontsize': 'x-large',
+            'figure.figsize': (15, 5),
+            'axes.labelsize': 'x-large', #size: Either an relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
+            'axes.titlesize':'x-large',
+            'xtick.labelsize':'x-large',
+            'ytick.labelsize':'x-large'}
+        pylab.rcParams.update(params)
         
-    #calculate colorbar ticks either linear or logarithmic
-    if logcol_arr[i]==0:
-        colticks = np.arange(mincol, maxcol*1.0001, colticksstep[i])
-    elif logcol_arr[i]==1:
-        colticks = np.logspace(np.log10(mincol),np.log10(maxcol),np.log10(maxcol)-np.log10(mincol)+1)
-    if maskedcon[i] == 'nan':
-        binned_val[varname] = np.ma.array(binned_val[varname],mask=np.isnan(binned_val[varname]))
-    elif maskedcon[i] == '0':
-        binned_val[varname] = np.ma.array(binned_val[varname],mask=(binned_val[varname]==0))
-        masked = np.ma.array(binned_val[varname],mask=(binned_val[varname]==0))
+        ax 	= 	plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0)) #plotvars +num_pam_SB_plots -> let space for 2 PAMTRA_output plots
+        #give range of colorbar and derive ticks
+        mincol = mincol_arr[i];
+        
+        #derive step of colorbar ticks automatically for colticksstep=-999
+        if colticksstep[i]==-999:
+            colticksstep[i]=np.floor(np.nanmax(binned_val["av_mm"])/10)
+
+        #calculate maxcol from array or use predefined
+        if maxcol_arr[i]==-999:
+            maxcol=math.ceil(np.nanmax(binned_val[varname]) / colticksstep[i]) * colticksstep[i] #maxcol is rounded to the next tickstep to have round values in the colorbar
+        else:
+            maxcol=maxcol_arr[i]
+        
+            
+        #calculate colorbar ticks either linear or logarithmic
+        if logcol_arr[i]==0:
+            colticks = np.arange(mincol, maxcol*1.0001, colticksstep[i])
+        elif logcol_arr[i]==1:
+            colticks = np.logspace(np.log10(mincol),np.log10(maxcol),np.log10(maxcol)-np.log10(mincol)+1)
+        if maskedcon[i] == 'nan':
+            binned_val[varname] = np.ma.array(binned_val[varname],mask=np.isnan(binned_val[varname]))
+        elif maskedcon[i] == '0':
+            binned_val[varname] = np.ma.array(binned_val[varname],mask=(binned_val[varname]==0))
+            masked = np.ma.array(binned_val[varname],mask=(binned_val[varname]==0))
 
 
-    #call pcolor plot routine for height-diameter plots
-    plt =  __plotting_functions.pcol_height_diam(ax,d_bound_ds,heightvec,binned_val[varname],
-                                                 mincol=mincol,maxcol=maxcol,ticks=colticks,
-                                                 logcol=logcol_arr[i],cmap=cmap,
-                                                 collabel=full_name[i] + ' / ' + var_units[i])
+        #call pcolor plot routine for height-diameter plots
+        plt =  __plotting_functions.pcol_height_diam(ax,d_bound_ds,heightvec,binned_val[varname],
+                                                    mincol=mincol,maxcol=maxcol,ticks=colticks,
+                                                    logcol=logcol_arr[i],cmap=cmap,
+                                                    collabel=full_name[i] + ' / ' + var_units[i])
 
 '''
 create plot of athmospheric variables first and add it before the histogram plots
 '''
-ax 	= 	plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (0, 0))
+ax 	= 	plt.subplot2grid((number_of_plots+num_pam_SB_plots, 1), (0, 0))
 ax2 = ax.twiny()
 #read atmospheric variables
 filestring_atmo = directory + experiment + "/atmo.dat"
 atmo = __postprocess_McSnow.read_atmo(experiment,filestring_atmo)
 #calculate rhi (relative humidity over ice)
 atmo["rhi"] = __general_utilities.calc_rhi(atmo)
+#from IPython.core.debugger import Tracer ; Tracer()()
+
 #plot athmospheric variables
 plt = __plotting_functions.plot_atmo(ax,ax2,atmo)
 #increase i, because we added a plot before the for-loop
-i+=1
+if skipMC:
+    i=0
+else:
+    i+=1
+    
 #plot McSnow pamtra output
 try:
     ##############################
@@ -170,10 +174,14 @@ try:
     plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
 
     #plot reflectivities
-    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
+    axrefl = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
 
-    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData,linestyle='--')
+    plt = __plotting_functions.plot_pamtra_Ze(axrefl,pamData,linestyle='--')
     
+    #plot other radar-moments
+    axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+
+    plt = __plotting_functions.plot_pamtra_highermoments(axmom,pamData,linestyle='--')
 except Exception:
 	print ' \n \n in except: \n \n'
 	s = traceback.format_exc()
@@ -194,12 +202,21 @@ try:
     pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
 
     #plot reflectivities
-    plt = __plotting_functions.plot_pamtra_Ze(ax,pamData)
-    ax.plot(0,0,color='k',linestyle='--',label='McSnow')
-    ax.plot(0,0,color='k',linestyle='-',label='SB')
-    ax.legend()
+    #ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
+    plt = __plotting_functions.plot_pamtra_Ze(axrefl,pamData)
+    axrefl.plot(0,0,color='k',linestyle='--',label='McSnow')
+    axrefl.plot(0,0,color='k',linestyle='-',label='SB')
+    axrefl.legend()
     
-    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+    #plot other radar-moments
+    #axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+
+    plt = __plotting_functions.plot_pamtra_highermoments(axmom,pamData)
+    axmom.plot(0,0,color='k',linestyle='--',label='McSnow')
+    axmom.plot(0,0,color='k',linestyle='-',label='SB')
+    axmom.legend()
+    
+    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
     #plot spectrogram
     plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
     
@@ -222,10 +239,11 @@ for var in varlist:#read files and write it with different names in Data
 for category in ['c','i','r','s','g','h']:
     #calculate Dmean for each category
     twomom['D_mean_' + category] =  __postprocess_SB.calc_Dmean(twomom,category)
-ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
+print len(plot_vars),num_pam_SB_plots, i+6
+ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+6, 0))
 ax2 = ax.twiny()
 
-i_timestep=(tstep/30)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
+i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
 plt = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
 
 #save figure

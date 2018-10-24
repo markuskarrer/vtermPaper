@@ -53,7 +53,7 @@ sigma0         = 0.62     #! Shima 2009, Sec. 5.1.4
 
 #varnames = ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat"]
 #get necessary parameter of m-D and A-D relationship
-mth,unr_alf,unr_bet,rhoi,rhol = __postprocess_McSnow.return_parameter_mD_AD_rel()
+mth,unr_alf,unr_bet,rhoi,rhol = __postprocess_McSnow.return_parameter_mD_AD_rel()[0:4]
 #determine number of SP
 number_ofSP = SP_in_heightbin['m_tot'].shape[0]; print "number_ofSP",number_ofSP
 
