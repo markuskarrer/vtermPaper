@@ -306,11 +306,12 @@ def return_parameter_mD_AD_rel(experiment):
     rhol = 1e3 #from McSnows mo_atmo_types.f90
     #read string which specifies the m-D and A-D relationship
     try:
-        ADmD_spec_string = re.search('1d_(.*)_xi', experiment).group(1)
-        if ADmD_spec_string=='iconinit':#this is a temporary workaround because the initialization by ICON is indicated in the same place as the special experiments
+        ADmD_spec_string = re.search('1d_(.*)_param', experiment).group(1)
+    except: #this was the standard (deviations from the standard configurations should have been between 1d_ and _xi
+        try:
+            ADmD_spec_string = re.search('1d_(.*)_xi', experiment).group(1)
+        except: #ultima ratio: take the default one
             ADmD_spec_string=''
-    except: #this is the standard (deviations from the standard configurations should be between 1d_ and _xi
-        ADmD_spec_string=''
     if ADmD_spec_string=='':
         unr_bet = 2.1 ; unr_alf = 0.0028*10.**(2.*unr_bet-3.) #from McSnows mo_mass2diam.f90 #m-D
         unr_gam = 1.88 ; unr_sig = 0.2285*10**(2.*unr_gam-4.) #A-D

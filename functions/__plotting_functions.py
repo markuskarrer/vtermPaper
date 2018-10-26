@@ -169,15 +169,17 @@ def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' '):
     #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
-            ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
+            ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
+            ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker='*',markerfacecolor='None',markevery=5)
         else:
             ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
+            ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker='*',markerfacecolor='None',markevery=5)
 
     #set range
     #ax.set_xlim([-40,55]) #range of Ze
     ax.set_ylim([0,pamData["height"][-1]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
-    ax.set_xlabel("spectrum width / m s-1")
+    ax.set_xlabel("spectrum width & mean vDoppler (stars) / m s-1")
     ax.set_ylabel("height / m")
 
     return plt
@@ -659,7 +661,23 @@ def plot_atmo(ax,ax2,atmo):
     ax.legend(handles,labs,loc='upper right')
     #from IPython.core.debugger import Tracer ; Tracer()()
     return plt
+ 
+def plot_vD_scatter(ax,v_SPlist,D_SPlist):
+    '''
+    plot velocity over diameter
+    INPUT:  v_SPlist: fall speed for a list of SP
+            D_SPlist: diameter for a list of SP
+    '''
+    #plot the lists against each other
+    ax.scatter(D_SPlist,v_SPlist,s=1,rasterized=True)
     
+    #define labels
+    ax.set_xlabel("diameter of SP / m") #"normalized mixing ratio / kg",color="k")
+    ax.set_ylabel("fall speed of SP / m s-1") #"normalized mixing ratio / kg",color="k")
+    #set xlimits
+    ax.set_xlim(left=0)
+    return plt
+#below plots for 3D-data 
 def pcolor_timeseries(fig,ax,time,height,var,varname='',time_formatted='None',lin_log=0,unit=''):
     '''
     plot timeseries (written for plotting ICON-meteogram)

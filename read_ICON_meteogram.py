@@ -42,6 +42,7 @@ MC_dir = os.environ["MC"]
 date = int(re.search(r'day(.*?)hour', testcase).group(1)) #this line gets the date from the testcase string
 hour = int(re.search(r'hour(.*?)min', testcase).group(1)) #this line gets the hour from the testcase string
 minute = int(re.search(r'min(.*?)s', testcase).group(1)) #this line gets the min from the testcase string
+ssat = int(os.environ["ssat"]) #get supersaturation from governing script (this is the semi-idealized part of this setup)
 #TODO also read in seconds
 #convert time to s to find nearest output timestep
 analyzed_time_s = hour*3600+minute*60
@@ -100,24 +101,6 @@ twomom["rhi_std"] = np.std(nc.variables[icon_key][timestep_start:timestep_end,:]
 #print "qv_after",twomom["qv"]
 #raw_input("")
 
-constant_rhi_flag=True #if True define a constant rhi
-if constant_rhi_flag:
-    rhi_const=101.
-    #calculate rh (relative humidity over water) from the in the previous line defined rhi (relative humidity over ice)
-    iconData_atmo["rhi"] = np.ones_like(twomom["temp"])*rhi_const
-    #twomom["rhi"]=np.ones_like(twomom["temp"])*rhi_const
-    iconData_atmo["T"]=twomom["temp"]; iconData_atmo["z"]=twomom["heights"][:]; iconData_atmo["p"]=twomom["pres"]; twomom["rh"] = __general_utilities.calc_rh(iconData_atmo)
-    #calculate qv corresponding to the fix rhi and overwrite it
-    T_gt_0 = iconData_atmo["T"]>=273.15
-    T_lt_0 = iconData_atmo["T"]<273.15
-    twomom["qv_fixed_rhi"] = np.zeros_like(twomom["qv"])
-    #twomom["pres"]=np.ones_like(twomom["pres"])*1e3
-    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.rh2vap(twomom["temp"][T_lt_0],twomom["pres"][T_lt_0]/100,iconData_atmo["rh"][T_lt_0]) #taken from PAMTRA
-    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.rh2mixr(twomom["rh"][T_lt_0]/100.,twomom["pres"][T_lt_0],twomom["temp"][T_lt_0]) #taken from https://github.com/hendrikwout/meteo/blob/master/meteo/humidity.py
-    twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.calc_qv_from_rh(twomom["rh"][T_lt_0],twomom["pres"][T_lt_0],twomom["temp"][T_lt_0]) #taken from SB
-    twomom["qv_fixed_rhi"][T_gt_0] = twomom["qv"][T_gt_0] #treat T>0Cels differently because rhi is not defined there
-
-    #from IPython.core.debugger import Tracer ; Tracer()()
         
 #convert from mixing ratios [kg kg-1]/[kg-1] to absolute values [kg m-3]/[m-3]
 twomom["qi_spec"] = __general_utilities.q2abs(twomom["qi"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
@@ -155,17 +138,54 @@ for i in range(0,num_crit):
     qni_init[i] = round(twomom["qni_spec"][0,i_crit[i]],0)
     height_init[i] = round(twomom["heights"][i_crit[i]])
 
-
 #copy values from selected condition here to those who are written to file init_vals.txt later
 qi_init_sel = qi_init[criteria] 
 qni_init_sel = qni_init[criteria]
 height_init_sel = height_init[criteria]
 
+#get global maximum of qi+qs
+i_maxq = int(np.argmax(twomom["qi"]+twomom["qs"]))
+
+####
+#in the following are the modifications (of the qv-profile) which makes the setup SEMI-idealized
+####
+constant_rhi_flag=True #if True define a constant rhi
+if constant_rhi_flag:
+    ssat_vec=np.ones_like(twomom["temp"])*ssat/100000. #ssat is in [1000%]
+    ssat_vec[i_maxq:] = -5./100 #take -5% for sublimation for now
+
+    #rhi_const=100. + ssat/1000. #TODO: this should be an INPUT from the loop in the shell script which finds the suitable rhi
+    #calculate rh (relative humidity over water) from the in the previous line defined rhi (relative humidity over ice)
+    #iconData_atmo["rhi"] = np.ones_like(twomom["temp"])*rhi_const
+    #iconData_atmo["rhi"][i_maxq:] = np.ones_like(twomom["temp"][i_maxq:])*90.
+    #twomom["rhi"]=np.ones_like(twomom["temp"])*rhi_const
+    #iconData_atmo["T"]=twomom["temp"]; iconData_atmo["z"]=twomom["heights"][:]; iconData_atmo["p"]=twomom["pres"]; twomom["rh"] = __general_utilities.calc_rh(iconData_atmo)
+    #calculate qv corresponding to the fix rhi and overwrite it
+    #T_gt_0 = iconData_atmo["T"]>=273.15
+    #T_lt_0 = iconData_atmo["T"]<273.15
+    #twomom["qv_fixed_rhi"] = np.zeros_like(twomom["qv"])
+    #twomom["pres"]=np.ones_like(twomom["pres"])*1e3
+    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.rh2vap(twomom["temp"][T_lt_0],twomom["pres"][T_lt_0]/100.,iconData_atmo["rh"][T_lt_0]) #taken from PAMTRA
+    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.rh2mixr(twomom["rh"][T_lt_0]/100.,twomom["pres"][T_lt_0],twomom["temp"][T_lt_0]) #taken from https://github.com/hendrikwout/meteo/blob/master/meteo/humidity.py
+    #twomom["qv_fixed_rhi"][T_lt_0] = __general_utilities.calc_qv_from_rh(twomom["rh"][T_lt_0],twomom["pres"][T_lt_0],twomom["temp"][T_lt_0]) #taken from SB
+    #twomom["qv_fixed_rhi"][T_gt_0] = twomom["qv"][T_gt_0] #treat T>0Cels differently because rhi is not defined there
+    #twomom["qv_fixed_rhi"] = __general_utilities.calc_qv_from_rh(twomom["rh"],twomom["pres"],twomom["temp"]) #taken from SB
+    #twomom["qv_fixed_rhi"][:i_maxq] = __general_utilities.calc_qv_from_rh(twomom["rh"][:i_maxq],twomom["pres"][:i_maxq],twomom["temp"][:i_maxq]) #taken from SB
+    #twomom["qv_fixed_rhi"][i_maxq:] = __general_utilities.calc_qv_from_rh(twomom["rh"][:i_maxq],twomom["pres"][:i_maxq],twomom["temp"][:i_maxq])  #twomom["qv"][i_maxq:]*0.0 #treat heights below the maximum in mass differently because there should be sublimation
+    
+
+    #TODO: there is some bug here because rhi in the McSnow run fits not perfectly!!
+    
+    #from IPython.core.debugger import Tracer ; Tracer()()
+
 #write atmospheric variables to txt file
 with open(MC_dir + "/input/ecmwf_profile.txt","wb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
     ecmwf_writer =csv.writer(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
     for row in range(0,len(nc.variables["height_2"][:])):
-        ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [twomom["qv_fixed_rhi"][row]] )
+        #ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [twomom["qv_fixed_rhi"][row]] ) #atmo_type=2 READ (unit,*,iostat=io) zz(i),tt(i),pp(i),qv(i),dummy
+        #from IPython.core.debugger import Tracer ; Tracer()()
+        #ecmwf_writer.writerow([twomom["pres"][row]/100.] + [nc.variables["height_2"][row]] + [twomom["temp"][row]] + [1.0] +  [twomom["rh"][row]] ) #atmo_type=5 READ(unit,*,iostat=io) pp(i), zz(i), tt(i), dummy, rh(i)
+        ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [ssat_vec[row]] ) #atmo_type=2 READ (unit,*,iostat=io) zz(i),tt(i),pp(i),ssat(:)
         #print nc.variables["height_2"][row],twomom["temp"][row],twomom["pres"][row],twomom["qv"][row]
 txtfile.close()
 #write hydrometeor init values to txt file
@@ -229,6 +249,7 @@ if flag_plot_icons_var:
     #add panel with some information in text form
     ax = plt.subplot2grid((number_of_plots, 1), (3, 0))
     ax.axis("off")
+    #from IPython.core.debugger import Tracer ; Tracer()() 
     plt.text(0,0,'analyzing time: {} to: {}'.format(str(time[timestep_start]),str(time[timestep_end])) +
              '\n initialize at: {:d})\n'.format(criteria) +
              '                   0) global maximum of qni: \n' + 
@@ -242,7 +263,8 @@ if flag_plot_icons_var:
              '                   2) heighest level with RHi>100%: \n' + 
              '                                                 height:{:6.0f}m\n'.format(height_init[2]) +
              '                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[2]) + 
-             '                                                 qni:     {:.2E}m-3\n'.format(qni_init[2])
+             '                                                 qni:     {:.2E}m-3\n'.format(qni_init[2]) +
+             'the maximum of qi+qs is at :{:6.0f}m with qi+qs= {:.2E}kg m-3'.format(np.ma.getdata(twomom["heights"])[i_maxq],twomom["qi"][0,i_maxq]+twomom["qs"][0,i_maxq])
              )
     
     #save figure

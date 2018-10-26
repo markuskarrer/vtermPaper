@@ -92,7 +92,7 @@ m_ds = m_bound_ds[:-1] + 0.5*np.diff(m_bound_ds) #diameter at center of bins
 #get colorbar from  matplotlib internal color order to cycle through them by your own
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
-number_of_plots = raw_plots+len(plot_vars)+pam_plots
+number_of_plots = raw_plots+len(plot_vars)+pam_plots+1 #+1 is for the v-D scatterplot
 figsize_height = 6.0/2.0*(number_of_plots)
 fig, axes	=	plt.subplots(nrows=number_of_plots, ncols=1, figsize=(8.0,figsize_height))
 if not skipMC:
@@ -121,6 +121,7 @@ varlist = twomom_file.variables
 #read twomom variables to twomom dictionary
 for var in varlist:#read files and write it with different names in Data
     twomom[var] = np.squeeze(twomom_file.variables[var])
+
 heightstep = twomom["heights"].shape[0]/5 #100m for dz=20m
 #loop over certain heights (calculation and plotting)
 #initialize arrays for distribution
@@ -135,10 +136,11 @@ for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #AT
     twomom["i_mdist"][i_height,:] = __postprocess_SB.calc_fmass_distribution_from_moments(twomom,'icecosmo5',m_ds,i_height=i_height,i_time=i_timestep)
     twomom["s_mdist"][i_height,:] = __postprocess_SB.calc_fmass_distribution_from_moments(twomom,'snowSBB',m_ds,i_height=i_height,i_time=i_timestep)
     #sum up distributions #ATTENTION: if there are more categories used update this here (include them)
-    twomom["all_mdist"][i_height,:] = twomom["i_mdist"][i_height,:]+twomom["s_mdist"][i_height,:]
+    twomom["all_mdist"][i_height,:] = np.nan_to_num(twomom["i_mdist"][i_height,:])+np.nan_to_num(twomom["s_mdist"][i_height,:]) #nan_to_num converts nan to 0 (this is helpful if 
     #plot distribution
     axes[0] = __plotting_functions.plot1Dhistline(axes[0],m_ds,twomom["all_mdist"][i_height,:],xlabel='mass / kg',ylabel='number density / m-3 kg-1',ylims=[10**8,10**19],logflag=3,color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
     i_lines += 1
+#from IPython.core.debugger import Tracer ; Tracer()()
 #add labels to distinguish the linestyle
 if not skipMC:
     axes[0].plot(0,0,color='k',linestyle='--',label='McSnow')
@@ -246,8 +248,8 @@ heightstep = twomom["heights"].shape[0]/5 #100m for dz=20m
 for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #ATTENTION: if you do changes here uncomment linelabel for checking consistent height labelling with McSnow data...
     twomom["i_dist"][i_height,:],twomom["i_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'icecosmo5',d_ds,i_height=i_height,i_time=i_timestep)
     twomom["s_dist"][i_height,:],twomom["s_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'snowSBB',d_ds,i_height=i_height,i_time=i_timestep)
-    twomom["all_dist"][i_height,:] = twomom["i_dist"][i_height,:]+twomom["s_dist"][i_height,:]
-    twomom["all_dist_mass"][i_height,:] = twomom["i_dist_mass"][i_height,:]+twomom["s_dist_mass"][i_height,:]
+    twomom["all_dist"][i_height,:] = np.nan_to_num(twomom["i_dist"][i_height,:])+np.nan_to_num(twomom["s_dist"][i_height,:])
+    twomom["all_dist_mass"][i_height,:] = np.nan_to_num(twomom["i_dist_mass"][i_height,:])+np.nan_to_num(twomom["s_dist_mass"][i_height,:])
 
     if np.argwhere(twomom["all_dist"][i_height,:]>nmin).shape[0]>=1:
         dmax_newn = d_ds[np.argwhere(twomom["all_dist"][i_height,:]> nmin)[-1]]
@@ -341,6 +343,27 @@ except Exception:
     serr = "there were errors:\n%s\n" % (s)
     sys.stderr.write(serr) 
 
+#plot v-D scatterplot
+#from IPython.core.debugger import Tracer ; Tracer()()
+if not skipMC:
+    print "#############################"
+    print "plot v-D as a scatter plot"
+    print "#############################"
+    #crop the arrays randomly so not so much scatterers appear
+    num_SP = SP["vt"].shape[0]
+    array_max_length = 1000000 #plot only this number of pixels
+    if num_SP>array_max_length:
+        i_chosen = np.random.choice(num_SP, array_max_length,replace=False)
+        vt_cropped = SP["vt"][i_chosen]
+        diam_cropped = SP["diam"][i_chosen]
+    else:#no cropping in case there are less SP than array_max_length
+        vt_cropped = SP["vt"]
+        diam_cropped = SP["diam"]
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #make the v-D plot    
+    axes[len(plot_vars)+raw_plots+pam_plots] = __plotting_functions.plot_vD_scatter(axes[len(plot_vars)+raw_plots+pam_plots],vt_cropped,diam_cropped)
+    
+    
 #save figure
 plt.tight_layout()
 dir_distributions = '/home/mkarrer/Dokumente/plots/distributions/'
