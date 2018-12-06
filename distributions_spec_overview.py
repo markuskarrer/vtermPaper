@@ -215,7 +215,7 @@ if not skipMC:
                 dmaxn=max(dmaxn,dmaxm)
                 dmaxm=max(dmaxn,dmaxm)  
             #plot N(D) (for i_plots=0) and M(D) (for i_plots=1)
-            axes[i_plots] == __plotting_functions.plot1Dhistline(ax,d_ds,binned_val[var][i_height,:],xlabel='diameter / m',ylabel=(name + ' / ' + units),linelabel="[{:5.0f}m,{:5.0f}m]".format(heightvec[i_height],heightvec[i_height+1]),logflag=2,xlims=[0,dmaxn],linestyle='--',color=colors[i_lines])
+            axes[i_plots] == __plotting_functions.plot1Dhistline(ax,d_ds,binned_val[var][i_height,:],xlabel='diameter / m',ylabel=(name + ' / ' + units),linelabel="[{:5.0f}m,{:5.0f}m]".format(heightvec[i_height],heightvec[i_height+1]),logflag=3,xlims=[0,dmaxn],linestyle='--',color=colors[i_lines])
             i_lines += 1
         i_plots+=1
 
@@ -249,7 +249,7 @@ for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #AT
     twomom["i_dist"][i_height,:],twomom["i_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'icecosmo5',d_ds,i_height=i_height,i_time=i_timestep)
     twomom["s_dist"][i_height,:],twomom["s_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'snowSBB',d_ds,i_height=i_height,i_time=i_timestep)
     twomom["all_dist"][i_height,:] = np.nan_to_num(twomom["i_dist"][i_height,:])+np.nan_to_num(twomom["s_dist"][i_height,:])
-    twomom["all_dist_mass"][i_height,:] = np.nan_to_num(twomom["i_dist_mass"][i_height,:])+np.nan_to_num(twomom["s_dist_mass"][i_height,:])
+    twomom["all_dist_mass"][i_height,:] = np.nan_to_num(twomom["i_dist_mass"][i_height,:]) +np.nan_to_num(twomom["s_dist_mass"][i_height,:])
 
     if np.argwhere(twomom["all_dist"][i_height,:]>nmin).shape[0]>=1:
         dmax_newn = d_ds[np.argwhere(twomom["all_dist"][i_height,:]> nmin)[-1]]
@@ -265,8 +265,8 @@ for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #AT
         dmaxm=max(dmaxn,dmaxm)    
 
     #plot a line corresponding to a specific height; N(D) on axes[1] and M(D) on axes[2]
-    axes[1] = __plotting_functions.plot1Dhistline(axes[1],d_ds,twomom["all_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[ylims_low[0],ylims_high[0]],logflag=2,xlims=[0,dmaxn],color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
-    axes[2] = __plotting_functions.plot1Dhistline(axes[2],d_ds,twomom["all_dist_mass"][i_height,:],xlabel='diameter / m',ylabel='mass density / kg m-4',ylims=[ylims_low[1],ylims_high[1]],logflag=2,xlims=[0,dmaxm],color=colors[i_lines], linelabel="__none") #>{:6.0f}m".format(twomom["heights"][i_height]))
+    axes[1] = __plotting_functions.plot1Dhistline(axes[1],d_ds,twomom["all_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[ylims_low[0],ylims_high[0]],logflag=3,xlims=[0,dmaxn],color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
+    axes[2] = __plotting_functions.plot1Dhistline(axes[2],d_ds,twomom["all_dist_mass"][i_height,:],xlabel='diameter / m',ylabel='mass density / kg m-4',ylims=[ylims_low[1],ylims_high[1]],logflag=3,xlims=[0,dmaxm],color=colors[i_lines], linelabel="__none") #>{:6.0f}m".format(twomom["heights"][i_height]))
     i_lines += 1
 #add labels to distinguish the linestyle
 if not skipMC:
@@ -361,7 +361,7 @@ if not skipMC:
         diam_cropped = SP["diam"]
     #from IPython.core.debugger import Tracer ; Tracer()()
     #make the v-D plot    
-    axes[len(plot_vars)+raw_plots+pam_plots] = __plotting_functions.plot_vD_scatter(axes[len(plot_vars)+raw_plots+pam_plots],vt_cropped,diam_cropped)
+    axes[len(plot_vars)+raw_plots+pam_plots] = __plotting_functions.plot_vD_scatter(axes[len(plot_vars)+raw_plots+pam_plots],vt_cropped,diam_cropped,xlog=True)
     
     
 #save figure

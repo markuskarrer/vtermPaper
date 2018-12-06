@@ -319,6 +319,10 @@ def return_parameter_mD_AD_rel(experiment):
         #   Jussi's aggregates of dendrites
         unr_alf = 0.01243; unr_bet = 2.00000 #found commented in McSnows mo_mass_diam.f90 #m-D
         unr_sig = 0.05625; unr_gam = 1.81000 #A-D
+    elif ADmD_spec_string=='SBice':
+        unr_bet = 1.0/0.39; unr_alf = (1.0/0.835)**unr_bet
+        unr_gam = 1.88 ; unr_sig = 0.2285*10**(2.*unr_gam-4.) #A-D#unr_sig = 0.0; unr_gam = 0.0 #not needed for the powerlaw fall speed
+
     
     
     sph_gam = 2.0

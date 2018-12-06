@@ -27,13 +27,17 @@ MC_dir = os.environ["MC"]
 
 
 #read time which should be analyzed from testcase string
-date = int(re.search(r'day(.*?)hour', testcase).group(1)) #this line gets the date from the testcase string
+date = (re.search(r'day(.*?)hour', testcase).group(1)) #this line gets the date from the testcase string
 #hour = int(re.search(r'hour(.*?)min', testcase).group(1)) #this line gets the hour from the testcase string
 #minute = int(re.search(r'min(.*?)s', testcase).group(1)) #this line gets the min from the testcase string
 
-#TODO: choose file based on experiment name
-filename = "/data/inscape/icon/experiments/tripex_220km/METEOGRAM_patch002_joyce.nc"
 
+#read meteogram file
+veras_tripexpol_simul = "/data/inscape/icon/experiments/juelich/testbed/testbed_"
+if date=='20151124':
+    filename = "/data/inscape/icon/experiments/tripex_220km/METEOGRAM_patch002_joyce.nc"
+elif date.startswith('2018') or date.startswith('2019'): #TODO: this is a bit dirty in case you have other simulations in 2018/2019
+    filename = veras_tripexpol_simul + date + "/METEOGRAM_patch001_" + date + "_joyce.nc"
 #open netCDF4 file
 nc = netCDF4.Dataset(filename)
 #get formated string of date

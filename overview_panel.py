@@ -121,7 +121,7 @@ if not skipMC:
 
 
         #call pcolor plot routine for height-diameter plots
-        plt =  __plotting_functions.pcol_height_diam(ax,d_bound_ds,heightvec,binned_val[varname],
+        ax =  __plotting_functions.pcol_height_diam(ax,d_bound_ds,heightvec,binned_val[varname],
                                                     mincol=mincol,maxcol=maxcol,ticks=colticks,
                                                     logcol=logcol_arr[i],cmap=cmap,
                                                     collabel=full_name[i] + ' / ' + var_units[i])
@@ -139,7 +139,7 @@ atmo["rhi"] = __general_utilities.calc_rhi(atmo)
 #from IPython.core.debugger import Tracer ; Tracer()()
 
 #plot athmospheric variables
-plt = __plotting_functions.plot_atmo(ax,ax2,atmo)
+ax = __plotting_functions.plot_atmo(ax,ax2,atmo)
 #increase i, because we added a plot before the for-loop
 if skipMC:
     i=0
@@ -167,21 +167,24 @@ try:
 
     #read pamtra output to pamData dictionary
     pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
-
-    #plot spectrogram
-    plt = __plotting_functions.plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment)
-    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+2, 0))
-    plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
-
+    try:
+        #plot spectrogram
+        ax = __plotting_functions.plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment)
+        ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+2, 0))
+        axx = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
+    except:
+        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple or moments?"
     #plot reflectivities
     axrefl = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
 
-    plt = __plotting_functions.plot_pamtra_Ze(axrefl,pamData,linestyle='--')
-    
-    #plot other radar-moments
-    axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+    axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData,linestyle='--')
+    try:
+        #plot other radar-moments
+        axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
 
-    plt = __plotting_functions.plot_pamtra_highermoments(axmom,pamData,linestyle='--')
+        axmom = __plotting_functions.plot_pamtra_highermoments(axmom,pamData,linestyle='--',moment='vDoppler')
+    except:
+        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple?"
 except Exception:
 	print ' \n \n in except: \n \n'
 	s = traceback.format_exc()
@@ -203,22 +206,33 @@ try:
 
     #plot reflectivities
     #ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
-    plt = __plotting_functions.plot_pamtra_Ze(axrefl,pamData)
+    if not (axrefl in globals()):
+        axrefl = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
+    axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData)
     axrefl.plot(0,0,color='k',linestyle='--',label='McSnow')
     axrefl.plot(0,0,color='k',linestyle='-',label='SB')
     axrefl.legend()
     
     #plot other radar-moments
     #axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+    try:
+        axmom.plot(0,0,color='b',linestyle='-',label='9.6GHz')
+        axmom.plot(0,0,color='r',linestyle='-',label='35.5GHz')
+        axmom.plot(0,0,color='g',linestyle='-',label='95.0GHz')
+        axmom = __plotting_functions.plot_pamtra_highermoments(axmom,pamData,moment='vDoppler')
+        axmom.plot(0,0,color='k',linestyle='--',label='McSnow')
+        axmom.plot(0,0,color='k',linestyle='-',label='SB')
 
-    plt = __plotting_functions.plot_pamtra_highermoments(axmom,pamData)
-    axmom.plot(0,0,color='k',linestyle='--',label='McSnow')
-    axmom.plot(0,0,color='k',linestyle='-',label='SB')
-    axmom.legend()
-    
-    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
-    #plot spectrogram
-    plt = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
+
+        axmom.legend()
+    except:
+        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple?"
+    try:
+        ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
+        #plot spectrogram
+        ax = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
+    except:
+        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple or moments?"
     
 except Exception:
     print ' \n \n in except: \n \n'
@@ -244,7 +258,7 @@ ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+6, 0))
 ax2 = ax.twiny()
 
 i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
-plt = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
+ax = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
 
 #save figure
 plt.tight_layout()

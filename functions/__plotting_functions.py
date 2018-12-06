@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 #import other self-defined functions
 import __postprocess_McSnow
-
+import __general_utilities
 #from IPython.core.debugger import Tracer ; Tracer()()
 
 
@@ -131,8 +131,8 @@ def pcol_height_diam(ax,diam,heights,var,mincol=-999,maxcol=-999,logcol=0,cmap='
     #set labels
     ax.set_xlabel('diameter / m ')
     ax.set_ylabel('height / m ')
-    return plt
-def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' '):
+    return ax
+def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False):
     '''
     plot pamtra output
     INPUT: pamData: dictionary with PAMTRA variables
@@ -144,10 +144,13 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' '):
     #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
-            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
+            if nolabel:
+                label='__None'
+            else:
+                label=label='{:5.1f}GHz'.format(pamData["frequency"][i])
+            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label=label)
         else:
             ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
-
     #set range
     ax.set_xlim([-40,55]) #range of Ze
     ax.set_ylim([0,pamData["height"][-1]])
@@ -155,34 +158,60 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' '):
     ax.set_xlabel("reflectivity / dBz")
     ax.set_ylabel("height / m")
 
-    return plt
+    return ax
 
-def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' '):
+def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all'):
     '''
     plot pamtra output
-    INPUT: pamData: dictionary with PAMTRA variables
+    INPUT: pamData: dictionary with PAMTRA variables (or the same naming)
     '''
 
+    if pamData["height"].ndim>1: #the observational data have more heights (for each velocity) which are all the same
+        pamData["height"] = pamData["height"][:,0]
     #create figure for plotting of pamtra output
-
+    
     #plot X-,Ka-,W-Band in three different colors
-    #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
+        markersymbol = '' #deactivate marker by default
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
-            ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5,label='{:5.1f}GHz'.format(pamData["frequency"][i]))
-            ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker='*',markerfacecolor='None',markevery=5)
+            if moment=='all' or moment=='swidth':
+                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+            if moment=='all' or moment=='vDoppler':
+                if moment=='all': markersymbol='*'
+                ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+            if moment=='all' or moment=='skewn':
+                if moment=='all': markersymbol='o'
+                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+
         else:
-            ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
-            ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker='*',markerfacecolor='None',markevery=5)
+            if moment=='all' or moment=='swidth':
+                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
+            if moment=='all' or moment=='vDoppler':
+                if moment=='all': markersymbol='*'
+                ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+            if moment=='all' or moment=='skewn':
+                if moment=='all': markersymbol='o'
+                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
 
     #set range
-    #ax.set_xlim([-40,55]) #range of Ze
+    #from IPython.core.debugger import Tracer ; Tracer()()
     ax.set_ylim([0,pamData["height"][-1]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
-    ax.set_xlabel("spectrum width & mean vDoppler (stars) / m s-1")
+    if moment=='all':
+        ax.set_xlabel("skewness (circles) & spectrum width & mean vDoppler (stars) / m s-1")
+    elif moment=='swidth':
+        ax.set_xlim([0,0.4]) 
+        ax.set_xlabel("spectral width / m s-1")
+    elif moment=='vDoppler':
+        ax.set_xlim([0,2]) 
+        ax.set_xlabel("mean vDoppler / m s-1")
+    elif moment=='skewn':
+        ax.set_xlim([-2,2]) 
+        ax.set_xlabel("skewness / 1")
     ax.set_ylabel("height / m")
+    #plt.grid()
 
-    return plt
+    return ax
 
 def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
     '''
@@ -191,7 +220,7 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
     freq: frequency, from which the spectrum should be used
     cmap: name of colormap
     '''
-
+    import sys
     #choose spectrum of right frequency
     freqindex = np.where(abs(pamData["frequency"]-freq)<0.01)[0] #we need some tolerance because the frequency is not always saved correctly
     if freqindex.size==0: #give error if frequency is not in file
@@ -200,7 +229,7 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
         sys.exit(0)
 
     #get axis and spectrogram data from pamData
-    min_shown = -30 #minimum value shown in the diagram
+    min_shown = -45 #minimum value shown in the diagram
     Radar_Spectrum = np.squeeze(pamData["Radar_Spectrum"][:,freqindex,:]) #dimensions [height, nfft]
     Radar_Spectrum_masked = np.ma.array(Radar_Spectrum,mask=Radar_Spectrum<min_shown) #do not show small values
     Radar_Velocity = np.squeeze(pamData["Radar_Velocity"][freqindex,:])  #dimension [nfft]
@@ -221,7 +250,81 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
     #plot label of used frequency
     plt.text(0.4, 4500, str(freq) + 'GHz', fontsize=12)
     
-    return plt
+    return ax
+
+def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_lim=[0,10000]):
+    '''
+    plot spectra from pamtra output as a waterfall plot
+    INPUT: pamData: dictionary with PAMTRA variables #it does not have to be Pamtra (but the same nomenclatura of the keys)
+    freq: frequency, from which the spectrum should be used
+    color, linestyle: arguments of the plot() functions
+    vel_lim: limits to the velocity
+    z_lim: limits to the height-axis
+    '''
+
+    #choose spectrum of right frequency
+    freqindex = np.where(abs(pamData["frequency"]-freq)<0.01)[0] #we need some tolerance because the frequency is not always saved correctly
+    if freqindex.size==0: #give error if frequency is not in file
+        print "frequency: ", freq ,"is not in the PAMTRA output file"
+        print "choose between: ",pamData["frequency"]," or change frequencies in run_pamtra during runtime"
+        sys.exit(0)
+    #define number of heights in the waterfall plot
+    dz_heights = 500. #interval of heights at which the spectra are plotted #n_heights = 10
+    #get axis and spectrogram data from pamData
+    min_shown = -45. #minimum value shown in the diagram
+    max_shown = 20. #minimum value shown in the diagram
+
+    Radar_Spectrum = np.squeeze(pamData["Radar_Spectrum"][:,freqindex,:]) #dimensions [height, nfft]
+    Radar_Velocity = np.squeeze(pamData["Radar_Velocity"][freqindex,:])  #dimension [nfft]
+    height = np.squeeze(pamData["height"])
+    if height.ndim>1: #the observational data have the heightvector for each velocity bin saved
+        height = height[:,0]   #the heights should be the same for each velocity bin, so we take just 0 here
+    for index_plot_heights,heights_dz in enumerate(range(int(max(height)),int(dz_heights),-int(dz_heights))):
+        plot_height, index_radar_height = __general_utilities.find_nearest(height, heights_dz)
+        #from IPython.core.debugger import Tracer ; Tracer()()
+        #for i_height in range(height.shape[0]-1,1,-height.shape[0]/n_heights): #TODO select some heights here automatically #range(0,height.shape[0],height.shape[0]/n_heights):#
+        if Radar_Velocity.ndim>1: #this is the case if the Radar_Velocity bins are changing with height
+            Radar_Velocity_now = Radar_Velocity[index_radar_height,:] 
+        else: 
+            Radar_Velocity_now = Radar_Velocity
+        from scipy.stats import skew
+        print plot_height,'skew',skew(Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown])
+        #if skew(Radar_Spectrum[index_radar_height])>1:
+        #    print plot_height,Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown]
+        #height_step = height[height.shape[0]/n_heights]-height[0] #difference between to subsequent heights in m #z_lim[1]/n_heights
+        #save the base line for the spectrogram of each height
+        baseline = plot_height #height[i_height]
+        #if (i_height+height.shape[0]/n_heights)<(height.shape[0]-1): #this does not work for the highest spectrum
+        topline = plot_height+dz_heights #height[i_height+height.shape[0]/n_heights]
+        #else:
+        #    topline = height[-1]+height[0]
+        #define a scaling facor for dBz into the height y-axis
+        mult_dBz = dz_heights/(max_shown-min_shown) #max((np.max(Radar_Spectrum[i_height])-min_shown),0.1) #2*n_heights #multiplicator for dBz on the y (height) axis to make it visible and not too large
+        #mask out everything below mask_value and interpolate additional values to mask_value
+        [Radar_Velocity_masked_and_interpolated,Radar_Spectrum_masked_and_interpolated] = __general_utilities.mask_and_interpolate(Radar_Velocity_now,Radar_Spectrum[index_radar_height],mask_value=min_shown,mask_smaller=True) #do not show small values
+
+        #plot the spectrum
+        ax.plot(Radar_Velocity_masked_and_interpolated,baseline + (Radar_Spectrum_masked_and_interpolated-min_shown)*mult_dBz,color=color,linestyle=linestyle)
+        #plot the limits of the heights and label them with the corresponding dBz value
+        ax.axhline(y=baseline,color='k',linestyle='--',linewidth=0.5)
+    dBz_scale_xpos = 0.05
+    ax.text(dBz_scale_xpos,baseline+0.05*(topline-baseline),str(min_shown) + " dBz")
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #from IPython.core.debugger import Tracer ; Tracer()()+0.18
+    ax.text(dBz_scale_xpos,topline-0.15*(topline-baseline),str(dz_heights/mult_dBz+min_shown) + " dBz")
+    
+    ax.annotate(s='', xy=(dBz_scale_xpos,baseline), xytext=(dBz_scale_xpos,topline), arrowprops=dict(arrowstyle='<->'))
+    #set range
+    ax.set_xlim([vel_lim[0],vel_lim[1]]) #range of Ze
+    ax.set_ylim([z_lim[0],z_lim[1]])
+    #ax.set_ylim([height[height.shape[0]/n_heights],height[-1]+height[height.shape[0]/n_heights]-height[0]])
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #plot labels and create colorbar
+    ax.set_xlabel("Doppler velocity / m s-1")
+    ax.set_ylabel("layer top height / m")
+
+    
+    return ax
 
 def plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment,cmap='viridis_r'):
     '''
@@ -267,7 +370,7 @@ def plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment,cmap='viridis_r'):
     ax.set_ylabel("height / m")
     col = plt.colorbar(pcol)
     col.set_label("number density / m-3", rotation=90)
-    return plt
+    return ax
 
 def plot_twomom_moments(ax,ax2,twomom,i_timestep,add_Dmean=True):
     '''
@@ -320,7 +423,7 @@ def plot_twomom_moments(ax,ax2,twomom,i_timestep,add_Dmean=True):
     #add legend
     ax.legend(axisqn,["cloud w.","cloud ice","rain","snow","graupel","hail"],loc='center right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
     
-    return plt
+    return ax
 
 def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
     '''
@@ -430,9 +533,9 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
     else: #if there is no qn in the plot label q
         ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
     
-    return plt
+    return ax
 
-def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
+def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_linestyle='None'):
     '''
     plot number and mass concentration of SB and McSnow over height
     INPUT:  ax: first x-axis
@@ -441,6 +544,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
             hei2massdens: dictionary with McSnow variables
             i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
             mass_num_flag: boolean which determines if the mass or the number flux should be plotted
+            forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); ATTENTION: forced linestyle comes with no labels
     '''
     import matplotlib.ticker
     #prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -462,7 +566,10 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
         axisqn = []
         for i,cat in enumerate(SB_specs):
             if ('qn' + cat) in twomom.keys() and any(twomom['qn' + cat][i_timestep,:])>0:
-                axisqn += ax2.semilogx(twomom['qn' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+                if forced_linestyle=='None':
+                    axisqn += ax2.semilogx(twomom['qn' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+                else:
+                    axisqn += ax2.semilogx(twomom['qn' + cat][i_timestep,:],twomom['heights'],color=colors[i],label='__None',linestyle=forced_linestyle)
                 if ('qn' + cat + '_std') in twomom.keys(): #add +- standard deviation in plot if available
                     ax2.semilogx(twomom['qn' + cat][i_timestep,:]-twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
                     ax2.semilogx(twomom['qn' + cat][i_timestep,:]+twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
@@ -477,7 +584,11 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
         #    color='r'
         for i,cat in enumerate(SB_specs):
             if ("q" + cat) in twomom.keys() and any(twomom['q' + cat][i_timestep,:])>0:
-                axisq += ax.semilogx(twomom['q' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+                if forced_linestyle=='None':
+                    axisq += ax.semilogx(twomom['q' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+                else:
+                    axisq += ax.semilogx(twomom['q' + cat][i_timestep,:],twomom['heights'],color=colors[i],label='__None',linestyle=forced_linestyle)
+
                 if ('q' + cat + '_std') in twomom.keys(): #add +- standard deviation in plot if available
                     ax2.semilogx(twomom['q' + cat][i_timestep,:]-twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
                     ax2.semilogx(twomom['q' + cat][i_timestep,:]+twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
@@ -541,9 +652,9 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2):
     #add legend
     ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
     
-    return plt
+    return ax
 
-def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep):
+def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep,forced_linestyle='None'):
     '''
     plot normalized mixing ratio/ mean particle mass (ratio of mass density and number density) of SB and McSnow over height
     INPUT:  ax: first x-axis
@@ -551,6 +662,7 @@ def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep):
             twomom: dictionary with (McSnows) two-moment variables
             hei2massdens: dictionary with McSnow variables
             i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
+            forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); ATTENTION: forced linestyle comes with no labels
     '''
     import matplotlib.ticker
     #prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -575,16 +687,20 @@ def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep):
     for i,cat in enumerate(SB_specs):
         twomom['nq' + cat] = twomom['q' + cat]/twomom['qn' + cat]
     for j,cat in enumerate(MC_specs):
-        hei2massdens['nq' + cat] = hei2massdens["Md" + cat]/hei2massdens["Nd" + cat]
-    #from IPython.core.debugger import Tracer ; Tracer()()
-
+        if any(hei2massdens["Md" + cat]>1e-7):
+            hei2massdens['nq' + cat] = hei2massdens["Md" + cat]/hei2massdens["Nd" + cat]
+    
     axisnq = [];axisDmean = [] #initialize handles
     McSNow_plot_only_every = 1 #plot not every height point of the noisy McSnow fluxes (for better visibility)
     for i,cat in enumerate(SB_specs): #['i','s','g','h','r','_all']):#TODO: include other categories when analyzing rimed cases 
-        if ('nq' + cat) in twomom.keys() and any(twomom['nq' + cat][i_timestep,:])>0:
-            axisnq += ax2.semilogx(twomom['nq' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+        if ('nq' + cat) in twomom.keys() and any(twomom['nq' + cat][i_timestep,:]>0):
+            if forced_linestyle=='None':
+                axisnq += ax2.semilogx(twomom['nq' + cat][i_timestep,:],twomom['heights'],color=colors[i],label=labellistSB[i])
+            else:
+                axisnq += ax2.semilogx(twomom['nq' + cat][i_timestep,:],twomom['heights'],color=colors[i],label='__None',linestyle=forced_linestyle)
+                
     for j,cat in enumerate(MC_specs):  #["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up #TODO: include other categories when analyzing rimed cases 
-        if ("nq" + cat) in hei2massdens.keys() and any(hei2massdens["nq" + cat][:])>0:
+        if ("nq" + cat) in hei2massdens.keys() and any(hei2massdens["nq" + cat][:]>0):
             axisnq += ax2.semilogx(hei2massdens["nq" + cat][::McSNow_plot_only_every],hei2massdens['z'][::McSNow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--')
 
     #change height limits and set y-label
@@ -615,7 +731,7 @@ def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep):
     #add legend
     ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
 
-    return plt
+    return ax
 
 def plot_atmo(ax,ax2,atmo):
     '''
@@ -660,9 +776,9 @@ def plot_atmo(ax,ax2,atmo):
     labs = [h.get_label() for h in handles]
     ax.legend(handles,labs,loc='upper right')
     #from IPython.core.debugger import Tracer ; Tracer()()
-    return plt
+    return ax
  
-def plot_vD_scatter(ax,v_SPlist,D_SPlist):
+def plot_vD_scatter(ax,v_SPlist,D_SPlist,xlog=False,ylog=False):
     '''
     plot velocity over diameter
     INPUT:  v_SPlist: fall speed for a list of SP
@@ -670,13 +786,18 @@ def plot_vD_scatter(ax,v_SPlist,D_SPlist):
     '''
     #plot the lists against each other
     ax.scatter(D_SPlist,v_SPlist,s=1,rasterized=True)
-    
+    if xlog:
+        ax.set_xscale("log")
+        ax.set_xlim([1e-5,3e-2])
+    if ylog:
+        ax.set_yscale("log")
     #define labels
     ax.set_xlabel("diameter of SP / m") #"normalized mixing ratio / kg",color="k")
     ax.set_ylabel("fall speed of SP / m s-1") #"normalized mixing ratio / kg",color="k")
     #set xlimits
-    ax.set_xlim(left=0)
-    return plt
+    if not xlog:
+        ax.set_xlim(left=0)
+    return ax
 #below plots for 3D-data 
 def pcolor_timeseries(fig,ax,time,height,var,varname='',time_formatted='None',lin_log=0,unit=''):
     '''

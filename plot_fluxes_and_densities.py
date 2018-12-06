@@ -59,7 +59,7 @@ twomom = dict()
 
 #if necessary change name of variables
 varlist = twomom_file.variables
-#read PAMTRA variables to pamData dictionary
+#read 2mom variables to twomom dictionary
 for var in varlist:#read files and write it with different names in Data
     twomom[var] = np.squeeze(twomom_file.variables[var])
 
@@ -75,7 +75,7 @@ if mass_num_flag==2:
 else: #in case there is no need for a second axis, just pass the first ax twice
     ax2 = ax
     
-plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
 
 #mass density
 mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
@@ -86,7 +86,7 @@ if mass_num_flag==2:
 else: #in case there is no need for a second axis, just pass the first ax twice
     ax2 = ax
     
-plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
 
 ##
 #plot normalized mixing ration (q/qn) labelling normq...
@@ -96,7 +96,7 @@ ax = plt.subplot2grid((number_of_plots, 1), (2, 0))
 
 ax2 = ax
     
-plt = __plotting_functions.plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep)
+ax = __plotting_functions.plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep)
 
 ############
 #plot fluxes
@@ -110,7 +110,7 @@ if mass_num_flag==2:
 else: #in case there is no need for a second axis, just pass the first ax twice
     ax2 = ax
     
-plt = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+ax = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
 
 #mass flux
 mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
@@ -121,11 +121,11 @@ if mass_num_flag==2:
 else: #in case there is no need for a second axis, just pass the first ax twice
     ax2 = ax
     
-plt = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+ax = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
 
 #save figure
 plt.tight_layout()
-if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create direktory if it does not exists
+if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create directory if it does not exists
     os.makedirs('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment)
 out_filestring = "/fluxes_" + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf', dpi=400)

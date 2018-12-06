@@ -39,7 +39,7 @@ MC_dir = os.environ["MC"]
 
 
 #read time which should be analyzed from testcase string
-date = int(re.search(r'day(.*?)hour', testcase).group(1)) #this line gets the date from the testcase string
+date = (re.search(r'day(.*?)hour', testcase).group(1)) #this line gets the date from the testcase string
 hour = int(re.search(r'hour(.*?)min', testcase).group(1)) #this line gets the hour from the testcase string
 minute = int(re.search(r'min(.*?)s', testcase).group(1)) #this line gets the min from the testcase string
 ssat = int(os.environ["ssat"]) #get supersaturation from governing script (this is the semi-idealized part of this setup)
@@ -47,9 +47,12 @@ ssat = int(os.environ["ssat"]) #get supersaturation from governing script (this 
 #convert time to s to find nearest output timestep
 analyzed_time_s = hour*3600+minute*60
 
-#TODO: choose file based on experiment name
-filename = "/data/inscape/icon/experiments/tripex_220km/METEOGRAM_patch002_joyce.nc"
-
+#read meteogram file
+veras_tripexpol_simul = "/data/inscape/icon/experiments/juelich/testbed/testbed_"
+if date=='20151124':
+    filename = "/data/inscape/icon/experiments/tripex_220km/METEOGRAM_patch002_joyce.nc"
+elif date.startswith('2018') or date.startswith('2019'): #TODO: this is a bit dirty in case you have other simulations in 2018/2019
+    filename = veras_tripexpol_simul + date + "/METEOGRAM_patch001_" + date + "_joyce.nc"
 #open netCDF4 file
 nc = netCDF4.Dataset(filename)
 #get formated string of date
@@ -64,7 +67,7 @@ twomom = dict()
 twomom["heights"] = nc.variables["height_2"] #mid-level height (relevant for most variables (except: W,.. )
 
 #TODO: do not hardcode average time
-average_time_s = 60*30 #120 minute average
+average_time_s = 60*60 #60 minute average
 timestep_end = np.argmin(np.absolute(nc.variables["time"][:]-analyzed_time_s-average_time_s))
 #print some info in terminal
 print 'analyzing time: ',time[timestep_start],' to: ',time[timestep_end]
@@ -78,7 +81,6 @@ for new_key,icon_key in zip(["temp","pres","qv","qc","qnc","qr","qnr","qi","qni"
     if new_key in ("qc","qnc","qr","qnr","qi","qni","qs","qns","qg","qng","qh","qnh"):
         twomom[new_key + '_std'] = twomom[new_key + '_std'][None,:] #add singleton dimension
 
-
 #twomom["temp"]=np.ones(twomom["temp"].shape)*273.15
 
 ###
@@ -90,7 +92,7 @@ iconData_atmo["T"]=twomom["temp"];iconData_atmo["rh"] = twomom["rhw"]; iconData_
 #calculate std also for rhi
 twomom["rhi_std"] = np.std(nc.variables[icon_key][timestep_start:timestep_end,:],axis=0)
 
-#ATTENTION: for testing fix atmosphere to some value
+#ATTENTION: for testing: fix atmosphere to some value
 #twomom["temp"]=np.ones(twomom["temp"].shape)*250.15
 #twomom["qv"]=np.ones(twomom["qv"].shape)*0.00010
 #twomom["pres"]=np.ones(twomom["pres"].shape)*101325.0
@@ -105,13 +107,15 @@ twomom["rhi_std"] = np.std(nc.variables[icon_key][timestep_start:timestep_end,:]
 #convert from mixing ratios [kg kg-1]/[kg-1] to absolute values [kg m-3]/[m-3]
 twomom["qi_spec"] = __general_utilities.q2abs(twomom["qi"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
 twomom["qni_spec"] = __general_utilities.q2abs(twomom["qni"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
-
+#do you want to use the later two??
+twomom["qs_spec"] = __general_utilities.q2abs(twomom["qs"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
+twomom["qns_spec"] = __general_utilities.q2abs(twomom["qns"],twomom["qv"],twomom["temp"],twomom["pres"],q_all_hydro=(twomom["qc"]+twomom["qr"]+twomom["qi"]+twomom["qs"]+twomom["qg"]+twomom["qh"]))
 ###
 #find maximum in number density to initialize McSnow
 ###
-criteria = 0 #0: choose global maximum of qni 1: choose lowest local maximum of qni 2. choose heighest level with RHi>100 #TODO: give this as an input by the governing script (kind of namelist)
+criteria = 0 #0: choose global maximum of qni 1: choose lowest local maximum of qni 2. choose heighest level with RHi>100 3. define an arbitrary height #TODO: give this as an input by the governing script (kind of namelist)
 #calculate anyway the initialization for all criterias to display them in panel but choose just one for the real initialization
-num_crit=3; i_crit = np.zeros(num_crit, dtype=np.int) #set number of possible criterias to choose initialization height
+num_crit=4; i_crit = np.zeros(num_crit, dtype=np.int) #set number of possible criterias to choose initialization height
 qi_init = np.zeros(num_crit); qni_init = np.zeros(num_crit) ; height_init = np.zeros(num_crit) #initialize arrays which contain the values for initialization
 i_crit[0] = int(np.argmax(twomom["qni"]));  #index of initialization height after criteria 0
 
@@ -120,7 +124,8 @@ oncemore = iter([True, False])
 i_loc_max_list = -1
 loc_max_list = scisi.argrelextrema(twomom["qni"][0], np.greater)[0]
 #from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
-while (twomom["qni"][0,loc_max_list[i_loc_max_list]]<qni_small) or next(oncemore): #move on to next local minimum if qni>qni_small is not fullfiled; next(oncemore) achieves that the while-clause is also executed for the actual interesting minimum (where qni_small is exceeded first)
+while (twomom["qni"][0,loc_max_list[i_loc_max_list]]<qni_small): # or next(oncemore): #move on to next local minimum if qni>qni_small is not fullfiled; next(oncemore) achieves that the while-clause is also executed for the actual interesting minimum (where qni_small is exceeded first)
+    print twomom["qni"][0,loc_max_list[i_loc_max_list]]
     i_crit[1] = loc_max_list[i_loc_max_list] #int(scisi.argrelextrema(twomom["qni"][0], np.greater)[0][-1]) #find first/next local maxima    
     #print i_loc_max_list,i_crit[1],twomom["qni"][0,loc_max_list[i_loc_max_list]],twomom["qi"][0,loc_max_list[i_loc_max_list]]
     i_loc_max_list-=1
@@ -129,14 +134,25 @@ while (twomom["qni"][0,loc_max_list[i_loc_max_list]]<qni_small) or next(oncemore
 try:
     i_crit[2] = np.where(twomom["rhi"]>100)[0][0] #find heighest level with RHi> 0
 except:
-    print "WARNING: complete profile is subsaturated with reference to ice cannot find heighest level with RHi> 0 in read_ICON_meteogram.py"
+    print "WARNING: complete profile is subsaturated with reference to -> ice cannot find heighest level with RHi> 0 in read_ICON_meteogram.py"
     i_crit[2] = -1
-
+    
+#criteria=4: define an arbitrary height for initialization
+height2init = 6000#define height for initialization here
+__,i_crit[3] = __general_utilities.find_nearest(twomom["heights"],height2init)
 
 for i in range(0,num_crit):
-    qi_init[i] = twomom["qi_spec"][0,i_crit[i]]
-    qni_init[i] = round(twomom["qni_spec"][0,i_crit[i]],0)
+    #if date.startswith('2018'):
+    #    qi_init[i] = twomom["qi"][0,i_crit[i]]+twomom["qs"][0,i_crit[i]]
+    #    qni_init[i] = round(twomom["qni"][0,i_crit[i]]+twomom["qs"][0,i_crit[i]],0)
+    #else:
+    qi_init[i] = twomom["qi_spec"][0,i_crit[i]]+twomom["qs_spec"][0,i_crit[i]]
+    qni_init[i] = round(twomom["qni_spec"][0,i_crit[i]]+twomom["qs_spec"][0,i_crit[i]],0)
     height_init[i] = round(twomom["heights"][i_crit[i]])
+
+#ATTENTION: remove this (just for testing)
+#qi_init[0] = 5e-4
+#qni_init[0] = 1e5
 
 #copy values from selected condition here to those who are written to file init_vals.txt later
 qi_init_sel = qi_init[criteria] 
@@ -145,7 +161,11 @@ height_init_sel = height_init[criteria]
 
 #get global maximum of qi+qs
 i_maxq = int(np.argmax(twomom["qi"]+twomom["qs"]))
+height_maxq = twomom["heights"][i_maxq]
+q_maxq = twomom["heights"][i_maxq]
+qn_maxq = twomom["heights"][i_maxq]
 
+from IPython.core.debugger import Tracer ; Tracer()()
 ####
 #in the following are the modifications (of the qv-profile) which makes the setup SEMI-idealized
 ####
@@ -184,7 +204,7 @@ with open(MC_dir + "/input/ecmwf_profile.txt","wb") as txtfile: #http://effbot.o
     for row in range(0,len(nc.variables["height_2"][:])):
         #ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [twomom["qv_fixed_rhi"][row]] ) #atmo_type=2 READ (unit,*,iostat=io) zz(i),tt(i),pp(i),qv(i),dummy
         #from IPython.core.debugger import Tracer ; Tracer()()
-        #ecmwf_writer.writerow([twomom["pres"][row]/100.] + [nc.variables["height_2"][row]] + [twomom["temp"][row]] + [1.0] +  [twomom["rh"][row]] ) #atmo_type=5 READ(unit,*,iostat=io) pp(i), zz(i), tt(i), dummy, rh(i)
+        #ecmwf_writer.writerow([nc.variables["height_2"][row]] + [270.15*np.ones_like(twomom["temp"][row])] + [twomom["pres"][row]] + [ssat_vec[row]] ) #atmo_type=5 READ(unit,*,iostat=io) pp(i), zz(i), tt(i), dummy, rh(i)
         ecmwf_writer.writerow([nc.variables["height_2"][row]] + [twomom["temp"][row]] + [twomom["pres"][row]] + [ssat_vec[row]] ) #atmo_type=2 READ (unit,*,iostat=io) zz(i),tt(i),pp(i),ssat(:)
         #print nc.variables["height_2"][row],twomom["temp"][row],twomom["pres"][row],twomom["qv"][row]
 txtfile.close()
@@ -192,6 +212,8 @@ txtfile.close()
 with open(MC_dir + "/input/init_vals.txt","wb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
     initvals_writer = csv.writer(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
     initvals_writer.writerow(["{:010.0f}".format(height_init_sel)] + ["{:010.0f}".format(qi_init_sel*10000000)] + ["{:010.0f}".format(qni_init_sel/100)])
+    initvals_writer.writerow(["{:010.0f}".format(height_init_sel)] + ["{:010.0f}".format(qi_init_sel*10000000)] + ["{:010.0f}".format(qni_init_sel/100)])
+
 txtfile.close()
 print "wrote init vals to:" + MC_dir + "/input/init_vals.txt"
 
@@ -231,7 +253,7 @@ if flag_plot_icons_var:
     hei2massdens=dict() #hei2massdens stays empty here
 
     i_timestep = 0 #dirty workaround: the variables do have just one timesteps here, because this is choose before
-    plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+    ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
     #add lines for the heights which can be used for initialization
     ax = add_possible_initialization_heights(ax,height_init)
     #mass density
@@ -243,7 +265,7 @@ if flag_plot_icons_var:
     else: #in case there is no need for a second axis, just pass the first ax twice
         ax2 = ax
         
-    plt = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+    ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
     #add lines for the heights which can be used for initialization
     ax = add_possible_initialization_heights(ax,height_init)
     #add panel with some information in text form

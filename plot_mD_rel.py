@@ -192,7 +192,7 @@ axes[3].set_xlabel("mass / kg")
 axes[3].set_ylabel("area / m2")
 #axes2.set_ylabel("relative diff. of \n SB cloud ice to McSnow")
 #set limits
-#axes2.set_ylim([-1,3])
+#axes[3].set_ylim([0,2])
 #show legend
 axes[3].legend()
 #axes2.legend()
@@ -207,13 +207,35 @@ A_MC = np.zeros(m_array.shape)
 v_SB_ice = np.zeros(m_array.shape)
 v_SB_snow = np.zeros(m_array.shape)
 
+#parameters from SB-scheme
 a_vel_icecosmo5 = 2.77e1; b_vel_icecosmo5 = 0.215790
+a_vel_ulis_ice = 2.60e1; b_vel_ulis_ice = 0.215790
 a_vel_snowSBB = 8.294000; b_vel_snowSBB = 0.125000
-v_SB_ice = a_vel_icecosmo5*(cloud_ice.a_ms*D_array**cloud_ice.b_ms)**(b_vel_icecosmo5)
+a_vel_icecosmo5nonsphere = 1.860; b_vel_icecosmo5nonsphere = 1.872; c_vel_icecosmo5nonsphere = 9.325e2 #fits to Ulis ice (despite the name) #this is as a function of the molten diameter
+a_vel_snowSBBnonsphere = 1.271; b_vel_snowSBBnonsphere = 1.252; c_vel_snowSBBnonsphere = 3.698e3
+
+
+v_SB_ice_cosmo5 = a_vel_icecosmo5*(cloud_ice.a_ms*D_array**cloud_ice.b_ms)**(b_vel_icecosmo5)
+v_SB_ulis_ice = a_vel_ulis_ice*(cloud_ice.a_ms*D_array**cloud_ice.b_ms)**(b_vel_ulis_ice)
 v_SB_snow = a_vel_snowSBB*(snow.a_ms*D_array**snow.b_ms)**(b_vel_snowSBB)
+#define a new array for the molten diameter (which goes into the Atlas-type formulation)
+D_array_molten = np.logspace(-12,-1,1001)#(cloud_ice.a_ms*D_array**cloud_ice.b_ms*6./(1000.*np.pi))**(1./.3)
+v_SB_icecosmo5nonsphere = a_vel_icecosmo5nonsphere-b_vel_icecosmo5nonsphere*np.exp(-c_vel_icecosmo5nonsphere*D_array_molten) #these are formulated as a melted diameter!!
+v_SB_snowSBBnonsphere = a_vel_snowSBBnonsphere-b_vel_snowSBBnonsphere*np.exp(-c_vel_snowSBBnonsphere*D_array_molten)
+
+#get the diameter as a maximum diamension from the molten diameter
+m_from_moltenD = 1000.*np.pi/6.*D_array_molten**3
+D_max_from_moltenD_ice = cloud_ice.a_geo*m_from_moltenD**cloud_ice.b_geo
+D_max_from_moltenD_snow = snow.a_geo*m_from_moltenD**snow.b_geo
+
+#m_for_Darray_ulis_ice #this is m(D) for the v(m)
+#from IPython.core.debugger import Tracer ; Tracer()()
 #axes[4].loglog(D_array,A_MC,linestyle='--',label="McSnow")
-axes[4].semilogx(D_array,v_SB_ice,color='blue',label="SB cloud ice")
+axes[4].semilogx(D_array,v_SB_ice_cosmo5,color='blue',label="SB cloud ice_cosmo5")
+axes[4].semilogx(D_array,v_SB_ulis_ice,color='blue',linestyle="--",label="SB cloud ulis_ice")
 axes[4].semilogx(D_array,v_SB_snow,color='green',label="SB snow")
+axes[4].semilogx(D_max_from_moltenD_ice,v_SB_icecosmo5nonsphere,color='blue',linestyle="-.",label="SB icecosmo5nonsphere")
+axes[4].semilogx(D_max_from_moltenD_snow,v_SB_snowSBBnonsphere,color='green',linestyle="-.",label="SB snowSBBnonsphere")
 #axes2.semilogx(D_array,(m_SB_ice-m_MC)/m_MC,color='red',label="|SB cloud ice - McSnow|/MC_snow")
 #define labels
 axes[4].set_xlabel("diameter / m")
@@ -221,26 +243,47 @@ axes[4].set_xlabel("diameter / m")
 axes[4].set_ylabel("fall speed / kg")
 #axes2.set_ylabel("relative diff. of \n SB cloud ice to McSnow")
 #set limits
-#axes2.set_ylim([-1,3])
+axes[4].set_xlim([1e-5,5e-2])
+axes[4].set_ylim([0,2])
 #show legend
 axes[4].legend()
 #axes2.legend()
 plt.tight_layout()
 
 ###
-#subplot 6: v vs D
+#subplot 6: v vs m
 ###
 #axes2 = axes[0].twinx()
 #plot in loglog
 Am_MC = np.zeros(m_array.shape)
-
-a_vel_icecosmo5 = 2.77e1; b_vel_icecosmo5 = 0.215790
-a_vel_snowSBB = 8.294000; b_vel_snowSBB = 0.125000
-vm_SB_ice = a_vel_icecosmo5*m_array**b_vel_icecosmo5
+#uncommented because we dont need them again
+#a_vel_icecosmo5 = 2.77e1; b_vel_icecosmo5 = 0.215790
+#a_vel_ulis_ice = 2.60e1; b_vel_ulis_ice = 0.215790
+#a_vel_snowSBB = 8.294000; b_vel_snowSBB = 0.125000
+#a_vel_icecosmo5nonsphere = 1.860; b_vel_icecosmo5nonsphere = 1.872; c_vel_icecosmo5nonsphere = 9.325e2 #fits to Ulis ice (despite the name)
+#a_vel_snowSBBnonsphere = 1.271; b_vel_snowSBBnonsphere = 1.252; c_vel_snowSBBnonsphere = 9.325e2 #3.698e3 
+###
+#power law
+###
+#ice
+vm_SB_ice_cosmo5 = a_vel_icecosmo5*m_array**b_vel_icecosmo5
+vm_SB_ulis_ice = a_vel_ulis_ice*m_array**b_vel_ulis_ice
+#snow
 vm_SB_snow = a_vel_snowSBB*m_array**b_vel_snowSBB
+###
+#Atlas-type
+###
+vm_SB_icecosmo5nonsphere = a_vel_icecosmo5nonsphere-b_vel_icecosmo5nonsphere*np.exp(-c_vel_icecosmo5nonsphere*D_array) #these are formulated as a molten diameter!!
+vm_SB_snowSBBnonsphere = a_vel_snowSBBnonsphere-b_vel_snowSBBnonsphere*np.exp(-c_vel_snowSBBnonsphere*D_array)
+
+#get mass from molten diameter
+m_from_moltenD = 1000.*np.pi/6.*D_array**3
 #axes[5].loglog(D_array,A_MC,linestyle='--',label="McSnow")
-axes[5].semilogx(m_array,vm_SB_ice,color='blue',label="SB cloud ice")
+axes[5].semilogx(m_array,vm_SB_ice_cosmo5,color='blue',label="SB ice_cosmo5")
+axes[5].semilogx(m_array,vm_SB_ulis_ice,color='blue',linestyle='--',label="SB ulis_ice")
 axes[5].semilogx(m_array,vm_SB_snow,color='green',label="SB snow")
+axes[5].semilogx(m_from_moltenD,vm_SB_icecosmo5nonsphere,color='blue',linestyle="-.",label="SB icecosmo5nonsphere")
+axes[5].semilogx(m_from_moltenD,vm_SB_snowSBBnonsphere,color='green',linestyle="-.",label="SB snowSBBnonsphere")
 #axes2.semilogx(D_array,(m_SB_ice-m_MC)/m_MC,color='red',label="|SB cloud ice - McSnow|/MC_snow")
 #define labels
 axes[5].set_xlabel("mass / m")
@@ -248,7 +291,8 @@ axes[5].set_xlabel("mass / m")
 axes[5].set_ylabel("fall speed / kg")
 #axes2.set_ylabel("relative diff. of \n SB cloud ice to McSnow")
 #set limits
-#axes2.set_ylim([-1,3])
+axes[5].set_xlim([1e-12,1e-2])
+axes[5].set_ylim([0,2])
 #show legend
 axes[5].legend()
 #axes2.legend()

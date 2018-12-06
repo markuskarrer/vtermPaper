@@ -36,6 +36,14 @@ def gen_shortest_strings_without_duplicate(count_len=4):
     return count_str
 
 
+def find_nearest(array, value):
+    '''
+    find element in ARRAY with smallest difference to VALUE
+    '''
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx],idx
+
 ################
 # some functions to convert atmospheric variables into  each other
 ################
@@ -258,3 +266,42 @@ def esat(T):
 ################
 #end:  some functions to convert atmospheric variables into  each other
 ################
+
+def mask_and_interpolate(x,y,mask_value,mask_smaller=True):
+    '''
+    this functions adds additional data points to the x and y array at exactly the "mask_value" and masks all the smaller (bigger) value for mask_smaller=True (mask_smaller=False)
+    '''
+    
+    #get a boolean vector where the points of the sign change (in this case: bigger or smaller than mask_value) is marked by True (1 element shorter than the original vector)
+    sign_changes = (np.diff(np.sign(y-mask_value)) != 0)
+    #get indices of the sign change
+    sign_changes_indices = np.where(sign_changes)[0]
+    sign_changes_posneg = np.diff(np.sign(y-mask_value))/2 #-1 for a negative +1 for a positive change  
+    x_at_maskedvalue = np.zeros(len(sign_changes_indices))
+    for i in range(0,len(sign_changes_indices)):
+        #for each sign change take the surrounding x- and y-value
+        if sign_changes_posneg[sign_changes_indices[i]]>0: #sign changes from negative to positive: insert before
+            x_around = x[sign_changes_indices[i]:(sign_changes_indices[i]+2)]
+            y_around = y[sign_changes_indices[i]:(sign_changes_indices[i]+2)]
+        elif sign_changes_posneg[sign_changes_indices[i]]<0: #sign changes from positive to negative: insert after
+            x_around = x[(sign_changes_indices[i]+1):(sign_changes_indices[i]+3)]
+            y_around = y[(sign_changes_indices[i]+1):(sign_changes_indices[i]+3)]
+        else: #no sign change at all (f.e. the spectral power is always below min_shown (here: mask_value)
+            x_around = [np.nan,np.nan]
+            y_around = [np.nan,np.nan]
+        #calculate interpolated values for y=mask_value
+        x_at_maskedvalue[i] = (x_around[1]-x_around[0])/(y_around[1]-y_around[0])*(mask_value-y_around[0])+x_around[0]
+        #insert the interpolated values
+        if y_around[1]-y_around[0]>0: #sign changes from negative to positive: insert before
+            x = np.insert(x,sign_changes_indices[i]+1,x_at_maskedvalue[i])
+            y = np.insert(y,sign_changes_indices[i]+1,mask_value)
+        elif y_around[1]-y_around[0]<0: #sign changes from positive to negative: insert after
+            x = np.insert(x,sign_changes_indices[i]+2,x_at_maskedvalue[i])
+            y = np.insert(y,sign_changes_indices[i]+2,mask_value)
+    #mask the arrays
+    y_masked = np.ma.array(y,mask=y<mask_value)
+    x_masked = np.ma.array(x,mask=y<mask_value)
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #x_masked_interpol = np.append([x_at_maskedvalue[0]],[x,x_at_maskedvalue[1]])
+    #y_masked_interpol = np.append([mask_value],[y,mask_value])
+    return x_masked,y_masked
