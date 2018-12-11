@@ -132,7 +132,7 @@ def pcol_height_diam(ax,diam,heights,var,mincol=-999,maxcol=-999,logcol=0,cmap='
     ax.set_xlabel('diameter / m ')
     ax.set_ylabel('height / m ')
     return ax
-def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False):
+def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor='auto'):
     '''
     plot pamtra output
     INPUT: pamData: dictionary with PAMTRA variables
@@ -143,14 +143,20 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False):
     #plot X-,Ka-,W-Band in three different colors
     #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
+        if forcedcolor=='auto':
+            color=np.array(['b','r','g'])[i]
+        else:
+            color=forcedcolor
+
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
             if nolabel:
                 label='__None'
             else:
                 label=label='{:5.1f}GHz'.format(pamData["frequency"][i])
-            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label=label)
+
+            ax.plot(pamData["Ze"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label=label)
         else:
-            ax.plot(pamData["Ze"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
+            ax.plot(pamData["Ze"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
     #set range
     ax.set_xlim([-40,55]) #range of Ze
     ax.set_ylim([0,pamData["height"][-1]])
@@ -160,7 +166,7 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False):
 
     return ax
 
-def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all'):
+def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all',forcedcolor='auto'):
     '''
     plot pamtra output
     INPUT: pamData: dictionary with PAMTRA variables (or the same naming)
@@ -169,29 +175,33 @@ def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all'):
     if pamData["height"].ndim>1: #the observational data have more heights (for each velocity) which are all the same
         pamData["height"] = pamData["height"][:,0]
     #create figure for plotting of pamtra output
-    
     #plot X-,Ka-,W-Band in three different colors
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
+        #take given color or set automatically
+        if forcedcolor=='auto':
+            color=np.array(['b','r','g'])[i]
+        else:
+            color=forcedcolor
         markersymbol = '' #deactivate marker by default
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
             if moment=='all' or moment=='swidth':
-                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='vDoppler':
                 if moment=='all': markersymbol='*'
-                ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+                ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='skewn':
                 if moment=='all': markersymbol='o'
-                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
 
         else:
             if moment=='all' or moment=='swidth':
-                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
+                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='vDoppler':
                 if moment=='all': markersymbol='*'
-                ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+                ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='skewn':
                 if moment=='all': markersymbol='o'
-                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=np.array(['b','r','g'])[i],linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5)
+                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
 
     #set range
     #from IPython.core.debugger import Tracer ; Tracer()()
@@ -246,9 +256,9 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
     ax.set_xlabel("Doppler velocity / m s-1")
     ax.set_ylabel("height / m")
     col = plt.colorbar(pcol)
-    col.set_label("spectral power / dB", rotation=90)
+    col.set_label("spectral power @" + str(freq) + "GHz / dB", rotation=90)
     #plot label of used frequency
-    plt.text(0.4, 4500, str(freq) + 'GHz', fontsize=12)
+    #plt.text(0.4, 4500, str(freq) + 'GHz', fontsize=12)
     
     return ax
 
@@ -271,33 +281,43 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
     #define number of heights in the waterfall plot
     dz_heights = 500. #interval of heights at which the spectra are plotted #n_heights = 10
     #get axis and spectrogram data from pamData
-    min_shown = -45. #minimum value shown in the diagram
+    min_shown = -35. #minimum value shown in the diagram
     max_shown = 20. #minimum value shown in the diagram
-
     Radar_Spectrum = np.squeeze(pamData["Radar_Spectrum"][:,freqindex,:]) #dimensions [height, nfft]
+   
     Radar_Velocity = np.squeeze(pamData["Radar_Velocity"][freqindex,:])  #dimension [nfft]
+    #normalize the Radar Spectrum
+    Radar_Spectrum_lin = 10.**(Radar_Spectrum/10.)
+    Radar_Spectrum_lin_normalized = Radar_Spectrum_lin[:,:-1]/abs(np.diff(Radar_Velocity))
+    Radar_Spectrum = 10.*np.log10(Radar_Spectrum_lin_normalized)
+    #crop the Radar_Velocity vector to be compatible with the Radar Spectrum shape
+    if Radar_Velocity.ndim==1: 
+        Radar_Velocity = Radar_Velocity[:-1]
+    else: #some observational data have a varying Radar Velocity with height
+        Radar_Velocity = Radar_Velocity[:,:-1]
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    
     height = np.squeeze(pamData["height"])
+    heightmax = 10000. #max(height)
     if height.ndim>1: #the observational data have the heightvector for each velocity bin saved
         height = height[:,0]   #the heights should be the same for each velocity bin, so we take just 0 here
-    for index_plot_heights,heights_dz in enumerate(range(int(max(height)),int(dz_heights),-int(dz_heights))):
+    for index_plot_heights,heights_dz in enumerate(range(int(heightmax),int(dz_heights),-int(dz_heights))):
         plot_height, index_radar_height = __general_utilities.find_nearest(height, heights_dz)
-        #from IPython.core.debugger import Tracer ; Tracer()()
-        #for i_height in range(height.shape[0]-1,1,-height.shape[0]/n_heights): #TODO select some heights here automatically #range(0,height.shape[0],height.shape[0]/n_heights):#
+
         if Radar_Velocity.ndim>1: #this is the case if the Radar_Velocity bins are changing with height
             Radar_Velocity_now = Radar_Velocity[index_radar_height,:] 
         else: 
             Radar_Velocity_now = Radar_Velocity
-        from scipy.stats import skew
-        print plot_height,'skew',skew(Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown])
+        #from scipy.stats import skew
+        #print plot_height,'skew',skew(Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown])
         #if skew(Radar_Spectrum[index_radar_height])>1:
         #    print plot_height,Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown]
-        #height_step = height[height.shape[0]/n_heights]-height[0] #difference between to subsequent heights in m #z_lim[1]/n_heights
+
         #save the base line for the spectrogram of each height
-        baseline = plot_height #height[i_height]
-        #if (i_height+height.shape[0]/n_heights)<(height.shape[0]-1): #this does not work for the highest spectrum
+        baseline = heights_dz #ATTENTION: here plotted is now not exactly the height from the radar data file#plot_height #height[i_height]
+
         topline = plot_height+dz_heights #height[i_height+height.shape[0]/n_heights]
-        #else:
-        #    topline = height[-1]+height[0]
+
         #define a scaling facor for dBz into the height y-axis
         mult_dBz = dz_heights/(max_shown-min_shown) #max((np.max(Radar_Spectrum[i_height])-min_shown),0.1) #2*n_heights #multiplicator for dBz on the y (height) axis to make it visible and not too large
         #mask out everything below mask_value and interpolate additional values to mask_value

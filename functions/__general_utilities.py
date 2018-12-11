@@ -301,7 +301,5 @@ def mask_and_interpolate(x,y,mask_value,mask_smaller=True):
     #mask the arrays
     y_masked = np.ma.array(y,mask=y<mask_value)
     x_masked = np.ma.array(x,mask=y<mask_value)
-    #from IPython.core.debugger import Tracer ; Tracer()()
-    #x_masked_interpol = np.append([x_at_maskedvalue[0]],[x,x_at_maskedvalue[1]])
-    #y_masked_interpol = np.append([mask_value],[y,mask_value])
+
     return x_masked,y_masked

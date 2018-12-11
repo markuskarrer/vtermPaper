@@ -332,6 +332,19 @@ def return_parameter_mD_AD_rel(experiment):
     mth = np.pi/6. * rhoi * Dth**3 #from McSnows mo_mass2diam.f90
     return mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam
 
+def read_init_vals(MC_dir):
+    '''
+    read heights of initialization and maximum qi+qs
+    '''
+    import csv
+    import os
+    with open(MC_dir + "/input/init_vals.txt","rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+        initvals_reader = csv.reader(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+        height_bounds = [0,10000] #set some default heigh-bounds
+        for i_row,row_content in enumerate(initvals_reader):
+            height_bounds[i_row] = int(row_content[0])
+            
+        return height_bounds
 def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None",space='loge'): #taken and adapted from mo_output.f90
     '''
     calculate the kernel estimate (adapted from McSnow's mo_output routines (f.e. write_distributions_meltdegree)

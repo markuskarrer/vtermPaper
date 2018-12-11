@@ -21,7 +21,7 @@ from functions import __plotting_functions
 from functions import __general_utilities
 
 #local functions
-def add_possible_initialization_heights(ax,heights):
+def add_vertical_lines(ax,heights):
     '''
     add vertical lines to the axis "as" to visualize the potential heights to initialize the model
     INPUT:  ax: axes on which the line should be added
@@ -115,10 +115,11 @@ twomom["qns_spec"] = __general_utilities.q2abs(twomom["qns"],twomom["qv"],twomom
 ###
 criteria = 0 #0: choose global maximum of qni 1: choose lowest local maximum of qni 2. choose heighest level with RHi>100 3. define an arbitrary height #TODO: give this as an input by the governing script (kind of namelist)
 #calculate anyway the initialization for all criterias to display them in panel but choose just one for the real initialization
-num_crit=4; i_crit = np.zeros(num_crit, dtype=np.int) #set number of possible criterias to choose initialization height
+num_crit=1; i_crit = np.zeros(num_crit, dtype=np.int) #set number of possible criterias to choose initialization height
 qi_init = np.zeros(num_crit); qni_init = np.zeros(num_crit) ; height_init = np.zeros(num_crit) #initialize arrays which contain the values for initialization
 i_crit[0] = int(np.argmax(twomom["qni"]));  #index of initialization height after criteria 0
 
+'''
 qni_small = 1.0; i=-1
 oncemore = iter([True, False])
 i_loc_max_list = -1
@@ -140,7 +141,7 @@ except:
 #criteria=4: define an arbitrary height for initialization
 height2init = 6000#define height for initialization here
 __,i_crit[3] = __general_utilities.find_nearest(twomom["heights"],height2init)
-
+'''
 for i in range(0,num_crit):
     #if date.startswith('2018'):
     #    qi_init[i] = twomom["qi"][0,i_crit[i]]+twomom["qs"][0,i_crit[i]]
@@ -161,11 +162,11 @@ height_init_sel = height_init[criteria]
 
 #get global maximum of qi+qs
 i_maxq = int(np.argmax(twomom["qi"]+twomom["qs"]))
-height_maxq = twomom["heights"][i_maxq]
-q_maxq = twomom["heights"][i_maxq]
-qn_maxq = twomom["heights"][i_maxq]
+height_maxq = float(twomom["heights"][i_maxq].data)
+q_maxq = twomom["qi_spec"][0,i_maxq]+twomom["qs_spec"][0,i_maxq]
+qn_maxq = twomom["qni_spec"][0,i_maxq]+twomom["qns_spec"][0,i_maxq]
 
-from IPython.core.debugger import Tracer ; Tracer()()
+
 ####
 #in the following are the modifications (of the qv-profile) which makes the setup SEMI-idealized
 ####
@@ -211,8 +212,8 @@ txtfile.close()
 #write hydrometeor init values to txt file
 with open(MC_dir + "/input/init_vals.txt","wb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
     initvals_writer = csv.writer(txtfile, delimiter=' ', quoting=csv.QUOTE_NONE, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
-    initvals_writer.writerow(["{:010.0f}".format(height_init_sel)] + ["{:010.0f}".format(qi_init_sel*10000000)] + ["{:010.0f}".format(qni_init_sel/100)])
-    initvals_writer.writerow(["{:010.0f}".format(height_init_sel)] + ["{:010.0f}".format(qi_init_sel*10000000)] + ["{:010.0f}".format(qni_init_sel/100)])
+    initvals_writer.writerow(["{:010.0f}".format(height_init_sel)] + ["{:010.0f}".format(qi_init_sel*10000000)] + ["{:010.0f}".format(qni_init_sel/100)]) #first row: information about initialization
+    initvals_writer.writerow(["{:010.0f}".format(height_maxq)] + ["{:010.0f}".format(q_maxq*10000000)] + ["{:010.0f}".format(qn_maxq/100)]) # second row: information about height of maximum mass
 
 txtfile.close()
 print "wrote init vals to:" + MC_dir + "/input/init_vals.txt"
@@ -236,7 +237,9 @@ if flag_plot_icons_var:
     #plot atmospheric variables
     __plotting_functions.plot_atmo(ax,ax2,iconData_atmo)
     #add lines for the heights which can be used for initialization
-    ax = add_possible_initialization_heights(ax,height_init)
+    ax = add_vertical_lines(ax,height_init)
+    ax = add_vertical_lines(ax,[height_maxq])
+
     ####################################
     #plot mixing ratio + number density
     ####################################
@@ -255,7 +258,9 @@ if flag_plot_icons_var:
     i_timestep = 0 #dirty workaround: the variables do have just one timesteps here, because this is choose before
     ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
     #add lines for the heights which can be used for initialization
-    ax = add_possible_initialization_heights(ax,height_init)
+    ax = add_vertical_lines(ax,height_init)
+    ax = add_vertical_lines(ax,[height_maxq])
+
     #mass density
     mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
 
@@ -267,7 +272,9 @@ if flag_plot_icons_var:
         
     ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
     #add lines for the heights which can be used for initialization
-    ax = add_possible_initialization_heights(ax,height_init)
+    ax = add_vertical_lines(ax,height_init)
+    ax = add_vertical_lines(ax,[height_maxq])
+
     #add panel with some information in text form
     ax = plt.subplot2grid((number_of_plots, 1), (3, 0))
     ax.axis("off")
@@ -278,14 +285,15 @@ if flag_plot_icons_var:
              '                                                 height:{:10.0f} m \n'.format(height_init[0]) + 
              '                                                 qi:       {:.2E} kg m-3 \n'.format(qi_init[0]) + 
              '                                                 qni:     {:.2E} m-3\n'.format(qni_init[0]) + 
-             '                   1) lowest local maximum of qni with qni>1: \n' + 
-             '                                                 height:{:6.0f}m\n'.format(height_init[1]) +
-             '                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[1]) + 
-             '                                                 qni:     {:.2E}m-3\n'.format(qni_init[1]) +
-             '                   2) heighest level with RHi>100%: \n' + 
-             '                                                 height:{:6.0f}m\n'.format(height_init[2]) +
-             '                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[2]) + 
-             '                                                 qni:     {:.2E}m-3\n'.format(qni_init[2]) +
+             
+             #'                   1) lowest local maximum of qni with qni>1: \n' + 
+             #'                                                 height:{:6.0f}m\n'.format(height_init[1]) +
+             #'                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[1]) + 
+             #'                                                 qni:     {:.2E}m-3\n'.format(qni_init[1]) +
+             #'                   2) heighest level with RHi>100%: \n' + 
+             #'                                                 height:{:6.0f}m\n'.format(height_init[2]) +
+             #'                                                 qi:      {:.2E}kg m-3\n'.format(qi_init[2]) + 
+             #'                                                 qni:     {:.2E}m-3\n'.format(qni_init[2]) +
              'the maximum of qi+qs is at :{:6.0f}m with qi+qs= {:.2E}kg m-3'.format(np.ma.getdata(twomom["heights"])[i_maxq],twomom["qi"][0,i_maxq]+twomom["qs"][0,i_maxq])
              )
     
