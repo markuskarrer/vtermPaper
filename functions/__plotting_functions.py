@@ -10,6 +10,29 @@ import __general_utilities
 #from IPython.core.debugger import Tracer ; Tracer()()
 
 
+# define some general functions which are useful for nice formatting of the plots
+
+def proper_font_and_fig_size(number_of_plots):
+    '''
+    optimize the appearance of the plot (figure size, fonts)
+    '''
+    
+    import matplotlib.pylab as pylab
+
+    #increase font sizes
+    params = {'legend.fontsize': 'large',
+        'figure.figsize': (15, 5),
+        'axes.labelsize': 'x-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
+        'axes.titlesize':'x-large',
+        'xtick.labelsize':'x-large',
+        'ytick.labelsize':'x-large'}
+    pylab.rcParams.update(params)
+    #define figure
+    figsize_height = 6.0/2.0*number_of_plots
+    fig, axes = plt.subplots(nrows=number_of_plots, ncols=1, figsize=(8.0,figsize_height))
+    
+    return fig,axes
+
 # define some plotting functions
 
 def plot1Dhist(x,bins,normed=1,facecolor='blue',alpha=1, 

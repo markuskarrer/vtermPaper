@@ -9,6 +9,7 @@ import subprocess
 #import other self-defined functions
 import __postprocess_McSnow
 import __postprocess_SB
+import __fallspeed_relations
 #from IPython.core.debugger import Tracer ; Tracer()()
 
 '''
@@ -17,7 +18,7 @@ plot the mass over diameter for the SB and the McSnow scheme
 
 #set up diameter array
 n_steps = 1001
-min_D = 1e-5; max_D = 3e-2
+min_D = 1e-5; max_D = 1e-1
 D_array = np.logspace(np.log10(min_D),np.log10(max_D),n_steps)
 
 #get parameter from McSnow in the state of Brdar&Seifert2018
@@ -85,7 +86,7 @@ axes[0].loglog(D_array[D_array>D_th_Jaggdent],m_Jaggdent[D_array>D_th_Jaggdent],
 #define labels
 axes[0].set_xlabel("diameter / m")
 #axes2.set_xlabel("diameter / m")
-axes[0].set_ylabel("mass / kg")
+axes[0].set_ylabel("mass / m s-1")
 #axes2.set_ylabel("relative diff. of \n SB cloud ice to McSnow")
 #set limits
 #axes2.set_ylim([-1,3])
@@ -198,6 +199,10 @@ axes[3].legend()
 #axes2.legend()
 plt.tight_layout()
 
+#calculate v vs D for unrimed McSnow (with constants from Brdar&Seifert2018 and KC05)
+v_MC_KC05 = __fallspeed_relations.calc_vterm("KC05",m_MC,D_array,A_MC)
+
+
 ###
 #subplot 5: v vs D
 ###
@@ -232,18 +237,21 @@ D_max_from_moltenD_snow = snow.a_geo*m_from_moltenD**snow.b_geo
 #from IPython.core.debugger import Tracer ; Tracer()()
 #axes[4].loglog(D_array,A_MC,linestyle='--',label="McSnow")
 axes[4].semilogx(D_array,v_SB_ice_cosmo5,color='blue',label="SB cloud ice_cosmo5")
-axes[4].semilogx(D_array,v_SB_ulis_ice,color='blue',linestyle="--",label="SB cloud ulis_ice")
-axes[4].semilogx(D_array,v_SB_snow,color='green',label="SB snow")
 axes[4].semilogx(D_max_from_moltenD_ice,v_SB_icecosmo5nonsphere,color='blue',linestyle="-.",label="SB icecosmo5nonsphere")
+axes[4].semilogx(D_array,v_SB_snow,color='green',label="SB snow")
 axes[4].semilogx(D_max_from_moltenD_snow,v_SB_snowSBBnonsphere,color='green',linestyle="-.",label="SB snowSBBnonsphere")
+#axes[4].semilogx(D_array,v_SB_ulis_ice,color='blue',linestyle="--",label="SB cloud ulis_ice")
+axes[4].semilogx(D_array,v_MC_KC05,color='red',label="McSnow")
+
+
 #axes2.semilogx(D_array,(m_SB_ice-m_MC)/m_MC,color='red',label="|SB cloud ice - McSnow|/MC_snow")
 #define labels
 axes[4].set_xlabel("diameter / m")
 #axes2.set_xlabel("diameter / m")
-axes[4].set_ylabel("fall speed / kg")
+axes[4].set_ylabel("fall speed / m s-1")
 #axes2.set_ylabel("relative diff. of \n SB cloud ice to McSnow")
 #set limits
-axes[4].set_xlim([1e-5,5e-2])
+axes[4].set_xlim([1e-4,1e-1])#[1e-5,5e-2])
 axes[4].set_ylim([0,2])
 #show legend
 axes[4].legend()
@@ -288,7 +296,7 @@ axes[5].semilogx(m_from_moltenD,vm_SB_snowSBBnonsphere,color='green',linestyle="
 #define labels
 axes[5].set_xlabel("mass / m")
 #axes2.set_xlabel("diameter / m")
-axes[5].set_ylabel("fall speed / kg")
+axes[5].set_ylabel("fall speed / m s-1")
 #axes2.set_ylabel("relative diff. of \n SB cloud ice to McSnow")
 #set limits
 axes[5].set_xlim([1e-12,1e-2])

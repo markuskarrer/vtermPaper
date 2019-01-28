@@ -214,7 +214,7 @@ def collect_values_of_comb(comb_dic,selected_keys,min_vals,max_vals,values_flag)
 create_spectra = False #calculate the spectra based on the input values 
 a_ms_ice = 1.58783; b_ms_ice = 2.56
 a_ms_snow =  0.038; b_ms_snow = 2.0
-for fallspeedmodel in ["Atlas","powerlaw","powerlawGaussvspread"]:
+for fallspeedmodel in ["Atlas","powerlaw"]:
     print fallspeedmodel
 
     comb_dic = dict() #initialize dictionary which includes the input parameter (f.e.  parameters of the size distribution) and the forward operated quantities
@@ -227,12 +227,12 @@ for fallspeedmodel in ["Atlas","powerlaw","powerlawGaussvspread"]:
     #define values for a highlighted combination (this is the red line)
     plot_highlighted_spectra = True
     qni_highlighted = 1e5
-    qs_highlighted = 1e-10 #1e-4
-    qns_highlighted = 2 #1e4
+    qs_highlighted = 1e-4
+    qns_highlighted = 1e4
     mu_ice_highlighted = 1.564
-    gam_ice_highlighted = 2.0 #0.8547
+    gam_ice_highlighted = 0.6 #0.8547
     mu_snow_highlighted = 1.0
-    gam_snow_highlighted = 1.0
+    gam_snow_highlighted = 2.0 #1.0
     turb_highlighted = 0.001
 
     qi=1e-4 #this is held fix because it is just scaling the spectra

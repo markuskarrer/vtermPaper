@@ -6,120 +6,213 @@ import matplotlib.colors as colors
 import matplotlib.pylab as pylab
 import csv #to read the txt files
 import os
+import glob #to get filename to list
 import subprocess
+import itertools#to read only certain lines of the txt files
+from matplotlib.colors import LogNorm
 #import other self-defined functions
 import __postprocess_McSnow
 import __postprocess_SB
 import __fallspeed_relations
+import __tools_for_processing_Jagg
+import __plotting_functions
 #from IPython.core.debugger import Tracer ; Tracer()()
 
 '''
-this code reads in properties from Jussis aggregate model and calculate+plots the following fallspeed
+this code reads in properties from Jussis aggregate model, calculate + plots the following fallspeed
+and fits different functions to each property (m-D,A-D,v-D for all fallspeed models)
 '''
 
+
 #define where the txt files with properties of the aggregates are stored
-prop_file_folder = "/home/mkarrer/Dokumente/Jussis_aggregation_model/Leonie_output/"
-
-
-
+prop_file_folder = "/data/optimice/Jussis_aggregates/"
 
 #read the properties of the aggregates into the particle_dic dictionary
-particle_types = ["dendrite","needles"]
-for particle_type in particle_types: 
-    
-    particle_dic = dict() #dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the pristine crystals and the properties of the aggregates (m,A,D,...)
-    particle_dic["particle_type"] = [] #type of the pristine crystals
-    particle_dic["N_monomer"] = [] #number of monomers
-    particle_dic["mass"] = [] #particle mass
-    particle_dic["area"] = [] #particle area
-    particle_dic["diam"] = [] #particle diameter
-    
-    for mean_size in ["50","100","650","1000"]: #loop over the mean size of the distribution of the pristine crystals
-        with open(prop_file_folder + particle_type +"_"+ mean_size +"_properties.txt","rb") as txtfile: #TODO: this is just one file! #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
-            prop_reader = csv.reader(txtfile, delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
-            for i_row,row_content in enumerate(prop_reader):
-                particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
-                particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],i_row)
-                particle_dic["mass"] = np.append(particle_dic["mass"],row_content[0])
-                particle_dic["area"] = np.append(particle_dic["area"],row_content[1])
-                particle_dic["diam"] = np.append(particle_dic["diam"],row_content[2])
+particle_types = ["needle"] #,"dendrite","plate","column"] # ,"bullet"rosette
+for particle_type in particle_types:
+    print "########################"
+    print "#####" + particle_type + "########"
+    print "########################"
+    particle_dic = __tools_for_processing_Jagg.init_particle_dict() #initialize dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the   
+    for filename in glob.glob(prop_file_folder +  particle_type + '*properties.txt'): #loop over all property files (with different mean sizes)
+        print "reading: " + filename
+        with open(filename,"rb") as txtfile: #TODO: this is just one file! #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+            prop_reader = csv.reader(filter(lambda row: row[0]!='#',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+
+            #define the monomer numbers to read in
+            N_mono_list = np.array([1,2,3,5,10,20,50,100,200,500,1000]) #-1 is the index shift
+            #for N_mono_now in N_mono_list: # magnitude in [1,10,100]: #itertools.islice (which is used for reading only certain rows in the txt files) just works with range() like input, so this is the workaround to be able to select all kind of monomer numbers
+            #    #for row_content in itertools.islice(prop_reader,N_mono_now-1,N_mono_now): #prop_reader: read one line from the property file and add this to the particle_dic dictionary
+            #    #print N_mono_now
+            for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
+                #N_mono_thisrow = row_content[0]
+                if row_content[0] in N_mono_list: #i_row==0 or i_row==4 or i_row==9:
+                    particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
+                    particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
+                    particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
+                    particle_dic["area"] = np.append(particle_dic["area"],row_content[2])
+                    particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
+                    
 
     #calculate the fall speeds for each available velocity model
-    for velocity_model in ["HW10"]:
-        particle_dic["vterm_" + velocity_model] = __fallspeed_relations.calc_vterm(velocity_model,particle_dic["mass"],particle_dic["diam"],particle_dic["area"])
+    for velocity_model in ["HW10","KC05","bohm"]:
+            try: #sometimes there is an empty array
+                particle_dic["vterm_" + velocity_model] = __fallspeed_relations.calc_vterm(velocity_model,particle_dic["mass"],particle_dic["diam"],particle_dic["area"])
+            except:
+                pass
 
-
-    print particle_dic,particle_dic["particle_type"].shape
+    print particle_dic #overview of the dictionary, might be helpful sometimes
 
     ###
     #plot the m-D, A-D and v-D relations
     ###
-
-    #increase font sizes
-    params = {'legend.fontsize': 'large',
-        'figure.figsize': (15, 5),
-        'axes.labelsize': 'x-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
-        'axes.titlesize':'x-large',
-        'xtick.labelsize':'x-large',
-        'ytick.labelsize':'x-large'}
-    pylab.rcParams.update(params)
-    #define figure
-    number_of_plots = 20
-    figsize_height = 6.0/2.0*number_of_plots
-    fig, axes = plt.subplots(nrows=number_of_plots, ncols=1, figsize=(8.0,figsize_height))
+    number_of_plots = 6 #28
+    
+    #optimize the appearance of the plot (figure size, fonts)
+    [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots)
 
     ###
-    #subplot 1: m vs D
+    #subplot 1: histogram and KDE of the data
     ###
-    #axes2 = axes[0].twinx()
-    #plot in loglog
+    
+    #self-defined discrete colormap
+    # define the colormap and the discrete boundaries (defined by the considered monomer numbers) and set up an array of the same colors (for line-plotting)
+    cmap = plt.cm.brg
+    bounds = np.append(N_mono_list,9999)
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    usecolors = pylab.cm.brg(np.linspace(0,1,N_mono_list.shape[0]))
 
+    #overlay the histograms corresponding to specific monomer numbers
+    i_ax=0
+    ax_dens = axes[i_ax].twinx() #second y-axis for density (derived by KDE)
 
-    for i_prop,prop in enumerate(["mass","area","vterm_HW10"]):
-        #minval = np.array([])[i_prop]
-        #loop for different scales
-        for i_scalex,scalex in enumerate(["linear","log"]):
-            for i_scaley,scaley in enumerate(["linear","log"]):
-                i_ax = i_prop*4+i_scalex*2+i_scaley
-                #change the scale (according to the loop)
-                if scalex=="log":
-                    axes[i_ax].set_xscale(scalex)
-                if scaley=="log":
-                    axes[i_ax].set_yscale(scaley)
+    #calculate the histogram and KDE for the monomer numbers in N_mono_list
+    for i,N_mono_now in enumerate(N_mono_list): 
+        diam_grid = np.logspace(-4,-1,50) #set up array of diameters (for bin edges and KDE-grid)
+        #calculate and plot histogram
+        #print particle_dic["N_monomer"] #==N_mono_now
+        hist = axes[i_ax].hist(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],bins=diam_grid,alpha=0.2,normed=False,color=usecolors[i])
+        axes[i_ax].set_xscale("log") #set x-axis to logarithmic
+        #estimate the PDF with KDE 
+        sigmai = 0.2 #0.62 #TODO: is there a way to better constrain this value
+        dens = __postprocess_McSnow.kernel_estimate(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],diam_grid,sigmai,weight="None",space='loge')   #TODO: is space='loge' appropriate
+        #print "dens", N_mono_now, dens
+        #plot the KDE-result
+        dens_handle = ax_dens.plot(diam_grid,dens,color=usecolors[i])
+        ax_dens.tick_params(axis="y",direction="in", pad=-27) #direction="in" is for the ticks; pad defines where the label is located (horizontally)
+        
+    #make labels for the histogram and density plot
+    axes[i_ax].set_xlabel("diameter / m")
+    axes[i_ax].set_ylabel("absolute counts")
+    ax_dens.set_ylabel("PDF")
 
-                #make the scatter-splot
-                #for particle_type,symbol in zip(particle_types,["s","o"]):
-                #select diameter array ,property array and monomer number with just these particle types
-                diam_for_this_particle_type = particle_dic["diam"] #[particle_dic["particle_type"]==particle_type]
-                prop_for_this_particle_type = particle_dic[prop] #[particle_dic["particle_type"]==particle_type]
-                Nmono_for_this_particle_type = particle_dic["N_monomer"] #[particle_dic["particle_type"]==particle_type]
-                im = axes[i_ax].scatter(diam_for_this_particle_type,prop_for_this_particle_type,s=1,c=Nmono_for_this_particle_type,rasterized=True,norm=colors.LogNorm())
+    #initialize an array which contains all fit results
+    fitresult_arr_dir_powerlaw_string = np.zeros((5,N_mono_list.shape[0],2)) #fit results (saved as floats) #dimensions: 0-> [mass,array]; 1-> monomer number; 2-> parameters (a,b) in fit
+    
+    fit_dic = dict() #initialize fit dictionary
+    #fit the m-D and A-D properties
+    for i_prop,prop in enumerate(["mass","area"]): #,"HWJussi","KCJussi"]):
+        print "fitting and plotting: ",prop
+        
+        i_ax = i_prop+1 #+1 because we plotted already the histogram
+        #change the scale (according to xscale_vec and yscale_vec)
+        axes[i_ax].set_xscale("log") #axes[i_ax].set_xscale(xscale_vec[i_prop]) 
+        axes[i_ax].set_yscale("log") #axes[i_ax].set_yscale(yscale_vec[i_prop])
+        
+        #plot the scatter plot (of mass and area for single particle) # use the colormap and the bounds which where defined before
+        im = axes[i_ax].scatter(particle_dic["diam"],particle_dic[prop],s=1,c=particle_dic["N_monomer"],rasterized=True,norm=norm,cmap=cmap) #,norm=colors.LogNorm(),cmap="gist_ncar")
 
-                #make fast labels
-                axes[i_ax].set_xlabel("diameter / m")
-                axes[i_ax].set_ylabel(prop)
+        #fit m-D and A-D relations
+        axes[i_ax],particle_dic = __tools_for_processing_Jagg.fitting_wrapper(axes[i_ax],particle_dic,prop,N_mono_list,usecolors,fit_dic,function="powerlaw")
+        
+        #make labels
+        axes[i_ax].set_xlabel("diameter / m")
+        axes[i_ax].set_ylabel(prop) #TODO: plot also the untis of these properties
 
-                if scaley=="linear":
-                    axes[i_ax].set_ylim([0,np.array([1e-5,1e-4,1.5])[i_prop]])
-                #add colorbar
-                cbar = fig.colorbar(im,ax=axes[i_ax])
-                cbar.set_label("monomer number")
-                # recompute the ax.dataLim
-                #axes[i_ax].relim()
-                # update ax.viewLim using the new dataLim
-                #axes[i_ax].autoscale_view()
+        #change the axis
+        axes[i_ax].set_ylim([0,np.array([1e-4,1e-3])[i_prop]]) #define the upper limit of the displayed axis
+        axes[i_ax].grid(which="minor")
+        #add colorbar
+        cbar = fig.colorbar(im,ax=axes[i_ax])
+        cbar.set_label("monomer number")
+        #shift ticks to the middle of the color
+        tick_locs = (bounds[:-1]) + 0.5*(bounds[1:]-bounds[:-1])
+        cbar.set_ticks(tick_locs)
+        cbar.set_ticklabels(N_mono_list)
+        
+        #add labels for the fit result to the plot
+        axes[i_ax] = __tools_for_processing_Jagg.add_fitresult_text(axes[i_ax],fit_dic,prop,N_mono_list,function="powerlaw")
 
+    #loop over different fall speed models
+    for i_prop,prop in enumerate(["vterm_bohm","vterm_HW10","vterm_KC05"]): #,"HWJussi","KCJussi"]):
+        print "fitting and plotting: ",prop
+        
+        
+        i_ax = i_prop+1+2 #+1 because we plotted already the histogram +2 because we plotted already mass and area
+        #change the scale (according to xscale_vec and yscale_vec)
+        axes[i_ax].set_xscale("log") #axes[i_ax].set_xscale(xscale_vec[i_prop]) 
+        axes[i_ax].set_yscale("linear") #axes[i_ax].set_yscale(yscale_vec[i_prop])
+        
+        #plot the scatter plot of the individual particle # use the colormap and the bounds which where defined before
+        im = axes[i_ax].scatter(particle_dic["diam"],particle_dic[prop],s=1,c=particle_dic["N_monomer"],rasterized=True,norm=norm,cmap=cmap) #,norm=colors.LogNorm(),cmap="gist_ncar")
+        
+        #calculate the terminal velocity based on the m-D and A-D fits and plot this line # use the colormap and the bounds which where defined before
 
+        velocity_model = prop[6:] #get the name of the fall speed model from the property name (prop) which starts with "vterm"
+        for i,N_mono_now in enumerate(N_mono_list):
+            fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)] = __fallspeed_relations.calc_vterm(velocity_model,fit_dic["mass" + "_Nmono_" + str(N_mono_now)],fit_dic["diam"],fit_dic["area" + "_Nmono_" + str(N_mono_now)])
+            im2 = axes[i_ax].plot(fit_dic["diam"],fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)],marker='None',c=usecolors[i]) #,norm=colors.LogNorm(),cmap="gist_ncar")
+        #now for all aggregates
+        fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmonoallagg"] = __fallspeed_relations.calc_vterm(velocity_model,fit_dic["mass" + "_Nmono_allagg"],fit_dic["diam"],fit_dic["area" + "_Nmono_allagg"])
+        im3 = axes[i_ax].plot(fit_dic["diam"],fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmonoallagg"],marker='None',c="black")
 
+        #fit an Atlas type to the "mean v-D" relations (derived from the A-D and m-D fits)
+        for i,str_monomer_agg in enumerate(["1","allagg"]): # make a power-law fit for the pristine crystals and the aggregate
+            [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas")
+            fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg] = fitresult #fitresult_arr_dir_powerlaw_string[0,i_N_mono] = fitresult #copy the A-D coefficients in the array
+            #recalculate A-B*exp(-gam*D) from fit
+            fit_dic[prop + "_Nmono_" + str_monomer_agg] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][0]-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][1]*np.exp(-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][2]*fit_dic["diam"]) #calculate arrays of masses and areas based on the m-D fits
+            im4 = axes[i_ax].plot(fit_dic["diam"],fit_dic[prop + "_Nmono_" + str_monomer_agg],marker='None',c=np.array(["b","black"])[i],linestyle="--") #,norm=colors.LogNorm(),cmap="gist_ncar")
+        #add labels for the fit result to the plot
+        axes[i_ax] = __tools_for_processing_Jagg.add_fitresult_text(axes[i_ax],fit_dic,prop,[1],function="Atlas")
+        
+        #make labels
+        axes[i_ax].set_xlabel("diameter / m")
+        axes[i_ax].set_ylabel(prop) #TODO: plot also the untis of these properties
+
+        #change the axis
+        #if yscale_vec[i_prop]=="linear": #scaley=="linear":
+        axes[i_ax].set_ylim([0,2.0]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
+        axes[i_ax].grid(which="major")
+        #else:
+        #    axes[i_ax].grid(which="minor")
+        #add colorbar
+        cbar = fig.colorbar(im,ax=axes[i_ax])
+        cbar.set_label("monomer number")
+        #shift ticks to the middle of the color
+        tick_locs = (bounds[:-1]) + 0.5*(bounds[1:]-bounds[:-1])
+        cbar.set_ticks(tick_locs)
+        cbar.set_ticklabels(N_mono_list)
+
+    for ax in [axes[0],ax_dens]:
+        #add a colorbar also for the histogram (which is stolen from the scatter plots)
+        cbar = fig.colorbar(im,ax=ax) #axes[0])
+        cbar.set_label("monomer number")
+        #shift ticks to the middle of the color
+        tick_locs = (bounds[:-1]) + 0.5*(bounds[1:]-bounds[:-1])
+        cbar.set_ticks(tick_locs)
+        cbar.set_ticklabels(N_mono_list)
+    
+    
+    #save the plot (and open it)
     plt.tight_layout()
-    dir_save = '/home/mkarrer/Dokumente/plots/'
+    dir_save = '/home/mkarrer/Dokumente/plots/Jagg/'
     if not os.path.exists(dir_save): #create direktory if it does not exists
         os.makedirs(dir_save)
     out_filestring = "Jagg_mD_AD_vD_" + particle_type
     plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
-    plt.savefig(dir_save + out_filestring + '.png', dpi=400)
+    plt.savefig(dir_save + out_filestring + '.png', dpi=100)
     print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
     subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
     plt.clf()
-    plt.cla()
     plt.close()
