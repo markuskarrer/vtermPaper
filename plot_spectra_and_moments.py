@@ -27,6 +27,7 @@ av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
 adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
 skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs) #ATTENTION: not completely implemented yet
+separated_by_categories = (os.environ["separated_by_categories"]=="True") #plot a line for individual categories also
 
 #directory of experiments
 directory = MC_dir + "/experiments/"
@@ -45,7 +46,7 @@ else: #no height limits if it is not run by the McSnow_Pamtra_ICONinit script
 #plot McSnow pamtra output
 try:
     ##############################
-    #now: plot PAMTRA output below
+    #now: plot PAMTRA output 
     ##############################
 
     #define file to read
@@ -99,48 +100,75 @@ except Exception:
 #plot SB pamtra output data
 try:
     ##############################
-    #now: plot PAMTRA output below
+    #now: plot PAMTRA output 
     ##############################
 
-    #define file to read
-    pam_filestring = directory + experiment + "/PAMTRA_2mom_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
+    if separated_by_categories:
+        category_list = ["_cat010000","_cat000100",""] #,"_cat001000","_cat000100"] #,"_cat000010","_cat000001"] #,""]
+    else:
+        category_list = [""]
+        
+    for i_cat,cat_now in enumerate(category_list): #loop over different category selections
+        #define file to read
+        pam_filestring = directory + experiment + "/PAMTRA_2mom_" + testcase + cat_now + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min.nc'
 
-    #read pamtra output to pamData dictionary
-    pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
-    if not "axrefl" in globals():
-        axrefl = plt.subplot2grid((num_plots, 1), (0, 0))
-    #plot reflectivities
-    axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData)
-    axrefl.plot(np.nan,np.nan,color='k',linestyle='--',label='McSnow')
-    axrefl.plot(np.nan,np.nan,color='k',linestyle='-',label='SB')
-    axrefl.legend()
-    axrefl.set_ylim([height_bounds[1],height_bounds[0]]) #this might be the range from the initialization height to the maximum of the masses
+        #read pamtra output to pamData dictionary
+        pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
+        if not "axrefl" in globals(): #in case McSnow has not been plotted above 
+            axrefl = plt.subplot2grid((num_plots, 1), (0, 0))
+        #plot reflectivities
+        if cat_now=="": #this is the full PAMTRA run with all categories
+            axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData)
+        else: 
+            axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData,onlyfreq=1,forcedcolor=np.array(['orange','black','red'])[i_cat],forcedlabel=np.array(['cloud ice','snow'])[i_cat])
 
-    #plot other radar-moments
-    try:
-        if not "axvDoppler" in globals(): #initialize axis if there was no McSnow output
-            axvDoppler = plt.subplot2grid((num_plots, 1), (1, 0))
-            axswidth = plt.subplot2grid((num_plots, 1), (2, 0))
-            axskewn = plt.subplot2grid((num_plots, 1), (3, 0))        
-            
-        axvDoppler = __plotting_functions.plot_pamtra_highermoments(axvDoppler,pamData,linestyle='-',moment='vDoppler')
-        axswidth = __plotting_functions.plot_pamtra_highermoments(axswidth,pamData,linestyle='-',moment='swidth')
-        axskewn = __plotting_functions.plot_pamtra_highermoments(axskewn,pamData,linestyle='-',moment='skewn')
-        for ax in [axvDoppler,axswidth,axskewn]:         #add legend
-            ax.plot(np.nan,np.nan,color='b',linestyle='-',label='9.6GHz')
-            ax.plot(np.nan,np.nan,color='r',linestyle='-',label='35.5GHz')
-            ax.plot(np.nan,np.nan,color='g',linestyle='-',label='95.0GHz')
-            ax.plot(np.nan,np.nan,color='k',linestyle='--',label='McSnow')
-            ax.plot(np.nan,np.nan,color='k',linestyle='-',label='SB')
-            ax.legend()
-            ax.set_ylim([height_bounds[1],height_bounds[0]]) #this might be the range from the initialization height to the maximum of the masses
+        if cat_now=="": #this is the full PAMTRA run with all categories
+            #add a label distinguishing the models
+            axrefl.plot(np.nan,np.nan,color='k',linestyle='-',label='SB')
+            axrefl.plot(np.nan,np.nan,color='k',linestyle='--',label='McSnow')
 
-    except Exception:
-        print ' \n \n in except: \n \n'
-        s = traceback.format_exc()
-        serr = "there were errors:\n%s\n" % (s)
-        sys.stderr.write(serr)
-        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple?"
+            axrefl.legend()
+            axrefl.set_ylim([height_bounds[1],height_bounds[0]]) #this might be the range from the initialization height to the maximum of the masses
+
+        else:
+            pass
+
+        #plot other radar-moments
+        try:
+            if not "axvDoppler" in globals(): #initialize axis if there was no McSnow output
+                axvDoppler = plt.subplot2grid((num_plots, 1), (1, 0))
+                axswidth = plt.subplot2grid((num_plots, 1), (2, 0))
+                axskewn = plt.subplot2grid((num_plots, 1), (3, 0))        
+                
+            #plot reflectivities
+            if cat_now=="": #this is the full PAMTRA run with all categories
+                axvDoppler = __plotting_functions.plot_pamtra_highermoments(axvDoppler,pamData,linestyle='-',moment='vDoppler')
+                axswidth = __plotting_functions.plot_pamtra_highermoments(axswidth,pamData,linestyle='-',moment='swidth')
+                axskewn = __plotting_functions.plot_pamtra_highermoments(axskewn,pamData,linestyle='-',moment='skewn')            
+            else: 
+                axvDoppler = __plotting_functions.plot_pamtra_highermoments(axvDoppler,pamData,onlyfreq=1,forcedcolor=np.array(['orange','black','red'])[i_cat],forcedlabel=np.array(['cloud ice','snow'])[i_cat],moment='vDoppler')
+                axswidth = __plotting_functions.plot_pamtra_highermoments(axswidth,pamData,onlyfreq=1,forcedcolor=np.array(['orange','black','red'])[i_cat],forcedlabel=np.array(['cloud ice','snow'])[i_cat],moment='swidth')
+                axskewn = __plotting_functions.plot_pamtra_highermoments(axskewn,pamData,onlyfreq=1,forcedcolor=np.array(['orange','black','red'])[i_cat],forcedlabel=np.array(['cloud ice','snow'])[i_cat],moment='skewn')
+
+            if cat_now=="": #this is the full PAMTRA run with all categories
+                for ax in [axvDoppler,axswidth,axskewn]:         #add legend
+                    ax.plot(np.nan,np.nan,color='b',linestyle='-',label='9.6GHz')
+                    ax.plot(np.nan,np.nan,color='r',linestyle='-',label='35.5GHz')
+                    ax.plot(np.nan,np.nan,color='g',linestyle='-',label='95.0GHz')
+                    ax.plot(np.nan,np.nan,color='k',linestyle='--',label='McSnow')
+                    ax.plot(np.nan,np.nan,color='k',linestyle='-',label='SB')
+                    ax.legend()
+                    ax.set_ylim([height_bounds[1],height_bounds[0]]) #this might be the range from the initialization height to the maximum of the masses
+            else:
+                for ax in [axvDoppler,axswidth,axskewn]:         #add legend
+                    ax.plot(np.nan,np.nan,color=np.array(['orange','black','red'])[i_cat],linestyle='-',label=np.array(['cloud ice','snow'])[i_cat])
+
+        except Exception:
+            print ' \n \n in except: \n \n'
+            s = traceback.format_exc()
+            serr = "there were errors:\n%s\n" % (s)
+            sys.stderr.write(serr)
+            print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple?"
     try:
         if not "axwaterfall" in globals():
             axwaterfall = plt.subplot2grid((num_plots, 1), (4, 0), rowspan=4)
@@ -184,6 +212,8 @@ subprocess.Popen(['evince','/home/mkarrer/Dokumente/plots/overview_panel/' + exp
 
 #plot spectrograms
 plt.clf() #clear figure
+
+
 
 for i_scheme,scheme in enumerate(["SB","MC"]):
     if scheme=="SB":

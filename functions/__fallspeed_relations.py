@@ -13,14 +13,18 @@ this code calculates different fallspeed models (f.e. taken from McSnow)
 #wrapper around different fall speed models
 
 def calc_vterm(velocity_model,mass,diam,area):
+    
     if velocity_model=='HW10':
         vterm = vterm_hw10(mass,diam,area,rho=1.287,eta=1.717696e-5)
     elif velocity_model=='KC05':
         vterm = vterm_kc05(mass,diam,area,rho=1.287,eta=1.717696e-5) 
     elif velocity_model=='bohm':
-        vterm = vterm_bohm(mass,diam,area,rho=1.287,eta=1.717696e-5)         
+        vterm = vterm_bohm(mass,diam,area,rho=1.287,eta=1.717696e-5)
+    elif velocity_model=='mitch_heym':
+        vterm = vterm_mitch_heym(mass,diam,area,rho=1.287,eta=1.717696e-5)
     else:
         print velocity_model + " not implemented (in functions/__fallspeed_relations.py"
+        
     return vterm
 
 '''#copied here from McSnow mo_mass2diam.f90
@@ -232,6 +236,9 @@ alias umount_MC='fusermount -u /home/mkarrer/Dokumente/McSnow'
 END FUNCTION vterm_bohm
 '''
 def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
+    '''
+    returns the fall speed with assumptions from B?hm (1992)
+    '''
     #!REAL(wp), PARAMETER :: X_0 = 2.8e6_wp
     #REAL(wp), PARAMETER :: lambda = 4.7_wp/1000.0_wp
     #REAL(wp) :: X_0
@@ -273,3 +280,90 @@ def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
     #! I (22)
     vterm_bohm = N_Re*eta/diam/rho
     return vterm_bohm
+'''
+#copied here from the P3 look-up table creator create_p3_lookupTable_1.f90
+! assume 600 hPa, 253 K for p and T for fallspeed calcs (for reference air density) #TODO: do we have to take this into account??
+ g   = 9.861                           ! gravity
+# p   = 60000.                          ! air pressure (pa)
+# t   = 253.15                          ! temp (K)
+# rho = p/(287.15*t)                    ! air density (kg m-3)
+# mu  = 1.496E-6*t**1.5/(t+120.)/rho    ! viscosity of air
+# dv  = 8.794E-5*t**1.81/p              ! diffusivity of water vapor in air
+# dt  = 10.                             ! time step for collection (s)
+
+! parameters for surface roughness of ice particle used for fallspeed
+! see mitchell and heymsfield 2005
+ del0 = 5.83
+ c0   = 0.6
+ c1   = 4./(del0**2*c0**0.5)
+ c2   = del0**2/4.
+
+! correction for turbulence
+!            if (d1.lt.500.e-6) then
+          a0 = 0.
+          b0 = 0.
+!            else
+!               a0=1.7e-3
+!               b0=0.8
+!            end if
+
+! fall speed for ice
+! Best number
+          xx = 2.*cs1*g*rho*d1**(ds1+2.-bas1)/(aas1*(mu*rho)**2)
+
+! drag terms
+          b1 = c1*xx**0.5/(2.*((1.+c1*xx**0.5)**0.5-1.)*(1.+c1*xx**0.5)**0.5)-a0*b0*xx** &
+               b0/(c2*((1.+c1*xx**0.5)**0.5-1.)**2)
+
+          a1 = (c2*((1.+c1*xx**0.5)**0.5-1.)**2-a0*xx**b0)/xx**b1
+
+! velocity in terms of drag terms
+          fall2(jj) = a1*mu**(1.-2.*b1)*(2.*cs1*g/(rho*aas1))**b1*d1**(b1*(ds1-bas1+2.)-1.)
+'''
+def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr=True):
+    '''
+    returns fall speed as assumed by Mitchel and Heymsfield (2005)
+    INPUT: 
+        mtot: array of masses
+        diam: array of diameters
+        area: array of projected areas
+    (OPTIONAL)
+        rho: air density
+        eta: air viscosity
+        turb_corr: apply turbulence correction
+    '''
+    #some constants (as assumed in P3)
+    g   = 9.861                           # gravity
+    
+    # parameters for surface roughness of ice particle used for fallspeed
+    #! see mitchell and heymsfield 2005
+    del0 = 5.83
+    c0   = 0.6
+    c1   = 4./(del0**2*c0**0.5)
+    c2   = del0**2/4.
+    
+    
+    if turb_corr:
+        '''
+        if False: #TODO: apply correction only for larger part of arrays # (diam < 500e-6): #no turbulence correction for small particles
+            a0 = 0.
+            b0 = 0.
+        else:
+            a0=1.7e-3
+            b0=0.8
+        '''    
+        #a0 and b0 should be arrays here
+        a0 = np.zeros_like(diam); b0 = np.zeros_like(diam)
+        a0[diam>500e-6]=1.7e-3
+        b0[diam>500e-6]=0.8
+        
+    # Best number
+    X = 2.*mtot* g*rho*diam**2 / (area*(eta*rho)**2) #restructured from: 2.*cs1*g*rho*d1**(ds1+2.-bas1)/(aas1*(mu*rho)**2)# cs1*d1**ds1=mass; d1=diam; aas1*d1**bas1=area
+    #drag terms
+    b1 = c1*X**0.5/(2.*((1.+c1*X**0.5)**0.5-1.)*(1.+c1*X**0.5)**0.5)-a0*b0*X**b0/(c2*((1.+c1*X**0.5)**0.5-1.)**2) #eq. 7
+    a1 = (c2*((1.+c1*X**0.5)**0.5-1.)**2-a0*X**b0)/X**b1 #eq. 6 
+    #velocity in terms of drag terms
+    vterm_mitch_heym = a1*eta**(1.-2.*b1)*(2*g/rho)**b1*(mtot/area)**b1*diam**(2*b1-1)#(2.*cs1*g/(rho*aas1))**b1*d1**(b1*(ds1-bas1+2.)-1.) #a1*eta**(1.-2.*b1)*(2.*cs1*g/(rho*aas1))**b1*d1**(b1*(ds1-bas1+2.)-1.) #eq. 11 and 12 inserted in eq 10
+    
+    return vterm_mitch_heym
+    

@@ -155,10 +155,17 @@ def pcol_height_diam(ax,diam,heights,var,mincol=-999,maxcol=-999,logcol=0,cmap='
     ax.set_xlabel('diameter / m ')
     ax.set_ylabel('height / m ')
     return ax
-def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor='auto'):
+def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor='auto',forcedlabel='auto',onlyfreq='None'):
     '''
     plot pamtra output
-    INPUT: pamData: dictionary with PAMTRA variables
+    INPUT:  pamData: dictionary with PAMTRA variables
+            linestyle: force a linestyle (default is '-')
+            marker: put optionally a marker to the lines
+            nolabel: if True then dont add a legend entry for this line
+            forcedcolor: if defined, select a color instead of the automatically selected one (which is defined by the frequency)
+            forcedlabel: if defined, select a label instead of the automatically selected one (which is the frequency)
+
+            onlyfreq: select one frequency (by its indice in the pamData["frequency"] list)
     '''
 
     #create figure for plotting of pamtra output
@@ -166,6 +173,9 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor
     #plot X-,Ka-,W-Band in three different colors
     #from IPython.core.debugger import Tracer ; Tracer()()
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
+        if not onlyfreq=='None':
+            if not onlyfreq==i: #skip all non-selected frequencies
+                continue
         if forcedcolor=='auto':
             color=np.array(['b','r','g'])[i]
         else:
@@ -175,7 +185,10 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor
             if nolabel:
                 label='__None'
             else:
-                label=label='{:5.1f}GHz'.format(pamData["frequency"][i])
+                if forcedlabel=='auto':
+                    label=label='{:5.1f}GHz'.format(pamData["frequency"][i])
+                else:
+                    label=forcedlabel
 
             ax.plot(pamData["Ze"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=20,label=label)
         else:
@@ -189,10 +202,17 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor
 
     return ax
 
-def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all',forcedcolor='auto'):
-    '''
+def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all',forcedcolor='auto',forcedlabel='auto',onlyfreq='None'):
+    ''' #TODO: there might not be a reason to distinguish between the reflectivity and other moments
     plot pamtra output
     INPUT: pamData: dictionary with PAMTRA variables (or the same naming)
+            linestyle: force a linestyle (default is '-')
+            marker: put optionally a marker to the lines
+            nolabel: if True then dont add a legend entry for this line
+            forcedcolor: if defined, select a color instead of the automatically selected one (which is defined by the frequency)
+            forcedlabel: if defined, select a label instead of the automatically selected one (which is the frequency) #TODO: not used here
+
+            onlyfreq: select one frequency (by its indice in the pamData["frequency"] list)
     '''
 
     if pamData["height"].ndim>1: #the observational data have more heights (for each velocity) which are all the same
@@ -200,6 +220,9 @@ def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all',f
     #create figure for plotting of pamtra output
     #plot X-,Ka-,W-Band in three different colors
     for i in range(0,len(pamData["frequency"])): #all available frequencies in the pamtra files are plotted
+        if not onlyfreq=='None':
+            if not onlyfreq==i: #skip all non-selected frequencies
+                continue
         #take given color or set automatically
         if forcedcolor=='auto':
             color=np.array(['b','r','g'])[i]
@@ -207,24 +230,26 @@ def plot_pamtra_highermoments(ax,pamData,linestyle='-',marker=' ',moment='all',f
             color=forcedcolor
         markersymbol = '' #deactivate marker by default
         if linestyle=='-': #just create labels for the first series of frequencies (which should have '-' as a linestyle)
+            
             if moment=='all' or moment=='swidth':
-                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
+                ax.plot(pamData["Radar_SpectrumWidth"][:,i] ,pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='vDoppler':
-                if moment=='all': markersymbol='*'
+                #ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
                 ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
+
             if moment=='all' or moment=='skewn':
                 if moment=='all': markersymbol='o'
-                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
+                ax.plot(pamData["Radar_Skewness"][:,i]      ,pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
 
         else:
             if moment=='all' or moment=='swidth':
-                ax.plot(pamData["Radar_SpectrumWidth"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5,label='__None')
+                ax.plot(pamData["Radar_SpectrumWidth"][:,i] ,pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='vDoppler':
                 if moment=='all': markersymbol='*'
                 ax.plot(pamData["Radar_MeanDopplerVel"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
             if moment=='all' or moment=='skewn':
                 if moment=='all': markersymbol='o'
-                ax.plot(pamData["Radar_Skewness"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
+                ax.plot(pamData["Radar_Skewness"][:,i]      ,pamData["height"],color=color,linestyle=linestyle,marker=markersymbol,markerfacecolor='None',markevery=5,label='__None')
 
     #set range
     #from IPython.core.debugger import Tracer ; Tracer()()

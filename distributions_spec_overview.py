@@ -30,6 +30,12 @@ skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no Mc
 #directory of experiments
 directory = MC_dir + "/experiments/"
 
+#small self-defined function
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx,array[idx]
+
 if not skipMC:
     ###
     #load SP-file (keys are: "m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat")
@@ -152,7 +158,7 @@ axes[0].legend()
 ###
 #increase font size
 params = {'legend.fontsize': 'large',
-    'figure.figsize': (15, 5),
+    'figure.figsize': (10, 5),
     'axes.labelsize': 'x-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
     'axes.titlesize':'x-large',
     'xtick.labelsize':'x-large',
@@ -280,6 +286,9 @@ axes[2].legend(ncol=3)
 ###
 #plot spectra
 ###
+#TODO: allow selection of specific heights
+use_here_defined_heights=True
+selected_heights=[5000,4700,3500]
 #get axis of subplot
 #ax = plt.subplot2grid((number_of_plots, 1), (i_plots+1, 0))
 try:
@@ -296,9 +305,19 @@ try:
     freqindex = 1 #TODO: query frequency
     i_lines = 0 #TODO loop over this
     heightstep = 10 #1000m if dz=100
-    for i_height in range(heightstep-1,pamData["height"].shape[0],heightstep):
-        #print pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:]
-        axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],-pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=[-4,0],ylims=[-50,30],logflag=0,color=colors[i_lines],linelabel="[{:5.0f}m,{:5.0f}m]".format(pamData["height"][i_height]-0.5*(pamData["height"][1]-pamData["height"][0]),pamData["height"][i_height]+0.5*(pamData["height"][1]-pamData["height"][0])),linestyle='--') #the labelling assumes that the pamtra-heightbins are equally spaced
+    
+    if use_here_defined_heights:
+        i_height_vector = np.array([])
+        for sel_height_now in selected_heights:
+            [index_nearest,value_nearest] = find_nearest(pamData["height"], sel_height_now)
+            i_height_vector = np.append(i_height_vector,index_nearest)
+    else:
+       i_height_vector =range(heightstep-1,pamData["height"].shape[0],heightstep) #plot lines of uniformly distributed heights according to heightstep
+    
+    
+    for i_height in i_height_vector: #range(heightstep-1,pamData["height"].shape[0],heightstep): #define height by hand by setting it i_height to a specific value
+        i_height = int(i_height) #with the numpy array version in the use_here_defined_heights this could crash otherwise
+        axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=[-4,0],ylims=[-50,30],logflag=0,color=colors[i_lines],linelabel="[{:5.0f}m,{:5.0f}m]".format(pamData["height"][i_height]-0.5*(pamData["height"][1]-pamData["height"][0]),pamData["height"][i_height]+0.5*(pamData["height"][1]-pamData["height"][0])),linestyle='--') #the labelling assumes that the pamtra-heightbins are equally spaced
         i_lines+=1
 
     
@@ -325,9 +344,20 @@ try:
     freqindex = 1 #TODO: query frequency
     i_lines = 0 #TODO loop over this
     heightstep = 10 #1000m if dz=100
-    for i_height in range(heightstep-1,pamData["height"].shape[0],heightstep):
-        xlims=[-4,0];ylims=[-60,30]
-        axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],-pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=xlims,ylims=ylims,logflag=0,color=colors[i_lines],linelabel="__none",linestyle='-')
+    if use_here_defined_heights:
+        i_height_vector = np.array([])
+        for sel_height_now in selected_heights:
+            [index_nearest,value_nearest] = find_nearest(pamData["height"], sel_height_now)
+            i_height_vector = np.append(i_height_vector,index_nearest)
+    else:
+       i_height_vector =range(heightstep-1,pamData["height"].shape[0],heightstep) #plot lines of uniformly distributed heights according to heightstep
+    
+    
+    for i_height in i_height_vector: #range(heightstep-1,pamData["height"].shape[0],heightstep): #define height by hand by setting it i_height to a specific value
+        xlims=[0,2];ylims=[-30,0]
+        i_height = int(i_height) #with the numpy array version in the use_here_defined_heights this could crash otherwise
+
+        axes[len(plot_vars)+raw_plots] = __plotting_functions.plot1Dhistline(axes[len(plot_vars)+raw_plots],pamData["Radar_Velocity"][freqindex,:],pamData["Radar_Spectrum"][i_height,freqindex,:],xlabel="Doppler velocity / m s-1",ylabel="spectral power / dB",xlims=xlims,ylims=ylims,logflag=0,color=colors[i_lines],linelabel="__none",linestyle='-')
         i_lines+=1
     #plot label of used frequency
     plt.text(xlims[0]+(xlims[1]-xlims[0])*0.001, ylims[1]-(ylims[1]-ylims[0])*0.07, str(pamData["frequency"][freqindex]) + 'GHz', fontsize=12)

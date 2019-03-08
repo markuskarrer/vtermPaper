@@ -148,8 +148,8 @@ def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail):
 
     #convert from N(m) to N(D) space
     for n_cat,curr_cat in enumerate((cloud_water,rain,cloud_ice,snow,graupel,hail)):	
-        curr_cat.a_ms = (1/curr_cat.a_geo)**(1/curr_cat.b_geo)
-        curr_cat.b_ms = 1/curr_cat.b_geo
+        curr_cat.a_ms = (1./curr_cat.a_geo)**(1./curr_cat.b_geo)
+        curr_cat.b_ms = 1./curr_cat.b_geo
         curr_cat.mu = curr_cat.b_ms*curr_cat.nu_SB+curr_cat.b_ms-1
         curr_cat.gam = curr_cat.b_ms*curr_cat.mu_SB
         curr_cat.Dmax = (curr_cat.xmax/curr_cat.a_ms)**(1./curr_cat.b_ms)
