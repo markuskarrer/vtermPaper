@@ -24,12 +24,85 @@ def init_particle_dict():
     
     return particle_dic
 
-def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
+def calc_mD_AD_coeffs(mono_type):
+    '''
+    calculate the coefficients in the m-D relation (m=aD**b)
+    INPUT: mono_type monomer habit name
+    OUTPUT: a_theor,b_theor: coefficients in m=a_theor*D**b_theor relation
+    '''
+    rho_i = 917.6 #define ice density
+
+    if mono_type=="dendrite":
+        #theoretical m-D relationships
+        a_theor=8.43e-2 #ATTENTION: this comes from the 1mum simulation fit
+        b_theor=2.36 #ATTENTION: this comes from the 1mum simulation fit
+        #theoretical A-D relationships
+        c_theor=np.nan
+        d_theor=np.nan
+    elif mono_type=="plate": #copied here from riming.py
+        #theoretical m-D relationships
+        a_theor=rho_i*3.*np.sqrt(3)/2./4*(1.737e-3)*(1./2.)**0.474
+        b_theor=2+0.474
+        #theoretical A-D relationships
+        c_theor=3.*np.sqrt(3)/2.
+        d_theor=2
+    elif mono_type=="needle":
+        #theoretical m-D relationships
+        a_theor=rho_i*3.*np.sqrt(3)/2.*(1.319e-3)**2
+        b_theor=2*0.437+1
+        #theoretical A-D relationships
+        c_theor=(1.+2./np.sqrt(2.))*1.319e-3
+        d_theor=1+0.437
+    elif mono_type=="rosette":
+        #theoretical m-D relationships
+        a_theor=np.nan #6.*(3.*np.sqrt(3.)/2.*(1./9.351)**(1./0.63)*)
+        b_theor=np.nan
+        #theoretical A-D relationships
+        c_theor=np.nan
+        d_theor=np.nan
+    elif mono_type=="bullet":
+        '''
+        #From Hong, 2007
+        alpha = 28*(np.pi/180.0)
+        f = np.sqrt(3)*1.552/np.tan(alpha)        
+        def L_func(L):
+            return 2*L + f*L**0.63 - D*1e6
+        #solve L from D numerically
+        self.L = brentq(L_func, 0, D*1e6/2.0) * 1e-6        
+        self.a = (1.552 * (self.L*1e6)**0.63) * 1e-6
+        self.t = np.sqrt(3)*self.a/(2*np.tan(alpha))
+        self.D = D
+        '''
+        #theoretical m-D relationships
+        a_theor=np.nan
+        b_theor=np.nan
+        #theoretical A-D relationships
+        c_theor=np.nan
+        d_theor=np.nan
+    elif mono_type=="column":
+        #theoretical m-D relationships
+        a_theor=rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
+        b_theor=2.
+        #theoretical A-D relationships
+        c_theor=(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
+        d_theor=1.5
+    elif mono_type=="spheroid":
+        #theoretical m-D relationships
+        a_theor=np.nan
+        b_theor=np.nan
+        #theoretical A-D relationships
+        c_theor=np.nan
+        d_theor=np.nan
+    return a_theor,b_theor,c_theor,d_theor
+
+def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None',habit='None',prop='None'):
     '''source: https://scipy-cookbook.readthedocs.io/items/FittingData.html
     fit any 2-dimensional data with different methods and target functions
     xdata: ordinate points
     ydata: coordinate points
     func: select the function to which the data should be fitted
+    habit: just used for modified power-law (get parameter from monomer)
+    prop: just used for modified power-law (parameters are different for mass and area)
     '''
 
 
@@ -42,10 +115,15 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
         #  log(y) = log(a) + b*log(x)
         #
 
-        
         x = np.log10(xdata)
         y = np.log10(ydata)
-        yerr = 2.0*  np.ones_like(ydata)  #*  1./weight #* 1./ydata #yerr / ydata  #as long as it is constant this doesnt matter
+        if weight=="None":
+            weight = 1./np.ones_like(ydata)
+        else:
+            pass #from IPython.core.debugger import Tracer ; Tracer()()
+        yerr=1./(weight)
+        #yerr=np.log10(yerr)
+        #from IPython.core.debugger import Tracer ; Tracer()()
 
         # define our (line) fitting function
         fitfunc = lambda p, x: p[0] + p[1] * x
@@ -62,19 +140,47 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
         #  y = a *(1+a_mod*N_mono)*x^(b*(1+b_mod*N_mono)
         #  log(y) = log(a*((1+a_mod*N_mono)) + b*(1+b_mod*N_mono)*log(x)
         #
+        if habit=='None':
+            print "a habit should be defined for the mod_powerlaw fit"
+            sys.exit()
+        if prop=='None':
+            print "the fitted property should be defined"
+            sys.exit()
+
+
+        #get m-D from the assumptions in the aggregate model
+        a,b,c,d = calc_mD_AD_coeffs(habit)
         
-        x = np.log10(xdata[0])
-        x2 = xdata[1]
+        #from IPython.core.debugger import Tracer ; Tracer()()
+        if prop=="mass":
+            x = np.log10(xdata[0]) #diameter
+            x2 = (xdata[1]) #monomer number
+            #first normalize y by the properties of the monomer
+            ydata = ydata/(a*xdata[0]**b)
+            #from IPython.core.debugger import Tracer ; Tracer()()
+            # define our (line) fitting function #inspired by: https://stackoverflow.com/questions/29374296/two-dimensional-fit-with-python
+            fitfunc = lambda p, x, x2: 1+p[0]*np.log10(x2) #(p[0]-p[0]*np.exp(p[1]*(x2-1)))+ p[2]*x  #+ p[1]*x2/(1+p[0]*(x2)) #*x**(p[1]*np.log10(x2)) * np.log10(a)*x**b #*(p[2])#p[0]*(1+p[1]*(x2-1)) + p[2]*(1+p[3]/(x2))* x
+            errfunc = lambda p, x, x2, y, err: (y - fitfunc(p, x, x2)) / err
+        elif prop=="area":
+            x = np.log10(xdata[0]) #diameter
+            x2 = np.log10(xdata[1]) #monomer number
+            #first normalize y by the properties of the monomer
+            ydata = ydata/(a*xdata[0]**b)
+            # define our (line) fitting function #inspired by: https://stackoverflow.com/questions/29374296/two-dimensional-fit-with-python
+            fitfunc = lambda p, x, x2: (1+p[0]*(x2+1)) + np.log10(c) + d*x # + p[1]*x2*x #*x**(p[1]*np.log10(x2)) * np.log10(a)*x**b #*(p[2])#p[0]*(1+p[1]*(x2-1)) + p[2]*(1+p[3]/(x2))* x
+            errfunc = lambda p, x, x2, y, err: (y - fitfunc(p, x, x2)) / err
 
+        if weight=="None":
+            weight = np.ones_like(ydata)   #ATTENTION: weighting by McSnow histogram turned off
+
+        #define weight
+        yerr=1./(ydata*weight)
+        yerr = np.log10(yerr)
+        #logarithmate the y-data
         y = np.log10(ydata)
-        yerr = 2.0*  np.ones_like(ydata)  #*  1./weight #* 1./ydata #yerr / ydata  #as long as it is constant this doesnt matter
-
-        # define our (line) fitting function #inspired by: https://stackoverflow.com/questions/29374296/two-dimensional-fit-with-python
-        fitfunc = lambda p, x, x2: p[0]*(1+p[1]*(x2-1)) + p[2]*(1+p[3]/(x2))* x
-        errfunc = lambda p, x, x2, y, err: (y - fitfunc(p, x, x2)) / err
-
+            
         #guess fit results first
-        pinit = [np.log10(0.01), 0.2,2.5,-0.2]
+        pinit = [2.0,-1e-3,0] #[np.log10(0.01), 0.2,2.5,-0.2]
 
 
     elif func=='Atlas':
@@ -87,7 +193,7 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
         
         #from IPython.core.debugger import Tracer ; Tracer()()
         if weight=='None': #dont apply any weighting
-            yerr = 2.0 * np.ones_like(ydata) #yerr / ydata  #as long as it is constant this doesnt matter
+            yerr = np.ones_like(ydata) #yerr / ydata  #as long as it is constant this doesnt matter
         else:
             yerr = 1./weight
             
@@ -106,8 +212,7 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
         out = optimize.leastsq(errfunc, pinit,
                         args=(x, y, yerr), full_output=1)
     elif method=='leastsq2D':
-        #print x1.shape,x2.shape,y.shape,pinit
-        #print x1,x2,y,pinit
+
         out = optimize.leastsq(errfunc, pinit,
                         args=(x, x2, y, yerr), full_output=1)
         #from IPython.core.debugger import Tracer ; Tracer()()
@@ -127,7 +232,7 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
         pfinal[0] = 10.0**pfinal[0]
     elif func=='mod_powerlaw': #convert the fitted variables back 
         #pfinal[ = pfinal[1]
-        pfinal[0] = 10.0**pfinal[0]
+        pass #pfinal[0] = 10.0**pfinal[0]
 
     elif func=='Atlas':
         pfinal = np.insert(pfinal,1,pfinal[0])
@@ -136,7 +241,7 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None'):
     return pfinal,covar # amp,index
 
 
-def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,function="powerlaw",linewidthinvalid=0.05,linewidthvalid=2.0,allagg=True,noplotting=False):
+def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,function="powerlaw",linewidthinvalid=0.9,linewidthvalid=2.0,allagg=True,plot_fits=False,plot_binary_fits=False, weight='None'):
     '''
     select a subset of the particle in the particle_dic and
     fit functions (e.g. power law, Atlas type) to a certain property
@@ -152,7 +257,8 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
         - linewidthinvalid: linewidth at diameter ranges where there is only sparse data (particle from the aggregate model)
         - linewidthvalid: linewidth at diameter ranges where there are sufficient particle from the aggregate model
         - allagg: fit a line also for all the selected aggregates
-        - noplotting: skip the plotting and calculate only the coefficients
+        - plot_fits: plot also the fit line for all monomer numbers and calculate the coefficients for all monomer numbers
+        - plot_binary_fits: plot fits for the monomer and all aggregates but not necessarily for all monomer numbers (see plot_fits)
     OUTPUT:
         - ax: the axis on which the fits are added as lines
     
@@ -173,7 +279,12 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
             break
         
         # make a fit for the current number of monomers (power-law; always directly to the points coming from the aggregate model)
-        [fitresult,covar] = fit_data(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],particle_dic[prop][particle_dic["N_monomer"]==N_mono_now],func=function,weight=fit_dic["dens" + "_Nmono_" + str(N_mono_now)])
+        if not isinstance(weight,str) and weight=='None':
+            [fitresult,covar] = fit_data(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],particle_dic[prop][particle_dic["N_monomer"]==N_mono_now],func=function,weight=weight)
+        elif ("dens" + "_Nmono_" + str(N_mono_now)) in fit_dic.keys(): #has the density estimate been calculated? if not no weighting is applied
+            [fitresult,covar] = fit_data(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],particle_dic[prop][particle_dic["N_monomer"]==N_mono_now],func=function) #,weight=fit_dic["dens" + "_Nmono_" + str(N_mono_now)])
+        else: 
+            [fitresult,covar] = fit_data(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],particle_dic[prop][particle_dic["N_monomer"]==N_mono_now],func=function)
             
         #save fit coeffients and calculate arrays of fitted masses and areas
         fit_dic[prop + "_coeff_Nmono_" + str(N_mono_now)] = fitresult #copy the A-D and m-D fit coefficients in the fit_dic dictionary
@@ -183,10 +294,10 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
         #plot the power-law (of mass or area)
         ###
         #seperate the plot according to the separation of sparse and dense enough data
-        if not noplotting:
-            ax.plot(fit_dic["diam"][fit_dic["diam_dens_enough_" + str(N_mono_now)]],fit_dic[prop + "_Nmono_" + str(N_mono_now)][fit_dic["diam_dens_enough_" + str(N_mono_now)]],color=usecolors[i_N_mono],linewidth=linewidthvalid) #here only the "valid" diameter ranges are plotted
-            ax.plot(fit_dic["diam"],fit_dic[prop + "_Nmono_" + str(N_mono_now)],color=usecolors[i_N_mono],linewidth=linewidthinvalid)#the thin line can be plotted on the whole range
-
+        if plot_binary_fits and N_mono_now==1:
+            #ax.plot(fit_dic["diam"][fit_dic["diam_dens_enough_" + str(N_mono_now)]],fit_dic[prop + "_Nmono_" + str(N_mono_now)][fit_dic["diam_dens_enough_" + str(N_mono_now)]],color=usecolors[i_N_mono],linewidth=linewidthvalid) #here only the "valid" diameter ranges are plotted
+            ax.plot(fit_dic["diam"],fit_dic[prop + "_Nmono_" + str(N_mono_now)],color=usecolors[i_N_mono],linewidth=linewidthinvalid,label="Nmono=1") #the thin line can be plotted on the whole range
+            
     if allagg==True:
         ##
         # make a fit for all aggregates in N_mono_list except N_mono=1 (power-law; always directly to the points coming from the aggregate model)
@@ -196,14 +307,14 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
             N_mono_matching_now = (N_mono_now==particle_dic["N_monomer"])
             N_mono_in_list = np.logical_or(N_mono_matching_now,N_mono_in_list)
         #fit to m-D and A-D coefficients for all particles with N_monomer>1
-        [fitresult,covar] = fit_data(particle_dic["diam"][N_mono_in_list],particle_dic[prop][N_mono_in_list],func='powerlaw')
+        [fitresult,covar] = fit_data(particle_dic["diam"][N_mono_in_list],particle_dic[prop][N_mono_in_list],func='powerlaw',weight=particle_dic["weight_by_MC"][N_mono_in_list]) #ATTENTION: here is the weighting from some McSnow run applied
         #save fit coeffients and calculate arrays of fitted masses and areas (for all particles with N_monomer>1)
         fit_dic[prop + "_coeff_Nmono_allagg"] = fitresult
         fit_dic[prop + "_Nmono_allagg"] = fit_dic[prop + "_coeff_Nmono_allagg"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_allagg"][1] #calculate arrays of masses and areas based on the m-D fits
-        if not noplotting:
+        if plot_binary_fits:
             #plot the power-law (for all particles with N_monomer>1)
-            ax.plot(fit_dic["diam"][fit_dic["diam_dens_enough_allagg"]],fit_dic[prop + "_Nmono_allagg"][fit_dic["diam_dens_enough_allagg"]],color='black',linewidth=linewidthvalid)
-            fitline_allagg, = ax.plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],color='black',linewidth=linewidthinvalid,label="Nmono>1")
+            #ax.plot(fit_dic["diam"][fit_dic["diam_dens_enough_allagg"]],fit_dic[prop + "_Nmono_allagg"][fit_dic["diam_dens_enough_allagg"]],color='black',linewidth=linewidthvalid)
+            fitline_allagg, = ax.plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],color='g',linewidth=linewidthinvalid,label="Nmono>1")
         else:
             fitline_allagg=0 #dummy
     else:
