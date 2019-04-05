@@ -37,22 +37,22 @@ def calc_mD_AD_coeffs(mono_type):
         a_theor=8.43e-2 #ATTENTION: this comes from the 1mum simulation fit
         b_theor=2.36 #ATTENTION: this comes from the 1mum simulation fit
         #theoretical A-D relationships
-        c_theor=np.nan
-        d_theor=np.nan
+        c_theor=0.2 #np.nan
+        d_theor=2 #np.nan
     elif mono_type=="plate": #copied here from riming.py
         #theoretical m-D relationships
         a_theor=rho_i*3.*np.sqrt(3)/2./4*(1.737e-3)*(1./2.)**0.474
         b_theor=2+0.474
         #theoretical A-D relationships
-        c_theor=3.*np.sqrt(3)/2.
+        c_theor=0.6 #3.*np.sqrt(3)/2.
         d_theor=2
     elif mono_type=="needle":
         #theoretical m-D relationships
         a_theor=rho_i*3.*np.sqrt(3)/2.*(1.319e-3)**2
         b_theor=2*0.437+1
         #theoretical A-D relationships
-        c_theor=(1.+2./np.sqrt(2.))*1.319e-3
-        d_theor=1+0.437
+        c_theor=2.4e-3 #(1.+2./np.sqrt(2.))*1.319e-3
+        d_theor=1.44 #1+0.437
     elif mono_type=="rosette":
         #theoretical m-D relationships
         a_theor=np.nan #6.*(3.*np.sqrt(3.)/2.*(1./9.351)**(1./0.63)*)
@@ -84,8 +84,8 @@ def calc_mD_AD_coeffs(mono_type):
         a_theor=rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
         b_theor=2.
         #theoretical A-D relationships
-        c_theor=(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
-        d_theor=1.5
+        c_theor=9.4e-3 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
+        d_theor=1.54 #1.5
     elif mono_type=="spheroid":
         #theoretical m-D relationships
         a_theor=np.nan
@@ -198,10 +198,14 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None',habit='N
             yerr = 1./weight
             
         #define fit function
-        fitfunc = lambda p, x: p[0] - p[0] * np.exp(-p[1]*x)
+        fitfunc = lambda p, x: p[0] - p[1] * np.exp(-p[2]*x)
+        #fitfunc = lambda p, x: p[0] - p[0] * np.exp(-p[1]*x) #if two parameters only
+
         errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
         #guess fit results first
-        pinit = [1.2, 1e3] #,1e3]
+        pinit = [1.2, 1.2 ,1e3]
+        #pinit = [1.2, 1e3] #if two parameters only
+
 
     else: 
         print "function: " + function + " not implemented"
@@ -235,7 +239,8 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None',habit='N
         pass #pfinal[0] = 10.0**pfinal[0]
 
     elif func=='Atlas':
-        pfinal = np.insert(pfinal,1,pfinal[0])
+        pass #
+        #pfinal = np.insert(pfinal,1,pfinal[0]) #if two parameters only
 
     
     return pfinal,covar # amp,index
@@ -322,8 +327,373 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
         
     return ax, particle_dic,fitline_allagg #particle_dic is returned, because vterm_..._calculated via mD_AD is added
 
+
+'''
+START: scripts of the rational function fit #THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!)
+'''
+'''
+def rational2d(x1, x2, p, q):
+    """
+    The general rational function description.
+    p is a list with the polynomial coefficients in the numerator
+    q is a list with the polynomial coefficients (except the first one)
+    in the denominator
+    The zeroth order coefficient of the denominator polynomial is fixed at 1.
+    Numpy stores coefficients in [x**2 + x + 1] order, so the fixed
+    zeroth order denominator coefficent must comes last. (Edited.)
+    """
+    return np.polynomial.polynomial.polyval2d(x1, x2, p) / np.polynomial.polynomial.polyval2d(x1,x2,q)
+
+def polynom(x1, x2, p):
+    return np.polynomial.polynomial.polyval2d(x1, x2, p)
+
+def rational2_2_pade(x, p00, p01, p02, p10, p11, p20, q00 , q01, q02, q10, q11, q20): 
+    x1,x2 = x
+    return rational2d(x1,x2, [[p00, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[q00, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
+
+def rational2_2_pade_fixp00(x, p01, p02, p10, p11, p20, q00 , q01, q02, q10, q11, q20): 
+    x1,x2 = x
+    return rational2d(x1,x2, [[1.0, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[q00, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
+
+def rational2_2_pade_fixq00(x, p00, p01, p02, p10, p11, p20, q01, q02, q10, q11, q20): #see Frick et. al (2013) GMD
+    x1,x2 = x
+    return rational2d(x1,x2, [[p00, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[1.0, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
+
+def rational2_2_pade_fixp00_and_fixq00(x, p01, p02, p10, p11, p20, q01, q02, q10, q11, q20):
+    x1,x2 = x
+    return rational2d(x1,x2, [[1.0, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[1.0, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
+
+def rational1_1_pade_fixp00_and_fixq00(x, p01, p10, p11, q01, q10, q11):
+    x1,x2 = x
+
+    return rational2d(x1,x2, [[1.0, p01], [p10, p11]], [[1.0, q01], [q10, q11]])
+
+def polynom1_1_pade_fixp00(x, p01, p10, p11): #, q01, q10, q11):
+    x1,x2 = x
+    return polynom(x1,x2, [[1.0, p01], [p10, p11]])
+
+
+def fit_2D_rational_function(xdata,ydata,func='rational2_2_pade',method='lm',weight='None',habit='None',prop='None',fixp00=False,fixq00=False):
+
+    """ 
+        fit a rational function ( https://en.wikipedia.org/wiki/Polynomial_and_rational_function_modeling ) for a 2-dimensional dataset
+        #code-parts are taken from:
+            https://stackoverflow.com/questions/28372597/python-curve-fit-with-multiple-independent-variables
+            https://stackoverflow.com/questions/29815094/rational-function-curve-fitting-in-python
+        xdata: ordinate points (2-dimensional)
+        ydata: coordinate points
+        method='lm': Levenberg-Marquardt algorithm through leastsq (as in Frick. et. al 2010, GMD)
+        func: select the function to which the data should be fitted (determining e.g. the order of the polynom)
+        habit: used to normalize by the monomer habit (get parameter from monomer)
+        prop: used to normalize by the monomer habit (parameters are different for mass and area)
+        
+    """    
+
+
+    if func=="rational2_2_pade":
+        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade, xdata, ydata, p0=(1.0, 0.0, 0.0, #[p00,p01, p02]
+                                                                                    0.0, 0.0,   #[p10, p11]
+                                                                                    0.0,        #[p20]
+                                                                                    1.0, 0.0,0.0,#[q00, q01,q02]
+                                                                                    0.0, 0.0,   #[q10, q11]
+                                                                                    0.0))       #[q20]
+    elif func=="rational2_2_pade_fixp00":
+        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade_fixp00, xdata, ydata, p0=(     0.0, 0.0, 
+                                                                                 0.0, 0.0, 
+                                                                                 0.0,   
+                                                                                 1000.0, 0.0,0.0,  
+                                                                                 0.0, 0.0, 
+                                                                                 0.0))
+    elif func=="rational2_2_pade_fixq00":
+
+        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade_fixq00, xdata, ydata, p0=( 1.0, -0.2, -0.0, 
+                                                                                        -0.2, 0.0,
+                                                                                        0.0,
+                                                                                            0.0,0.0,
+                                                                                        0.0, 0.0,
+                                                                                        0.0))
+        #from IPython.core.debugger import Tracer ; Tracer()()
+        print "\n\n\n\nfitcoeffs: \n", "     p00,        p01,       p02 \n", fitcoeffs[0:3], "\n     p10,        p11 \n", fitcoeffs[2:4], "\n   p20 \n", fitcoeffs[4],"\n             q01,      q02 \n", fitcoeffs[5:7], "\n     q10,    q11 \n", fitcoeffs[7:9], "\n    q20 \n", fitcoeffs[10], "\n\n\n"
+        
+    
+    elif func=="rational2_2_pade_fixp00_and_fixq00":
+        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade_fixp00_and_fixq00, xdata, ydata, p0=(      -0.2, -0.0, 
+                                                                                                    -0.2, 0.0,
+                                                                                                    0.0,
+                                                                                                        0.0,0.0,
+                                                                                                    0.0, 0.0,
+                                                                                                    0.0))
+    elif func=="rational1_1_pade_fixp00_and_fixq00":
+        fitcoeffs, pcov = optimize.curve_fit(rational1_1_pade_fixp00_and_fixq00, xdata, ydata, p0=(      0.0, 
+                                                                                                    0.0, 0.2,
+                                                                                                         0.0,
+                                                                                                    0.0 , 0.0))
+        print "\n\n\n\nfitcoeffs: \n", "     p01,       \n", fitcoeffs[0], "\n     p10      p11 \n", fitcoeffs[1:3] , "\n    q01,       \n", fitcoeffs[3], "\n   q10,  q11,       \n", fitcoeffs[4:6],  "\n\n\n"
+                                     
+        
+    elif func=="polynom1_1_pade_fixp00":
+        fitcoeffs, pcov = optimize.curve_fit(polynom1_1_pade_fixp00, xdata, ydata, p0=(      0.0, 
+                                                                                                    0.0, 0.0)) #,
+        
+                                                                                                    #0.0,
+                                                                                                    #0.0 , 0.0))
+        
+        print "\n\n\n\nfitcoeffs: \n", "     p01,       \n", fitcoeffs[0], "\n     p10      p11 \n", fitcoeffs[1:3] #, "\n             q01,       \n", fitcoeffs[3], "\n             q10,  q11,       \n", fitcoeffs[4:6],  "\n\n\n"
+                                                                                                    
+    else:
+        print "function: " + func + " not implemented in tools_for_processing_Jagg.fit_2D_rational_function "; sys.exit() 
     
     
+    return fitcoeffs
+
+
+END: scripts of the rational function fit #THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!)
+
+'''
+
+'''
+START: scripts of the "polynomial/rational function powerlaw" fit
+'''
+def rational(x, p, q):
+    """
+    The general rational function description.
+    p is a list with the polynomial coefficients in the numerator
+    q is a list with the polynomial coefficients (except the first one)
+    in the denominator
+    The zeroth order coefficient of the denominator polynomial is fixed at 1.
+    Numpy stores coefficients in [x**2 + x + 1] order, so the fixed
+    zeroth order denominator coefficent must comes last. (Edited.)
+    """
+    return np.polynomial.polynomial.polyval(x, p) / np.polynomial.polynomial.polyval(x,q)
+
+
+#polynom
+
+def polynom1_powerlaw(x, p0, p1, r0, r1):
+    '''
+    simple powerlaw with a and b in (a*x**b) depending on a second parameter (e.g. the monomer number)
+    '''
+    x1,x2 = x
+ 
+    return (p0+(p1*x2))+(r0+(r1*x2))*x1
+
+def polynom1_powerlaw_fixp0_fixr0(x, p1, r1):
+    '''
+    simple powerlaw with a and b in (a*x**b) depending on a second parameter (e.g. the monomer number)
+    '''
+    x1,x2 = x
+ 
+    return (p1*x2)+(r1*x2)*x1
+
+
+def polynom2_powerlaw_fixp00_and_fixq00(x, p1, p2, r1, r2):
+    
+    x1,x2 = x
+ 
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    return (1+p1*x2 + p2*x2**2)+(r1*x2 + r2*x2**2)*x1
+
+#rational
+
+def powerlaw_rational1_fixp0_fixr0(x, p1, q1, r1, s1):
+    
+    x1,x2 = x
+ 
+    return rational(x2, [0.0, p1], [1.0, q1]) + rational(x2, [0.0, r1], [1.0, s1])*x1
+
+def powerlaw_rational1(x, p0, p1, q1, r0, r1, s1):
+    
+    x1,x2 = x
+ 
+    return rational(x2, [p0, p1], [1.0, q1]) + rational(x2, [r0, r1], [1.0, s1])*x1
+
+def powerlaw_rational2_fixp0_fixr0(x, p1, p2, q1, q2, r1, r2,  s1, s2):
+    
+    x1,x2 = x
+ 
+    return rational(x2, [0.0, p1, p2], [1.0, q1, q2]) + rational(x2, [0.0, r1, r2], [1.0, s1, s2])*x1
+
+def powerlaw_rational2(x, p0, p1, p2, q1, q2, r0, r1, r2,  s1, s2):
+    
+    x1,x2 = x
+ 
+    return rational(x2, [p0, p1, p2], [1.0, q1, q2]) + rational(x2, [r0, r1, r2], [1.0, s1, s2])*x1
+
+def powerlaw_rational3_fixp0_fixr0(x, p1, p2, p3, q1, q2, q3, r1, r2, r3,  s1, s2, s3):
+    
+    x1,x2 = x
+ 
+    return rational(x2, [0.0, p1, p2, p3], [1.0, q1, q2, q3]) + rational(x2, [0.0, r1, r2, r3], [1.0, s1, s2, s3])*x1
+
+def powerlaw_rational3(x,  p0, p1, p2, p3, q1, q2, q3, r0, r1, r2,r3,  s1, s2, s3):
+    
+    x1,x2 = x
+ 
+    return rational(x2, [p0, p1, p2, p3], [1.0, q1, q2, q3]) + rational(x2, [r0, r1, r2, r3], [1.0, s1, s2, s3])*x1
+
+
+def fit_2D_rational_powerlaw_function(xdata,ydata,func='rational1_1_powerlaw_fixp00_and_fixq00',method='lm',weight='None',habit='None',prop='None',fixp00=False,fixq00=False):
+
+    ''' fit a rational function ( https://en.wikipedia.org/wiki/Polynomial_and_rational_function_modeling ) for a 2-dimensional dataset
+        #code-parts are taken from:
+            https://stackoverflow.com/questions/28372597/python-curve-fit-with-multiple-independent-variables
+            https://stackoverflow.com/questions/29815094/rational-function-curve-fitting-in-python
+        xdata: ordinate points (2-dimensional)
+        ydata: coordinate points
+        method='lm': Levenberg-Marquardt algorithm through leastsq (as in Frick. et. al 2010, GMD)
+        func: select the function to which the data should be fitted (determining e.g. the order of the polynom)
+        habit: used to normalize by the monomer habit (get parameter from monomer)
+        prop: used to normalize by the monomer habit (parameters are different for mass and area)
+    '''    
+    
+    if func=="powerlaw_polynom1_fixp0_fixr0":
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_polynom1_fixp0_fixr0, xdata, ydata, p0=(0.0 , 0.0))   #[a, b]    
+        
+        print "\n\n\n\nfitcoeffs: \n", "     p1,           p2, \n", fitcoeffs
+    
+    elif func=="powerlaw_polynom1":
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_polynom1, xdata, ydata, p0=(0.0 , 0.0, 0.0, 0.0))   #[a, b]    
+        
+        print "\n\n\n\nfitcoeffs: \n", "     p1,           p2, \n", fitcoeffs
+    
+    elif func=="powerlaw_rational1_fixp0_fixr0":
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational1_fixp0_fixr0, xdata, ydata, p0=( 0.0,   #[p1]
+                                                                                                        0.0,   #[q1]
+                                                                                                        0.0,   #[r1]
+                                                                                                        0.0,   #[s1]
+                                                                                                        ))
+        
+        print "\n\n\n\nfitcoeffs: \n", "     p1,           q2,          r1,       s1  \n", fitcoeffs
+    
+    elif func=="powerlaw_rational1":
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational1, xdata, ydata, p0=( 0.0,0.0,  #[p0,p1]
+                                                                                                0.0,    #[q1]
+                                                                                                0.0,0.0,    #[r0,r1]
+                                                                                                0.0,    #[s0,s1]
+                                                                                                        ))
+        print "\n\n\n\nfitcoeffs: \n", fitcoeffs
+
+    
+    elif func=="powerlaw_rational2_fixp0_fixr0":
+
+        #first perform the fit for one-degree polynomial less
+        fitcoeffs_for_guess, pcov = optimize.curve_fit(powerlaw_rational1_fixp0_fixr0, xdata, ydata, p0=( 0.0,   #[p1]
+                                                                                                        0.0,   #[q1]
+                                                                                                        0.0,   #[r1]
+                                                                                                        0.0,   #[s1]
+                                                                                                        ))
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational2_fixp0_fixr0, xdata, ydata, p0=( fitcoeffs_for_guess[0], 0.0,  #[p1,p2]
+                                                                                                fitcoeffs_for_guess[1], 0.0,    #[q1,q2]
+                                                                                                fitcoeffs_for_guess[2], 0.0,    #[r1,r2]
+                                                                                                fitcoeffs_for_guess[3], 0.0,    #[s1,s2]
+                                                                                                        ), maxfev=10000)
+        
+        print "\n\n\n\nfitcoeffs: \n", fitcoeffs
+
+    elif func=="powerlaw_rational2":
+
+        #first perform the fit for one-degree polynomial less
+        fitcoeffs_for_guess, pcov = optimize.curve_fit(powerlaw_rational1, xdata, ydata, p0=( 0.0,0.0,  #[p0,p1]
+                                                                                                0.0,    #[q1]
+                                                                                                0.0,0.0,    #[r0,r1]
+                                                                                                0.0,    #[s0,s1]
+                                                                                                        ))
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational2, xdata, ydata, p0=( 0.0,fitcoeffs_for_guess[0],fitcoeffs_for_guess[1],    #[p0,p1,p2]
+                                                                                        fitcoeffs_for_guess[2], 0.0,   #[q1,q2]
+                                                                                    0.0,fitcoeffs_for_guess[3], 0.0,   #[r0,r1,r2]
+                                                                                        fitcoeffs_for_guess[4], 0.0,   #[s1,s2]
+                                                                                                        ), maxfev=10000)
+        print "\n\n\n\nfitcoeffs: \n", fitcoeffs
+
+    elif func=="powerlaw_rational3_fixp0_fixr0":
+
+        #first perform the fit for one-degree polynomial less
+        fitcoeffs_for_guess, pcov = optimize.curve_fit(powerlaw_rational1_fixp0_fixr0, xdata, ydata, p0=( 0.0,   #[p1]
+                                                                                                        0.0,   #[q1]
+                                                                                                        0.0,   #[r1]
+                                                                                                        0.0,   #[s1]
+                                                                                                        ))
+        
+        fitcoeffs_for_guess2, pcov = optimize.curve_fit(powerlaw_rational2_fixp0_fixr0, xdata, ydata, p0=( fitcoeffs_for_guess[0], 0.0,    #[p0,p1,p2]
+                                                                                fitcoeffs_for_guess[1], 0.0,   #[q1,q2]
+                                                                                fitcoeffs_for_guess[2], 0.0,   #[r0,r1,r2]
+                                                                                fitcoeffs_for_guess[3], 0.0,   #[s1,s2]
+                                                                                                ), maxfev=10000)
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational3_fixp0_fixr0, xdata, ydata, p0=( fitcoeffs_for_guess2[0], fitcoeffs_for_guess2[1], 0.0,    #[p1,p2,p3]
+                                                                                                fitcoeffs_for_guess2[2], fitcoeffs_for_guess2[3], 0.0,    #[q1,q2,q3]
+                                                                                                fitcoeffs_for_guess2[4], fitcoeffs_for_guess2[5], 0.0,    #[r1,r2,r3]
+                                                                                                fitcoeffs_for_guess2[6], fitcoeffs_for_guess2[7], 0.0,    #[s1,s2,s3]
+                                                                                                        ), maxfev=10000)
+        
+        print "\n\n\n\nfitcoeffs: \n", fitcoeffs
+
+    elif func=="powerlaw_rational3":
+
+        #first perform the fit for one-degree polynomial less
+        fitcoeffs_for_guess, pcov = optimize.curve_fit(powerlaw_rational1, xdata, ydata, p0=( 0.0,0.0,  #[p0,p1]
+                                                                                                0.0,    #[q1]
+                                                                                                0.0,0.0,    #[r0,r1]
+                                                                                                0.0,    #[s0,s1]
+                                                                                                        ))
+        print fitcoeffs_for_guess
+        fitcoeffs_for_guess2, pcov = optimize.curve_fit(powerlaw_rational2, xdata, ydata, p0=( fitcoeffs_for_guess[0], fitcoeffs_for_guess[1], 0.0,  #[p0,p1,p2]
+                                                                                                fitcoeffs_for_guess[2], 0.0,    #[q1,q2]
+                                                                                                fitcoeffs_for_guess[3], fitcoeffs_for_guess[4], 0.0,    #[r0,r1,r2]
+                                                                                                fitcoeffs_for_guess[5], 0.0,    #[s1,s2]
+                                                                                                        ), maxfev=10000)
+        
+        print fitcoeffs_for_guess2
+
+        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational3, xdata, ydata, p0=( fitcoeffs_for_guess2[0],fitcoeffs_for_guess2[1],fitcoeffs_for_guess2[2], 0.0,   #[p0,p1,p2,p3]
+                                                                                                fitcoeffs_for_guess2[3],fitcoeffs_for_guess2[4], 0.0,    #[q1,q2,q3]
+                                                                                                fitcoeffs_for_guess2[5],fitcoeffs_for_guess2[6],fitcoeffs_for_guess2[7], 0.0,    #[r0,r1,r2,r3]
+                                                                                                fitcoeffs_for_guess2[8],fitcoeffs_for_guess2[9], 0.0,    #[s0,s1,s2,s3]
+                                                                                                        ), maxfev=10000)
+        print fitcoeffs
+
+        print "\n\n\n\nfitcoeffs: \n", fitcoeffs
+
+    
+        
+    return fitcoeffs
+
+
+"""
+END: scripts of the "rational function powerlaw" fit
+"""
+
+def fit_2D_rational_function_transformwrapper(diam,Nmono,ydata,func='powerlaw',method='lm',weight='None',habit='None',prop='None'):
+    """
+    here we do the transformation of the variables and the "educated guess"
+    """
+    #get m-D from the assumptions in the aggregate model
+    a,b,c,d = calc_mD_AD_coeffs(habit)
+    
+    #transform the data
+    diam_log = np.log10(diam)
+    Nmono_log = np.log10(Nmono)
+    
+    if prop=="mass":
+        #first normalize y by the properties of the monomer
+        ydata_normed = np.log10(ydata/(a*diam**b))
+    elif prop=="area":
+        #first normalize y by the properties of the monomer
+        ydata_normed = np.log10(ydata/(c*diam**d))
+
+    if "powerlaw" in func:
+        fitcoeffs = fit_2D_rational_powerlaw_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop)
+    elif "rational" in func: #ATTENTION: THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!), #functions for this method are currently commented
+        fitcoeffs = fit_2D_rational_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop)
+
+    return fitcoeffs
+
 def add_fitresult_text(ax,fit_dic,prop,N_mono_list,function="powerlaw",hide_Nmono_fits=False,allagg=True,N_mono_listforlabel=None):
     '''
     adds the coefficients of the fit result in the form of a text
@@ -339,20 +709,30 @@ def add_fitresult_text(ax,fit_dic,prop,N_mono_list,function="powerlaw",hide_Nmon
     '''
     if N_mono_listforlabel==None: #use the standard N_mono_list for labelling (this is the case for non-grouped fits)
         N_mono_listforlabel=N_mono_list
+
     
     #initialize a string with the result of the powerlaw and  Atlas-type fits
     if function=="powerlaw":
         fitresult_string = 'fit a*D**b         a                 b\n' #string which contains the fit results
+        fit_suffix = "" #dirty way to access right fit
+    elif function=="powerlaw_fallspeed":
+        fitresult_string = 'fit a*D**b         a                 b\n' #string which contains the fit results
+        fit_suffix = "_powerlaw" #dirty way to access right fit
     elif function=="Atlas":
         fitresult_string =    'fit A-B*exp(-C*D) A                B            C\n' #string which contains the fit results
+        fit_suffix = "" #dirty way to access right fit
     for i_list,N_mono_now in enumerate(N_mono_list):
         if (not hide_Nmono_fits) or N_mono_now==1:
-            fitresult_string += "Nmono=" + str(N_mono_listforlabel[i_list]) + ': ' + str(fit_dic[prop  + "_coeff_Nmono_" + str(N_mono_now)]) + '\n' #write the current fit result into the general string
+            fitresult_string += "Nmono=" + str(N_mono_listforlabel[i_list]) + ': ' + str(fit_dic[prop  + "_coeff_Nmono_" + str(N_mono_now) + fit_suffix]) + '\n' #write the current fit result into the general string
     if allagg:
-        fitresult_string += "Nmono>1: " + str(fit_dic[prop  + "_coeff_Nmono_allagg"]) + '\n'  #add also the result for all monomer numbers
+        fitresult_string += "Nmono>1: " + str(fit_dic[prop  + "_coeff_Nmono_allagg" + fit_suffix]) + '\n'  #add also the result for all monomer numbers
     
-    #add the text of the fitresult to the plot
-    ax.text(0.0,1.0,fitresult_string,horizontalalignment='left',verticalalignment='top',transform = ax.transAxes,fontsize=6) #transform: give number in relative axes units instead of data coords
+    if function=="powerlaw_fallspeed":
+        #add the text of the fitresult to the plot
+        ax.text(0.8,0.2,fitresult_string,horizontalalignment='left',verticalalignment='top',transform = ax.transAxes,fontsize=6) #transform: give number in relative axes units instead of data coords    
+    if function=="Atlas" or function=="powerlaw":
+        #add the text of the fitresult to the plot
+        ax.text(0.0,1.0,fitresult_string,horizontalalignment='left',verticalalignment='top',transform = ax.transAxes,fontsize=6) #transform: give number in relative axes units instead of data coords
 
     
     return ax
