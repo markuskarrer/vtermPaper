@@ -30,8 +30,71 @@ this code reads in properties from Jussis aggregate model and McSnow output and 
 '''
 
 
+def calc_histogram(diam_particle_array,N_mono_particle_array,low_diam_log=-4, high_diam_log=-1,nbins=40,weights="None"):
+    '''
+    calculate the histogram
+    INPUT:  diam_particle_array: array containing the diameter of all particles
+            N_mono_particle_array:array containing the monomer number of all particles
+            low_diam_log=-4, high_diam_log=-1,nbins=40 define the array of diameter
+            weights: possibility to apply weights (e.g. the multiplicity from McSnow)
 
-def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
+    OUTPUT: diam_edges,Nmono_edges: edges of the histogram
+            H values of the histogram
+    '''
+    
+    #set up array of diameters (for bin edges and KDE-grid) and the fitting
+    diam_edges = np.logspace(low_diam_log,high_diam_log,nbins) #set up array of diameters
+    Nmono_edges = np.array([2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,1e3,1e4,1e5])
+    
+    #calculate the histogram
+    if isinstance(weights,str):
+        H, xedges, yedges = np.histogram2d(diam_particle_array, N_mono_particle_array, bins=(diam_edges, Nmono_edges))
+    else:
+        H, xedges, yedges = np.histogram2d(diam_particle_array, N_mono_particle_array, bins=(diam_edges, Nmono_edges), weights=weights)
+        
+    return diam_edges,Nmono_edges,H
+
+def calc_median_prop_in_hist(diam_particle_array,N_mono_particle_array,area_particle_array,mass_particle_array,a,b,c,d,low_diam_log=-4, high_diam_log=-1,nbins=40,Nmono_edges=np.array([2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,1e3,1e4,1e5]),weights="None"):
+    '''
+    calculate the median of the area and mass in each bin
+    INPUT:  diam_particle_array: array containing the diameter of all particles
+            N_mono_particle_array:array containing the monomer number of all particles
+            area_particle_array: array containing the area of all particles
+            mass_particle_array: array containing the mass of all particles
+            a,b,c,d: coefficients of the monomer (m=aD**b; A=c*D**b)
+            low_diam_log=-4, high_diam_log=-1,nbins=40 define the array of diameter
+            weights: possibility to apply weights (e.g. the multiplicity from McSnow)
+            Nmono_edges: edges of monomer number
+    '''
+    
+    #set up array of diameters (for bin edges and KDE-grid) and the fitting
+    diam_edges = np.logspace(low_diam_log,high_diam_log,nbins) #set up array of diameters
+    #Nmono_edges = np.array([2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,1e3,1e4,1e5])
+
+    H_median_mass = np.zeros([Nmono_edges.shape[0],diam_edges.shape[0]]) #median mass in each bin
+    H_median_area = np.zeros([Nmono_edges.shape[0],diam_edges.shape[0]]) #median area in each bin
+    H_median_mass_ratio = np.zeros([Nmono_edges.shape[0],diam_edges.shape[0]]) #median mass in each bin (divided by monomer mass)
+    H_median_area_ratio = np.zeros([Nmono_edges.shape[0],diam_edges.shape[0]]) #median area in each bin (divided by monomer area)
+    for i_Nmono,Nmono_lowbound in enumerate(Nmono_edges[:-1]):
+        for i_diam,diam_lowbound in enumerate(diam_edges[:-1]):
+            diam_center = 10**((np.log10(diam_edges[i_diam])+np.log10(diam_edges[i_diam+1]))/2.)
+            #diam_log_center = 10**((np.log10(diam_edges[:-1])+np.log10(diam_edges[1:]))/2)
+
+            print "diam",diam_center
+            in_bin = np.logical_and(np.logical_and(np.logical_and(diam_edges[i_diam]<=diam_particle_array,diam_particle_array<diam_edges[i_diam+1]),Nmono_edges[i_Nmono]<=N_mono_particle_array),N_mono_particle_array<Nmono_edges[i_Nmono+1])
+            #print diam_edges[i_diam],diam_edges[i_diam+1],Nmono_edges[i_Nmono],Nmono_edges[i_Nmono+1],sum(in_bin),np.nanmean(mass_particle_array[in_bin]),(a*diam_center**b)#; raw_input("wait")
+
+            
+            H_median_mass[i_Nmono,i_diam] = np.nanmedian(mass_particle_array[in_bin])
+            H_median_area[i_Nmono,i_diam] = np.nanmedian(area_particle_array[in_bin])
+            H_median_mass_ratio[i_Nmono,i_diam] = np.nanmedian(mass_particle_array[in_bin])/(a*diam_center**b)
+            print np.nanmedian(mass_particle_array[in_bin]),(a*diam_center**b),"rat",H_median_mass_ratio[i_Nmono,i_diam]
+            H_median_area_ratio[i_Nmono,i_diam] = np.nanmedian(area_particle_array[in_bin])/(c*diam_center**d)
+            #if sum(in_bin)>10:
+            #    from IPython.core.debugger import Tracer ; Tracer()()
+    return H_median_mass,H_median_area,H_median_mass_ratio,H_median_area_ratio
+
+def N_D_Dmono_from_MC_and_Jagg(particle_type="plate"):
     
     #this function is necessary so that this script can be run by another script
     #print len(argv); raw_input() #TODO: this trick is conflicting with being called as an imported function
@@ -40,29 +103,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
     #else:
     noplotting = False
 
-    def calc_histogram(diam_particle_array,N_mono_particle_array,low_diam_log=-4, high_diam_log=-1,nbins=40,weights="None"):
-        '''
-        calculate the histogram
-        INPUT:  diam_particle_array: array containing the diameter of all particles
-                N_mono_particle_array:array containing the monomer number of all particles
-                low_diam_log=-4, high_diam_log=-1,nbins=40 define the array of diameter
-                weights: possibility to apply weights (e.g. the multiplicity from McSnow)
 
-        OUTPUT: diam_edges,Nmono_edges: edges of the histogram
-                H values of the histogram
-        '''
-        
-        #set up array of diameters (for bin edges and KDE-grid) and the fitting
-        diam_edges = np.logspace(low_diam_log,high_diam_log,nbins) #set up array of diameters
-        Nmono_edges = np.array([2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,1e3,1e4,1e5])
-        
-        #calculate the histogram
-        if isinstance(weights,str):
-            H, xedges, yedges = np.histogram2d(diam_particle_array, N_mono_particle_array, bins=(diam_edges, Nmono_edges))
-        else:
-            H, xedges, yedges = np.histogram2d(diam_particle_array, N_mono_particle_array, bins=(diam_edges, Nmono_edges), weights=weights)
-            
-        return diam_edges,Nmono_edges,H
 
     def plot_histogram(diam_edges,Nmono_edges,H,axes):
         '''
@@ -188,7 +229,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
     #################
 
     #define where the txt files with properties of the aggregates are stored
-    prop_file_folder = "/data/optimice/Jussis_aggregates/fromHPC/"
+    prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio/"
 
     grid_res = 10e-6
     if grid_res==40e-6:
@@ -204,7 +245,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
     ###
     #set up the figure
     ###
-    number_of_plots = 3 #28
+    number_of_plots = 2 #28
 
     #optimize the appearance of the plot (figure size, fonts)
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots)
@@ -223,6 +264,8 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
         if size_param_now>1000: #ignore all sizeparameter above ... or below ...
             continue
         print "reading: " + filename
+        #get m-D from the assumptions in the aggregate model (this is used at various places)
+        a,b,c,d = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)
 
         with open(filename,"rb") as txtfile: #TODO: this is just one file! #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
             prop_reader = csv.reader(filter(lambda row: row[0]!='#',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
@@ -232,14 +275,15 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
             if take_all_Nmono_bool:
                 N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,1))),np.array(range(100,1001,100)))
             else: #select certain monomer numbers
-                N_mono_list = np.array([1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100]) #-1 is the index shift
+                N_mono_list = np.array([1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100])
 
 
             for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
                 if row_content[0] in N_mono_list: #i_row==0 or i_row==4 or i_row==9:
                     particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
                     particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
-
+                    particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
+                    particle_dic["area"] = np.append(particle_dic["area"],row_content[2])
                     particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
                     particle_dic["sizeparam_index"] = np.append(particle_dic["sizeparam_index"],i_file) #
     print particle_dic #overview of the dictionary; might be helpful
@@ -271,7 +315,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
     #experiment = "1d__param_xi1000_nz250_lwc0_ncl0_ssat5_dtc5_nrp500_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500"
     experiment = ["1d__param_xi1000_nz250_lwc0_ncl0_ssat5_dtc5_nrp50_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500", #low qi #ssat=0.5%
                   "1d__param_xi1000_nz250_lwc0_ncl0_ssat5_dtc5_nrp500_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500",#medium qi
-                  "1d__param_xi10000_nz250_lwc0_ncl0_ssat5_dtc5_nrp5000_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500", #high qi
+                  #"1d__param_xi10000_nz250_lwc0_ncl0_ssat5_dtc5_nrp5000_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500", #high qi
                   "1d__param_xi1000_nz250_lwc0_ncl0_ssat10_dtc5_nrp50_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500", #low qi #ssat=1.0%
                   "1d__param_xi1000_nz250_lwc0_ncl0_ssat10_dtc5_nrp500_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500",#medium qi
                   "1d__param_xi10000_nz250_lwc0_ncl0_ssat10_dtc5_nrp5000_rm10_rt0_vt3_at2_stick1_dt1_meltt0_multt0_h0-0_ba500", #high qi
@@ -304,6 +348,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
     #get maximum height for plotting
     model_top = np.nanmax(SP['height'])
 
+    
     ###
     #subplot 2: histogram of McSnow
     ###
@@ -320,6 +365,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
         axes[i_ax].set_title("McSnow")
         #add number of SP on top
         axes[i_ax].text(0.1, 1.05, 'N_SP= ' +  str(SP["diam"].shape[0]), horizontalalignment='center', verticalalignment='center', transform=axes[i_ax].transAxes)
+        '''
         ###
         #subplot 3: ratio of Jagg/McSnow counts (this can be used as a weighting function for the fit)
         ###
@@ -329,7 +375,42 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
         axes,H = plot_histogram_ratio(diam_edges,Nmono_edges,H_MC,H_Jagg,axes) #diam_edges,Nmono_edges,H1,H2,axes
         axes[i_ax].set_title("weighting factor for fits: McSnow/Jagg")
         
+        ###
+        #subplot 3: median mass divided by momomer mass in bins
+        ###
+        i_ax+=1
+        axes[i_ax].set_xscale("log")
+        axes[i_ax].set_yscale("log")
 
+        #from IPython.core.debugger import Tracer ; Tracer()()
+        Nmono_edges = np.array([2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,1e3,1e4,1e5])
+        H_median_mass,H_median_area,H_median_mass_ratio,H_median_area_ratio = calc_median_prop_in_hist(particle_dic["diam"],particle_dic["N_monomer"],particle_dic["mass"],particle_dic["area"],a,b,c,d,low_diam_log=-4, high_diam_log=-1,nbins=40,Nmono_edges=Nmono_edges)
+        #from IPython.core.debugger import Tracer ; Tracer()()
+        pcol_mass = axes[i_ax].pcolor(diam_edges,Nmono_edges,H_median_mass_ratio,norm=colors.LogNorm())
+        #add colorbar
+        cbar = fig.colorbar(pcol_mass,ax=axes[i_ax])
+        cbar.set_label("median mass ratio / 1")
+        axes[i_ax].tick_params(axis='x', which='minor', bottom=False)
+        #set ticklabels
+        axes[i_ax].set_xlabel("Diameter D / m")
+        axes[i_ax].set_ylabel("Monomer number / 1")
+        ###
+        #subplot 4: median area divided by momomer area in bins
+        ###
+        i_ax+=1
+        axes[i_ax].set_xscale("log")
+        axes[i_ax].set_yscale("log")
+        
+        pcol_area = axes[i_ax].pcolor(diam_edges,Nmono_edges,H_median_area_ratio,norm=colors.LogNorm())
+        
+        #add colorbar
+        cbar = fig.colorbar(pcol_area,ax=axes[i_ax])
+        cbar.set_label("median proj. area / m2")
+        axes[i_ax].tick_params(axis='x', which='minor', bottom=False)
+        #set ticklabels
+        axes[i_ax].set_xlabel("Diameter D / m")
+        axes[i_ax].set_ylabel("Monomer number / 1")
+        '''
         #save the plot (and open it)
         plt.tight_layout()
         dir_save = '/home/mkarrer/Dokumente/plots/Jagg/'
@@ -338,12 +419,15 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="needle"):
         out_filestring = "McSnow_Jagg_comparison_" + particle_type + "_gridres" + str(grid_res)
         plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
         plt.savefig(dir_save + out_filestring + '.png', dpi=100)
+        
         print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
         subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
         plt.clf()
         plt.close()
+        
+        H=np.zeros_like(H_MC)
     return diam_edges,Nmono_edges,H_MC,H_Jagg,H
-
+    
 if __name__ == "__main__":
    	# stuff only to run when not called via 'import' here
 	#execute this function

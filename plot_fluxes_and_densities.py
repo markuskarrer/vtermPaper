@@ -26,17 +26,28 @@ testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
 skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs)
+skipSB = (os.environ["skipSB"]=="True") #allows to hide plots for SB
 
+if "McSnow_geom_specifier_onestring" in  os.environ.keys():
+    McSnow_geom_specifier_onestring = os.environ["McSnow_geom_specifier_onestring"]
+else:
+    McSnow_geom_specifier_onestring = ''
+if "separated_by_sensruns" in os.environ.keys():
+    separated_by_sensruns = (os.environ["separated_by_sensruns"]=="True") #plot a line for different sensitivity runs
+    separated_by_sensruns_onestring= os.environ["model_setup_specifier_onestring"]
+else:
+    print "separated_by_sensruns not found in environ: set to False"
+    separated_by_sensruns = False
+if "switch_off_processes" in os.environ.keys():
+    switch_off_processes_str = os.environ["switch_off_processes"]
+else:
+    switch_off_processes_str = ''
+if "McSnow_geom_list" in os.environ.keys():
+    McSnow_geom_list_str = os.environ["McSnow_geom_list"]
+else:
+    McSnow_geom_list_str = ''
 #directory of experiments
 directory = MC_dir + "/experiments/"
-
-#read hei2massdens to get average /summed up values per height
-filestring_hei2massdens = directory + experiment + "/hei2massdens.dat"
-timestep = tstep/60 #TODO: do not hardcode the 30 minute output interval here
-if skipMC:
-    hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep,empty_flag=True) #get empty arrays with the same dimension as the true arrays in order to not plot the McSnow data
-else:
-    hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep)
 
 number_of_plots = 5
 
@@ -46,88 +57,139 @@ fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
 #get timestep
 i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
 
-#######
-#read twomoment-data
-#######
-#define filestring
-filestring = directory + experiment + "/twomom_d.dat"
+#plot different lines for different sensitivity runs
+if separated_by_sensruns:
+    sensrun_list = separated_by_sensruns_onestring
 
-#load netCDF4 file
-twomom_file = Dataset(directory + experiment + '/twomom_d.ncdf',mode='r')
-#create dictionary for all variables from twomom_d.ncdf
-twomom = dict()
+    sensrun_list = separated_by_sensruns_onestring.split('_')
+else:
+    sensrun_list = [""]
+#plot different lines for different McSnow geometries
+McSnow_geom_list = McSnow_geom_specifier_onestring.split('_')
 
-#if necessary change name of variables
-varlist = twomom_file.variables
-#read 2mom variables to twomom dictionary
-for var in varlist:#read files and write it with different names in Data
-    twomom[var] = np.squeeze(twomom_file.variables[var])
+axnum = plt.subplot2grid((number_of_plots, 1), (0, 0))
+axmass = plt.subplot2grid((number_of_plots, 1), (1, 0))
+axmean = plt.subplot2grid((number_of_plots, 1), (2, 0))
+axnumflux = plt.subplot2grid((number_of_plots, 1), (3, 0))
+axmassflux = plt.subplot2grid((number_of_plots, 1), (4, 0))
 
-####################################
-#plot mixing ratio + number density
-####################################
-#number density
-mass_num_flag = 0 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB sensitivity runs
+    for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list): #loop over different McSnow geometry sensitivity runs
+        if separated_by_sensruns:#modify the experiment string
+            experiment_splitted = experiment.split('_',2) #this results e.g. in ['1d', 'powerlawJplate', 'xi10000000_
+            experiment_splitted[1] = sensrun_now #replace experiment part
+            experiment = "_".join(experiment_splitted)
 
-ax = plt.subplot2grid((number_of_plots, 1), (0, 0))
-if mass_num_flag==2:
-    ax2 = ax.twiny()
-else: #in case there is no need for a second axis, just pass the first ax twice
-    ax2 = ax
-    
-ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+        if len(McSnow_geom_list)>1:#modify the experiment string
+            experiment_splitted = experiment.split('_',3) #this results e.g. in ['1d', 'powerlawJplate', 'xi10000000_
+            experiment_splitted[2] = sensrun_now_MC #replace experiment part
+            experiment = "_".join(experiment_splitted)
 
-#mass density
-mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
 
-ax = plt.subplot2grid((number_of_plots, 1), (1, 0))
-if mass_num_flag==2:
-    ax2 = ax.twiny()
-else: #in case there is no need for a second axis, just pass the first ax twice
-    ax2 = ax
-    
-ax = __plotting_functions.plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
 
-##
-#plot normalized mixing ration (q/qn) labelling normq...
-##
-#calculate q/qn respectively Md/Nd
-ax = plt.subplot2grid((number_of_plots, 1), (2, 0))
+        #read hei2massdens to get average /summed up values per height
+        filestring_hei2massdens = directory + experiment + "/hei2massdens.dat"
+        timestep = tstep/60 #TODO: do not hardcode the 30 minute output interval here
+        if skipMC:
+            hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep,empty_flag=True) #get empty arrays with the same dimension as the true arrays in order to not plot the McSnow data
+        else:
+            hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep)
+            
+        #######
+        #read twomoment-data
+        #######
+        #define filestring
+        filestring = directory + experiment + "/twomom_d.dat"
+        #load netCDF4 file
+        twomom_file = Dataset(directory + experiment + '/twomom_d.ncdf',mode='r')
+        #create dictionary for all variables from twomom_d.ncdf
+        twomom = dict()
 
-ax2 = ax
-    
-ax = __plotting_functions.plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep)
+        #if necessary change name of variables
+        varlist = twomom_file.variables
+        #read 2mom variables to twomom dictionary
+        for var in varlist:#read files and write it with different names in Data
+            #do a skipSB similar to skipMC above
+            if skipSB and var!="heights":
+                #create empty variables so we dont see them in the plot
+                twomom[var] = np.nan*np.ones_like(twomom_file.variables[var])
+            else:
+                twomom[var] = np.squeeze(twomom_file.variables[var])
 
-############
-#plot fluxes
-############
-#number flux
-mass_num_flag = 0 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
 
-ax = plt.subplot2grid((number_of_plots, 1), (3, 0))
-if mass_num_flag==2:
-    ax2 = ax.twiny()
-else: #in case there is no need for a second axis, just pass the first ax twice
-    ax2 = ax
-    
-ax = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+        ####################################
+        #plot mixing ratio + number density
+        ####################################
+        #number density
+        mass_num_flag = 0 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
 
-#mass flux
-mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+        
+        if mass_num_flag==2:
+            ax2 = axnum.twiny()
+        else: #in case there is no need for a second axis, just pass the first ax twice
+            ax2 = axnum
+            
+        axnum = __plotting_functions.plot_moments(axnum,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
 
-ax = plt.subplot2grid((number_of_plots, 1), (4, 0))
-if mass_num_flag==2:
-    ax2 = ax.twiny()
-else: #in case there is no need for a second axis, just pass the first ax twice
-    ax2 = ax
-    
-ax = __plotting_functions.plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag)
+        #mass density
+        mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+
+        if mass_num_flag==2:
+            ax2 = axmass.twiny()
+        else: #in case there is no need for a second axis, just pass the first ax twice
+            ax2 = axmass
+            
+        axmass = __plotting_functions.plot_moments(axmass,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+
+        ##
+        #plot normalized mixing ration (q/qn) labelling normq...
+        ##
+        #calculate q/qn respectively Md/Nd
+
+        ax2 = axmean
+        
+        axmean = __plotting_functions.plot_normmix(axmean,ax2,twomom,hei2massdens,i_timestep,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+
+
+        ############
+        #plot fluxes
+        ############
+        #number flux
+        mass_num_flag = 0 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+
+        if mass_num_flag==2:
+            ax2 = axnumflux.twiny()
+        else: #in case there is no need for a second axis, just pass the first ax twice
+            ax2 = axnumflux
+            
+        axnumflux = __plotting_functions.plot_fluxes(axnumflux,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+
+        #mass flux
+        mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
+
+        if mass_num_flag==2:
+            ax2 = axmassflux.twiny()
+        else: #in case there is no need for a second axis, just pass the first ax twice
+            ax2 = axmassflux
+            
+        axmassflux = __plotting_functions.plot_fluxes(axmassflux,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+
+if len(sensrun_list)>1:#add labels for the different sensruns
+    for i_sensrun,sens_run in enumerate(sensrun_list):
+        for ax in [axnum,axmass,axmean,axnumflux,axmassflux]:
+            ax.plot(np.nan,np.nan,color='k',linestyle=['-','--','-.',':'][i_sensrun],label=sens_run)
+            ax.legend()
+if len(McSnow_geom_list)>1:#add labels for the different sensruns
+    for i_sensMC,sensrun_now_MC in enumerate(McSnow_geom_list):
+        for ax in [axnum,axmass,axmean,axnumflux,axmassflux]:
+            ax.plot(np.nan,np.nan,color='k',linestyle='--',marker=['','x','o','d'][i_sensMC],label=['default','N_mono \ndependent'][i_sensMC])
+            ax.legend()
 
 #save figure
 plt.tight_layout()
 if not os.path.exists('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment): #create directory if it does not exists
     os.makedirs('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment)
-out_filestring = "/fluxes_" + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
+out_filestring = "/fluxes_" + switch_off_processes_str + '_' + McSnow_geom_list_str + separated_by_sensruns_onestring + '_' + testcase + "_av_" + str(av_tstep) + "_t" + str(tstep).zfill(4) + 'min'
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf', dpi=400)
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.png', dpi=400)
 print 'The pdf is at: ' + '/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf'

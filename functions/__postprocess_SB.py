@@ -157,6 +157,31 @@ def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail):
     
     return cloud_water,rain,cloud_ice,snow,graupel,hail
 
+def convert_ND_to_Nm_from_coeff(a_mD,b_mD,a_vD,b_vD):
+    '''
+    this function converts coefficients (m-D, A-D) from N(D) space to N(m) space (e.g. to use it in the Sb-scheme)
+    INPUT:
+        a_mD: a in mass-diameter relationship (m=a*D**b)
+        b_mD: b in mass-diameter relationship (m=a*D**b)
+        a_vD: a in velocity-diameter relationship (v=a*D**b)
+        b_vD: b in velocity-diameter relationship (v=a*D**b)
+    OUTPUT:
+        a_mm: a in diameter-mass relationship (D=a*m**b)
+        b_mm: b in diameter-mass relationship (D=a*m**b)
+        a_vm: a in velocity-mass relationship (v=a*m**b)
+        b_vm: b in velocity-mass relationship (v=a*m**b)
+    '''
+
+    #from IPython.core.debugger import Tracer ; Tracer()()
+
+    #convert coefficients from N(D) to N(m) space
+    b_mm = 1./b_mD
+    a_mm = (1./a_mD)**(1./b_mD)
+    a_vm = a_vD*(1./a_mD)**(b_vD/b_mD)
+    b_vm = b_vD/b_mD
+    
+    return a_mm,b_mm,a_vm,b_vm
+
 def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     '''
     calculate the normalized number concentration (as a function of diameter) corresponding to moments of the SB06 categories

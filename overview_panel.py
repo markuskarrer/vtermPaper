@@ -145,51 +145,57 @@ if skipMC:
     i=0
 else:
     i+=1
-    
-#plot McSnow pamtra output
-try:
-    ##############################
-    #now: plot PAMTRA output below
-    ##############################
 
-    #define file to read
-    print "adaptv:",adapt_version
-    if adapt_version==1:
-        filename = "/adaptv1_t" + str(tstep) #+ ".nc"
-    elif adapt_version==2:
-        filename = "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
-    elif adapt_version==3:
-        filename = "/adaptv3_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
-        
-    pam_filestring = directory + experiment + filename +".nc"
+#define file to read
+print "adaptv:",adapt_version
+if adapt_version==1:
+    filename = "/adaptv1_t" + str(tstep) #+ ".nc"
+elif adapt_version==2:
+    filename = "/adaptv2_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
+elif adapt_version==3:
+    filename = "/adaptv3_" + testcase + '_av_' + str(av_tstep) + '_' + experiment + "_t" + str(tstep).zfill(4) + 'min'
 
-    ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0))
-
-    #read pamtra output to pamData dictionary
-    pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
+if not skipMC:    
+    #plot McSnow pamtra output
     try:
-        #plot spectrogram
-        ax = __plotting_functions.plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment)
-        ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+2, 0))
-        axx = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
-    except:
-        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple or moments?"
-    #plot reflectivities
-    axrefl = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
+        ##############################
+        #now: plot PAMTRA output below
+        ##############################
 
-    axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData,linestyle='--')
-    try:
-        #plot other radar-moments
-        axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
 
-        axmom = __plotting_functions.plot_pamtra_highermoments(axmom,pamData,linestyle='--',moment='vDoppler')
-    except:
-        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple?"
-except Exception:
-	print ' \n \n in except: \n \n'
-	s = traceback.format_exc()
-   	serr = "there were errors:\n%s\n" % (s)
-    	sys.stderr.write(serr) 
+            
+        pam_filestring = directory + experiment + filename +".nc"
+
+        ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+1, 0))
+
+        #read pamtra output to pamData dictionary
+        pamData = __postprocess_PAMTRA.read_pamtra(pam_filestring)
+        try:
+            #plot spectrogram
+            ax = __plotting_functions.plot_McSnows_vt_in_spectrogram(ax,pamData,SP,experiment)
+            ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+2, 0))
+            axx = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
+        except:
+            print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple or moments?"
+        #plot reflectivities
+        axrefl = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
+
+        axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData,linestyle='--')
+        try:
+            #plot other radar-moments
+            axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+
+            axmom = __plotting_functions.plot_pamtra_highermoments(axmom,pamData,linestyle='--',moment='vDoppler')
+        except Exception:
+            print ' \n \n in except: \n \n'
+            s = traceback.format_exc()
+            serr = "there were errors:\n%s\n" % (s)
+            sys.stderr.write(serr) 
+    except Exception:
+            print ' \n \n in except: \n \n'
+            s = traceback.format_exc()
+            serr = "there were errors:\n%s\n" % (s)
+            sys.stderr.write(serr) 
   
 #plot SB pamtra output data
 try:
@@ -206,7 +212,7 @@ try:
 
     #plot reflectivities
     #ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
-    if not (axrefl in globals()):
+    if not ("axrefl" in globals()):
         axrefl = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+3, 0))
     axrefl = __plotting_functions.plot_pamtra_Ze(axrefl,pamData)
     axrefl.plot(0,0,color='k',linestyle='--',label='McSnow')
@@ -215,6 +221,8 @@ try:
     
     #plot other radar-moments
     #axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
+    if not ("axmom" in globals()):
+        axmom = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+4, 0))
     try:
         axmom.plot(0,0,color='b',linestyle='-',label='9.6GHz')
         axmom.plot(0,0,color='r',linestyle='-',label='35.5GHz')
@@ -231,8 +239,11 @@ try:
         ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+5, 0))
         #plot spectrogram
         ax = __plotting_functions.plot_pamtra_spectrogram(ax,pamData,freq=35.5)
-    except:
-        print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple or moments?"
+    except Exception:
+            print ' \n \n in except: \n \n'
+            s = traceback.format_exc()
+            serr = "there were errors:\n%s\n" % (s)
+            sys.stderr.write(serr) 
     
 except Exception:
     print ' \n \n in except: \n \n'

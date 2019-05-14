@@ -44,7 +44,7 @@ def get_model_mDADs(model="MC"):
         mDAD_dict["num_piecewise_fit"] = 2 #number of different m-D and A-D fits which are piecewise connected
         
         #get parameter from McSnow in the state of Brdar&Seifert2018
-        mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam =  __postprocess_McSnow.return_parameter_mD_AD_rel("1d_xi") #the argument is a workaround to get the standard McSnow settings
+        mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam =  __postprocess_McSnow.return_parameter_mD_AD_rel("1d__xi") #the argument is a workaround to get the standard McSnow settings
         sph_alf=np.pi/6.*rhoi
         sph_bet=3.
         print "used constants (control MC)"

@@ -12,6 +12,7 @@ import itertools#to read only certain lines of the txt files
 import re
 from matplotlib.colors import LogNorm
 import matplotlib.pylab as pylab
+import argparse; parser = argparse.ArgumentParser() #get optional arguments from shell
 #import other self-defined functions
 import __postprocess_McSnow
 import __postprocess_SB
@@ -27,26 +28,58 @@ this code reads in properties from Jussis aggregate model, calculate + plots the
 and fits different functions to each property (m-D,A-D,v-D for all fallspeed models)
 '''
 
-#define which lines to show:
-
-show_vel_fits = True #show the velocity fits (power-law/Atlas)
-show_powerlaw_fits = False
-show_Atlas_fit = False #show the Atlas-type fit for cloud ice & snow
+show_lines = dict()
+#define which lines to show (ATTENTION: default, can be overwritten by optional arguments below):
+show_lines["SB_mD"] = True #show the m-D relation of the SB scheme
+show_lines["vel_fits"] = True #show the velocity fits (power-law/Atlas)
+show_lines["powerlaw_fits"] = False
+show_lines["Atlas_fit"] = True #show the Atlas-type fit for cloud ice & snow
 #show the fits as numbers
-show_fittext = False #show text for the fit
+show_lines["fittext_vel"] = False #show text for the velocity fits
 #from previous model settings
-show_Axels_powerlaw = False #show also the old fit of Axels power-law
-show_Axels_atlas = False #show also the old fit of Axels Atlas-type
+show_lines["SB_powerlaw"] = True #show also the old fit of Axels power-law
+show_lines["SB_Atlas"] = True #show also the old fit of Axels Atlas-type
 #from other models
-show_P3 = False
-show_MC = False
+show_lines["P3"] = False
+show_lines["MC"] = False
 
+#overwrite with optional arguments to this function
+parser.add_argument("--show_SB_mD", help="")
+parser.add_argument("--show_vel_fits", help="show the velocity fits (power-law/Atlas)")
+parser.add_argument("--show_powerlaw_fits", help="")
+parser.add_argument("--show_Atlas_fit", help="")
+parser.add_argument("--show_fittext_vel", help="")
+parser.add_argument("--show_SB_powerlaw", help="")
+parser.add_argument("--show_SB_Atlas", help="")
+parser.add_argument("--show_P3", help="")
+parser.add_argument("--show_MC", help="")
+
+args = parser.parse_args()
+if args.show_vel_fits:
+    show_lines["SB_mD"] = (args.show_SB_mD=="True")
+    show_lines["vel_fits"] = (args.show_vel_fits=="True")
+    show_lines["powerlaw_fits"] = (args.show_powerlaw_fits=="True")
+    show_lines["Atlas_fit"] = (args.show_Atlas_fit=="True")
+    show_lines["fittext_vel"] = (args.show_fittext_vel=="True")
+    show_lines["SB_powerlaw"] = (args.show_SB_powerlaw=="True")
+    show_lines["SB_Atlas"] = (args.show_SB_Atlas=="True")
+    show_lines["P3"] = (args.show_P3=="True")
+    show_lines["MC"] = (args.show_MC=="True")
+
+#add displayed lines to string to distinguish them in the saved files
+add_displayed_lines2string = '' 
+for key in show_lines.keys():
+    if show_lines[key]:
+        add_displayed_lines2string+= '_' + key
+#print add_displayed_lines2string
+#from IPython.core.debugger import Tracer ; Tracer()()
 #switch on/of fitting of terminal velocity (removes the fit lines)
 fitvel=1 #0-> no fitting of velocity at all; 1-> fit only monomer and all aggregates; 2-> fit everything (including seperated for different monomer numbers)
-
+tumbling=False #True: take the rotated projected area; False: take the area calculated from the aligned particle
+take_mono_prop_theor=True #take theoretical values (as assumed in Jagg) instead of fits to N_mono=1
 
 #define where the txt files with properties of the aggregates are stored
-prop_file_folder = "/data/optimice/Jussis_aggregates/fromHPC/"
+prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio_complete/"
 #define which particles (with which resolution to read in)
 grid_res = 10e-6
 if grid_res==40e-6:
@@ -73,10 +106,11 @@ mDADvD_dict_P3 = __setup_mDAD_frommodels.get_model_mDADs(model="P3")
 
 #calculate the arrays with masses and areas corresponding to the common fit_dic["diam"] and based on the (piecewise) power-law fits
 fit_dic = dict() #initialize fit dictionary
-#set up array of diameters (for bin edges and KDE-grid) and the fitting
-diam = np.logspace(-4,np.log10(3e-2),50) #set up array of diameters (for bin edges and KDE-grid)
+#set up array of diameters for bin edges, the KDE-grid and the fitting
+low_diam_log=-4; high_diam_log=-1.5228787452803376 #np.log10(3e-2)=-1.5228787452803376
+diam = np.logspace(low_diam_log,high_diam_log,50) #set up array of diameters (for bin edges and KDE-grid)
 fit_dic["diam"] = diam
-#
+#get the m,A,v-array corresponding to diam and save them in separate dictionaries
 for dict_now in (mDADvD_dict_MC,mDADvD_dict_P3,mDADvD_dict_SBcloudice,mDADvD_dict_SBsnow,mDADvD_dict_SBcloudiceAtlas,mDADvD_dict_SBsnowAtlas):
     dict_now = __setup_mDAD_frommodels.calc_area_mass_vterm_arrays(fit_dic["diam"],dict_now)
 
@@ -85,8 +119,8 @@ for dict_now in (mDADvD_dict_MC,mDADvD_dict_P3,mDADvD_dict_SBcloudice,mDADvD_dic
 #for comparing with models 
 ####
 
-#read the properties of the aggregates into the particle_dic dictionary
-particle_types = ["plate_dendrite_column"] #"needle","dendrite","plate","column","rosette","bullet"] # ,"bullet"rosette
+#loop over different particle habits
+particle_types = ["plate"] #"needle","dendrite","plate","column","rosette","bullet","plate_dendrite",...]] # ,"bullet"rosette
 for particle_type_comb in particle_types:
     print "########################"
     print "#####" + particle_type_comb + "########"
@@ -96,6 +130,12 @@ for particle_type_comb in particle_types:
     if particle_type_comb not in ("needle","dendrite","plate","column","rosette","bullet"):
         #particle_type_comb should be a combination of particles in particle type (e.g. "plate_dendrite")
         particle_type_list = re.split(r'_',particle_type_comb) #split the combination to read in all habits
+    else: #just one habit is analyzed
+        particle_type_list = [particle_type_comb]
+    #########
+    #START: read the properties of the aggregates into the particle_dic dictionary
+    #########
+
     for particle_type in particle_type_list: #this is a single particle type (no combination allowed after that)
         for filename in glob.glob(prop_file_folder + sensrun_folder +  particle_type + '*properties.txt'): #loop over all property files (with different mean sizes)
             #read size parameter from filename in order to disregard some size parameter
@@ -103,16 +143,17 @@ for particle_type_comb in particle_types:
             size_param_now = float(m.group(1))
             if size_param_now>1000: #ignore all sizeparameter above ... or below ...
                 continue
-            
+            #verbose reading of files
             print "reading: " + filename
-            #if float(filename[39:44])<9.: continue #"2." in filename: continue #print "dont take this" #continue
-            #print filename[39:44],float(filename[39:44])<5
-            with open(filename,"rb") as txtfile: #TODO: this is just one file! #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+
+            with open(filename,"rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
                 prop_reader = csv.reader(filter(lambda row: row[0]!='#',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
 
                 #define the monomer numbers to read in
                 take_all_Nmono_bool = True
                 if take_all_Nmono_bool:
+                    #N_mono_list = np.array(range(1,11)) #for quick tests run to monomer number of 10 only
+                    #N_mono_list = np.append(np.array(range(1,10)),np.array(range(10,101,10))) #for quick tests run to monomer number of 100 only
                     N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100)))
                 else: #select certain monomer numbers
                     N_mono_list = np.array([1,2,3,5,7,10,20,30,50,70,100,200,300,400,500,700,1000]) #10,50]) #,2,3,5,10,20,50,100,200,500,1000]) #-1 is the index shift
@@ -122,51 +163,66 @@ for particle_type_comb in particle_types:
                         particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
                         particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
                         particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
-                        particle_dic["area"] = np.append(particle_dic["area"],row_content[2])
+                        if tumbling:
+                            particle_dic["area"] = np.append(particle_dic["area"],row_content[2]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
+                        elif not tumbling:
+                            particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
                         particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
-                    
+    #########
+    #END: read the properties of the aggregates into the particle_dic dictionary
+    #########                
 
-    #calculate the terminal velocitys for each available velocity model
+    #calculate the terminal velocitys of the simulated particles individually for each available velocity model
     for velocity_model in ["HW10","KC05","bohm"]: #,"mitch_heym"]:
             particle_dic["vterm_" + velocity_model] = __fallspeed_relations.calc_vterm(velocity_model,particle_dic["mass"],particle_dic["diam"],particle_dic["area"])
     print particle_dic #overview of the dictionary, might be helpful sometimes
 
-
-    #get the 2D weighting function (derived from the comparison of the aggregate model output and McSnow runs)
+    ######
+    #calculate a weigting of the simulated particle to get an accurate fit for the whole diameter range and give equally importance to all monomer numbers
+    ######
+    #START: get the 2D weighting function (derived from the comparison of the aggregate model output and McSnow runs)
+    ######
     weight_uniform_or_MC = 0 #0-> uniform 1-> MC
     if weight_uniform_or_MC==0:
-        diam_edges,Nmono_edges,H_MC,H_Jagg,H = generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg.N_D_Dmono_from_MC_and_Jagg(particle_type=particle_type)
+        #diam_edges,Nmono_edges,H_MC,H_Jagg,H = generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg.N_D_Dmono_from_MC_and_Jagg(particle_type=particle_type)
+        #calculate the histogram
+        diam_edges,Nmono_edges,H_Jagg = generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg.calc_histogram(particle_dic["diam"],particle_dic["N_monomer"],low_diam_log=low_diam_log, high_diam_log=high_diam_log,nbins=40)
         #recalculate the weighting factor to be uniform
-        for i_diam in range(H_MC.shape[0]): #first dimension is the diameter
+        H = np.nan*np.ones_like(H_Jagg)
+        for i_diam in range(H_Jagg.shape[0]): #first dimension is the diameter
             ###calculate the weighting factor
             #we normalize the weighting factor at each diameter to one
             sum_valid_Jagg = np.nansum(H_Jagg[i_diam,:])
             if sum_valid_Jagg>0: #check if there is any Jagg data
-                H[i_diam,:] = np.divide(1,H_Jagg[i_diam,:], out=np.zeros_like(H_Jagg[i_diam,:]), where=H_Jagg[i_diam,:]!=0)/sum_valid_Jagg
+                H[i_diam,:] = np.divide(1,H_Jagg[i_diam,:], out=np.zeros_like(H_Jagg[i_diam,:]), where=H_Jagg[i_diam,:]!=0)/sum(np.divide(1,H_Jagg[i_diam,:], out=np.zeros_like(H_Jagg[i_diam,:]), where=H_Jagg[i_diam,:]!=0))#sum_valid_Jagg
+                #the next line might help to understand how the weighting is performed: 1. weight each diameter equally 2. homogenize each monomer bin for each diameter
+                #print diam[i_diam],H_Jagg[i_diam,:],np.divide(1,H_Jagg[i_diam,:], out=np.zeros_like(H_Jagg[i_diam,:]), where=H_Jagg[i_diam,:]!=0),sum(np.divide(1,H_Jagg[i_diam,:], out=np.zeros_like(H_Jagg[i_diam,:]), where=H_Jagg[i_diam,:]!=0)); raw_input()
     elif weight_uniform_or_MC==1:
         diam_edges,Nmono_edges,H_MC,H_Jagg,H = generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg.N_D_Dmono_from_MC_and_Jagg(particle_type=particle_type)
     weighting_factor=H
-
+    
     #initialize the weighting attribute
-    particle_dic["weight_by_MC"] = np.zeros_like(particle_dic["diam"])
+    particle_dic["weight"] = np.zeros_like(particle_dic["diam"])
     
     #set the weight for each simulated aggregate
     for i_agg in range(0,particle_dic["diam"].shape[0]):#loop over all aggregates to give each aggregate the right weighting factor
-        
         #TODO: this is probably very inefficiently programmed with nested loops and ifs, but maybe this is not important here
         for i_diam_now,diam_now in enumerate(diam_edges[:-1]):
             for i_N_mono_now,N_mono_now in enumerate(Nmono_edges[:-1]):
                 if diam_edges[i_diam_now]<=particle_dic["diam"][i_agg]<diam_edges[i_diam_now+1]: #check if we are in the right diameter bin
                     if Nmono_edges[i_N_mono_now]<=particle_dic["N_monomer"][i_agg]<Nmono_edges[i_N_mono_now+1]: #check if we are in the right monomer number bin
-                        particle_dic["weight_by_MC"][i_agg] = weighting_factor[i_diam_now,i_N_mono_now] ##from IPython.core.debugger import Tracer ; Tracer()()    
+                        particle_dic["weight"][i_agg] = weighting_factor[i_diam_now,i_N_mono_now] ##from IPython.core.debugger import Tracer ; Tracer()()    
+    ######
+    #END: calculate a weigting of the simulated particle to get an accurate fit for the whole diameter range and give equally importance to all monomer numbers
+    ######
     
     ###
-    #plot the m-D, A-D and v-D relations
+    #initialize the plot
     ###
     number_of_plots = 6 #28
     
     #optimize the appearance of the plot (figure size, fonts)
-    [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots)
+    [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,aspect_ratio=0.25)
     params = {'legend.fontsize': 'medium',
                 'axes.labelsize': 'medium', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
         'axes.titlesize':'medium',
@@ -177,7 +233,7 @@ for particle_type_comb in particle_types:
     colbarlabelsize=11
     
     ###
-    #subplot 1: histogram and KDE of the data
+    #START: subplot 1: histogram and KDE of the data
     ###
     
     #self-defined discrete colormap
@@ -237,6 +293,14 @@ for particle_type_comb in particle_types:
     axes[i_ax].set_ylabel("absolute counts")
     ax_dens.set_ylabel("PDF")
 
+    ###
+    #END: subplot 1: histogram and KDE of the data
+    ###
+    
+    #####
+    #START: plots in m-D/A-D space
+    #####
+
     #initialize an array which contains all fit results
     fitresult_arr_dir_powerlaw_string = np.zeros((5,N_mono_list.shape[0],2)) #fit results (saved as floats) #dimensions: 0-> [mass,array]; 1-> monomer number; 2-> parameters (a,b) in fit
     
@@ -256,32 +320,36 @@ for particle_type_comb in particle_types:
         #axes[i_ax],particle_dic,fitline_allagg = __tools_for_processing_Jagg.fitting_wrapper(axes[i_ax],particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,function="powerlaw",linewidthinvalid=0.05,linewidthvalid=0.7)
         plot_allfits_bool=False #plot fits and display fit coefficients in text for all monomer number
         plot_binary_fits= True #plot fits and display fit coefficients in text for monomer and allagg
-        axes[i_ax],particle_dic,fitline_allagg = __tools_for_processing_Jagg.fitting_wrapper(axes[i_ax],particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,function="powerlaw",weight='None',linewidthinvalid=0.9,linewidthvalid=1.7,plot_fits=plot_allfits_bool,plot_binary_fits=plot_binary_fits)
+        axes[i_ax],particle_dic,fitline_allagg = __tools_for_processing_Jagg.fitting_wrapper(axes[i_ax],particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,function="powerlaw",weight=particle_dic["weight"][N_mono_now],linewidthinvalid=0.9,linewidthvalid=1.7,plot_fits=plot_allfits_bool,plot_binary_fits=plot_binary_fits)
         
-       
+        if take_mono_prop_theor: #overwrite fit for monomers with theoretical value
+            if prop=="mass":
+                fit_dic['mass_coeff_Nmono_1'][:] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[0:2]
+            if prop=="area":
+                fit_dic['area_coeff_Nmono_1'][:] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[2:4]
+            fit_dic[prop + "_Nmono_1"] = fit_dic[prop + "_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_1"][1] #recalculate arrays of masses and areas 
+            #from IPython.core.debugger import Tracer ; Tracer()()
+            
         ####
         #compare to models
         ####
        
         #plot the properties as assumed in the schemes in the current plot
-        if prop=="mass": #the SB dont have to specify the area
+        if prop=="mass" and show_lines["SB_mD"]: #the SB dont have to specify the area
             axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_SBcloudice[prop_short + "(D_array)"],color='blue',label="SB cloud ice",linestyle='--')
             axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_SBsnow[prop_short + "(D_array)"],color='green',label="SB snow",linestyle='--')
-        if show_MC:
+        if show_lines["MC"]:
             axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_MC[prop_short + "(D_array)"],color='red',label="McSnow",linestyle='--')
-        if show_P3:
+        if show_lines["P3"]:
             axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_P3["v_mitch_heym(D_array)"],color='orange',label="P3unrimed",linestyle='-.') #mitch heym is hardcoded because there are no other options yet
-
-
 
         #show legend
         axes[i_ax].legend(loc="lower right")
-        
         #make labels
         axes[i_ax].set_xlabel("diameter / m")
         axes[i_ax].set_ylabel((" / ").join((prop,prop_unit))) 
-
         #change the axis
+        axes[i_ax].set_xlim([10**(low_diam_log),10**(high_diam_log)]) #define the upper limit of the displayed axis
         axes[i_ax].set_ylim([0,np.array([1e-4,2e-2])[i_prop]]) #define the upper limit of the displayed axis
         axes[i_ax].grid(which="minor")
         #add colorbar
@@ -294,70 +362,83 @@ for particle_type_comb in particle_types:
         if not plot_allfits_bool:
             #add labels for the fit result to the plot
             axes[i_ax] = __tools_for_processing_Jagg.add_fitresult_text(axes[i_ax],fit_dic,prop,N_mono_list,function="powerlaw",hide_Nmono_fits=take_all_Nmono_bool)
-            #add a legend for the fit lines which are not explained by the colorbar
-            #axes[i_ax].legend(handles=[fitline_allagg],loc="lower right", prop={'size': 8})
         
         #shrink colorbar lables
         cbar.ax.tick_params(labelsize=colbarlabelsize) 
+    #####
+    #END: plots in m-D/A-D space
+    #####
 
-    #loop over different terminal velocity models
+
+
+    #loop over different terminal velocity models in which 1. the velocity of each individual particle is plotted 2. the velocity according to the m-D and A-D fits 3. different possible fits (power-law, Atlas type) are calculated (and plotted)
     for i_prop,prop in enumerate(["vterm_bohm","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
         print "fitting and plotting: ",prop
         
-        
+        #define current axis
         i_ax = i_prop+1+2 #+1 because we plotted already the histogram +2 because we plotted already mass and area
+        
         #change the scale (according to xscale_vec and yscale_vec)
         axes[i_ax].set_xscale("log") #axes[i_ax].set_xscale(xscale_vec[i_prop]) 
         axes[i_ax].set_yscale("linear") #axes[i_ax].set_yscale(yscale_vec[i_prop])
         
+        #####
+        #1. the velocity of each individual particle is plotted 
+        #####
         #plot the scatter plot of the individual particle # use the colormap and the bounds which where defined before
         im = axes[i_ax].scatter(particle_dic["diam"],particle_dic[prop],s=1,c=particle_dic["N_monomer"],rasterized=True,norm=norm,cmap=cmap,marker='o') #,norm=colors.LogNorm(),cmap="gist_ncar")+
         im = axes[i_ax].scatter(particle_dic["diam"][particle_dic["N_monomer"]==1],particle_dic[prop][particle_dic["N_monomer"]==1],s=1,c=particle_dic["N_monomer"][particle_dic["N_monomer"]==1],rasterized=True,norm=norm,cmap=cmap,marker='o') #,norm=colors.LogNorm(),cmap="gist_ncar")+
 
+        ####
+        #2. the velocity according to the m-D and A-D fits
+        ####
         #calculate the terminal velocity based on the m-D and A-D fits and plot this line # use the colormap and the bounds which where defined before
         velocity_model = prop[6:] #get the name of the terminal velocity model from the property name (prop) which starts with "vterm"
         for i,N_mono_now in enumerate(N_mono_list):
             fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)] = __fallspeed_relations.calc_vterm(velocity_model,fit_dic["mass" + "_Nmono_" + str(N_mono_now)],fit_dic["diam"],fit_dic["area" + "_Nmono_" + str(N_mono_now)])
-            if show_vel_fits:
+            if show_lines["vel_fits"]:
                 if N_mono_now<2 or fitvel>=2:
                     fitline_Nmonospecific, = axes[i_ax].plot(fit_dic["diam"],fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)],marker='None',c=usecolors[i],linewidth=linewidthinvalid,label="Nmono=1") #,norm=colors.LogNorm(),cmap="gist_ncar")
-                    #fitline_Nmonospecific_dense_enough, = axes[i_ax].plot(fit_dic["diam"][fit_dic["diam_dens_enough_" + str(N_mono_now)]],fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)][fit_dic["diam_dens_enough_" + str(N_mono_now)]],marker='None',c=usecolors[i],linewidth=linewidthvalid) 
 
         #now for all aggregates
         fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmonoallagg"] = __fallspeed_relations.calc_vterm(velocity_model,fit_dic["mass" + "_Nmono_allagg"],fit_dic["diam"],fit_dic["area" + "_Nmono_allagg"])
-        if show_vel_fits:
+        if show_lines["vel_fits"]:
             if fitvel>=1:
                 fitline_Nmonoallagg, = axes[i_ax].plot(fit_dic["diam"],fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmonoallagg"],marker='None',c="g",label="Nmono>1",linewidth=linewidthinvalid)
                 #fitline_Nmonoallagg_dense_enough, = axes[i_ax].plot(fit_dic["diam"][fit_dic["diam_dens_enough_allagg"]],fit_dic["vterm_" + velocity_model + "_fitted_via_mD_AD_Nmonoallagg"][fit_dic["diam_dens_enough_allagg"]],marker='None',c="black",label="Nmono>1",linewidth=linewidthvalid)
 
+        #####
+        #3. different fits (power-law, Atlas type) are calculated (and plotted)
+        #####
         if fitvel>=1:
             #fit an Atlas type to the "mean v-D" relations (derived from the A-D and m-D fits)
-            for i,str_monomer_agg in enumerate(["1","allagg"]): # make a power-law fit for the pristine crystals and the aggregate
+            for i,(str_monomer_agg,corr_cat) in enumerate(zip(["1","allagg"],["Nmono=1","Nmono>1"])): 
+                ##Atlas-type
                 [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
-                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg] = fitresult #copy the Atlas-fit coefficients in the fit_dic dictionary
-                #fit additionally a powerlaw
-                [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="powerlaw") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
-                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"] = fitresult #copy the Atlas-fit coefficients in the fit_dic dictionary
+                #from IPython.core.debugger import Tracer ; Tracer()()
 
-                #recalculate A-B*exp(-gam*D) from fit
+
+                [fitresult_Deq,covar_Deq] = __tools_for_processing_Jagg.fit_data(((6.*fit_dic["mass_coeff_Nmono_" + str_monomer_agg][0]*fit_dic["diam"]**fit_dic["mass_coeff_Nmono_" + str_monomer_agg][1]/(np.pi*1000.))**(1./3.)),fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
+                
+                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg] = fitresult #copy the Atlas-fit (as a function of D_max) coefficients in the fit_dic dictionary
+                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"] = fitresult_Deq #copy the Atlas-fit (as a function of D_eq) coefficients in the fit_dic dictionary
+
+                #recalculate v(D)= A-B*exp(-gam*D) from fit
                 fit_dic[prop + "_Nmono_" + str_monomer_agg] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][0]-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][1]*np.exp(-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][2]*fit_dic["diam"]) #calculate arrays of masses and areas based on the m-D fits
+                
+                #power-law
+                [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="powerlaw") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
+                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"] = fitresult #copy the power-law coefficients in the fit_dic dictionary
+
                 #recalculate powerlaw from fit
                 fit_dic[prop + "_Nmono_" + str_monomer_agg + "_powerlaw"] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][1] #calculate arrays of masses and areas based on the m-D fits
                 
-                
-                if show_Atlas_fit:
-                    if str_monomer_agg=="1": #no label
-                        Atlasfit_Nmono1, = axes[i_ax].plot(fit_dic["diam"],fit_dic[prop + "_Nmono_" + str_monomer_agg],marker='None',c=np.array(["b","g"])[i],linestyle="-",label="Atlas-type (cloud ice)",linewidth=linewidthvalid)
-                        #from IPython.core.debugger import Tracer ; Tracer()()
-                        #Atlasfit_Nmono1_dense_enough, = axes[i_ax].plot(fit_dic["diam"][fit_dic["diam_dens_enough_" + str(1)]],fit_dic[prop + "_Nmono_" + str_monomer_agg][fit_dic["diam_dens_enough_" + str(1)]],marker='None',c=np.array(["b","black"])[i],linestyle="--",label="Nmono=1(weighted Atlas fit)",linewidth=linewidthvalid)  
-                if show_Atlas_fit:
-                    if str_monomer_agg=="allagg":
-                        Atlasfit_Nmonoallagg, = axes[i_ax].plot(fit_dic["diam"],fit_dic[prop + "_Nmono_" + str_monomer_agg],marker='None',c=np.array(["b","g"])[i],linestyle="-",label="Atlas-type (snow)",linewidth=linewidthvalid)
-                        #Atlasfit_Nmonoallagg_dense_enough, = axes[i_ax].plot(fit_dic["diam"][fit_dic["diam_dens_enough_allagg"]],fit_dic[prop + "_Nmono_" + str_monomer_agg][fit_dic["diam_dens_enough_allagg"]],marker='None',c=np.array(["b","black"])[i],linestyle="--",label="Nmono>1(weighted Atlas fit)",linewidth=linewidthvalid)
-                if show_powerlaw_fits:
-                    powerlaw_handle, = axes[i_ax].plot(fit_dic["diam"], fit_dic[prop + "_Nmono_" + str_monomer_agg + "_powerlaw"],marker='None',c=np.array(["b","g"])[i],linestyle="-.",label="powerlaw",linewidth=linewidthvalid)
+                if show_lines["Atlas_fit"]:
+                    Atlasfit_Nmonoallagg, = axes[i_ax].semilogx(fit_dic["diam"],fit_dic[prop + "_Nmono_" + str_monomer_agg],marker='None',c=np.array(["b","g"])[i],linestyle="-",label="Atlas-type " + corr_cat,linewidth=linewidthvalid)
+                if show_lines["powerlaw_fits"]:
+                    powerlaw_handle, = axes[i_ax].semilogx(fit_dic["diam"], fit_dic[prop + "_Nmono_" + str_monomer_agg + "_powerlaw"],marker='None',c=np.array(["b","g"])[i],linestyle="-.",label="powerlaw " + corr_cat,linewidth=linewidthvalid)
         if fitvel>=1:
-            if show_fittext:
+            if show_lines["fittext_vel"]:
                 #add labels for the fit result to the plot
                 axes[i_ax] = __tools_for_processing_Jagg.add_fitresult_text(axes[i_ax],fit_dic,prop,[1],function="Atlas")
                 axes[i_ax] = __tools_for_processing_Jagg.add_fitresult_text(axes[i_ax],fit_dic,prop,[1],function="powerlaw_fallspeed")
@@ -370,25 +451,26 @@ for particle_type_comb in particle_types:
         ####
        
         #plot the fall speed in the current plot
-        if show_Axels_powerlaw:
-            SB_ci_handle, = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_SBcloudice["v(D_array)"],color='blue',label="SB cloud ice",linestyle='--')
-            SB_snow_handle, = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_SBsnow["v(D_array)"],color='green',label="SB snow",linestyle='--')
-        if show_MC:
+        if show_lines["SB_powerlaw"]:
+            SB_ci_handle,   = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_SBcloudice["v(D_array)"],color='blue', label="SB cloud ice",linestyle='--')
+            SB_snow_handle, = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_SBsnow["v(D_array)"]    ,color='green',label="SB snow",     linestyle='--')
+        if show_lines["MC"]:
             MC_handle, = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_MC["v_" + velocity_model + "(D_array)"],color='red',label="McSnow(" + velocity_model + ")",linestyle='--')
-        if show_P3:
+        if show_lines["P3"]:
             P3_handle, = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_P3["v_mitch_heym(D_array)"],color='orange',label="P3unrimed",linestyle='-.') #mitch heym is hardcoded because there are no other options yet
-        if show_Axels_atlas:
+        if show_lines["SB_Atlas"]:
             Axel_iceAtlas_handle, = axes[i_ax].semilogx(mDADvD_dict_SBcloudiceAtlas["D_max_from_moltenD"],mDADvD_dict_SBcloudiceAtlas["v(D_array)"],color='blue',label="SB cloud ice Atlas",linestyle=':')
             Axel_snowAtlas_handle, = axes[i_ax].semilogx(mDADvD_dict_SBsnowAtlas["D_max_from_moltenD"],mDADvD_dict_SBsnowAtlas["v(D_array)"],color='green',label="SB snow Atlas",linestyle=':')
         #show legend
         axes[i_ax].legend() 
-        #axes[i_ax].legend(handles=[SB_ci_handle,SB_snow_handle,Atlasfit_Nmono1,Atlasfit_Nmonoallagg,MC_handle,P3_handle]) #uncomment this line for a special order
+        #expl1, = axes[i_ax].semilogx(np.nan,np.nan,label="model assumptions:",linestyle=""); expl2, = axes[i_ax].semilogx(np.nan,np.nan,label="fit to simulated particles:",linestyle="");axes[i_ax].legend(handles=[expl2,Atlasfit_Nmono1,Atlasfit_Nmonoallagg,expl1,SB_ci_handle,SB_snow_handle,MC_handle,P3_handle]) #uncomment this line for a special order
+        
         #make labels
         axes[i_ax].set_xlabel("diameter / m")
         axes[i_ax].set_ylabel(prop + " / m s-1" ) #TODO: plot also the untis of these properties
 
         #change the axis
-        axes[i_ax].set_xlim([1e-4,2e-2]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
+        axes[i_ax].set_xlim([10**low_diam_log,10**high_diam_log]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
         axes[i_ax].set_ylim([0,2.5]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
         axes[i_ax].grid(which="major")
 
@@ -401,7 +483,32 @@ for particle_type_comb in particle_types:
         cbar.set_ticklabels(N_mono_list[::3])
 
         #shrink colorbar lables
-        cbar.ax.tick_params(labelsize=colbarlabelsize) 
+        cbar.ax.tick_params(labelsize=colbarlabelsize)
+        
+        ###
+        #calculate the relations which can be put into the SB-scheme and display it here
+        ###
+        print "####################"
+        print "#coefficients for SB derived from the here investigated particles"
+        print "####################"
+        #cloud ice
+        print "ice: m(D):a= ",fit_dic["mass_coeff_Nmono_1"][0]," b= ",fit_dic["mass_coeff_Nmono_1"][1] ," v(D):a= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][1]
+        print "ice: Atlas-type (D_max): ",fit_dic[prop + "_coeff_Nmono_1"]
+
+        #calculate the D(m) and v(m) coefficients
+        fit_dic["mass_coeff_Nmono_1_N(m)"] = __postprocess_SB.convert_ND_to_Nm_from_coeff(fit_dic["mass_coeff_Nmono_1"][0],fit_dic["mass_coeff_Nmono_1"][1],fit_dic[prop + "_coeff_Nmono_1_powerlaw"][0],fit_dic[prop + "_coeff_Nmono_1_powerlaw"][1])
+        print "ice: D(m):a= ", fit_dic["mass_coeff_Nmono_1_N(m)"][0]," b= ",fit_dic["mass_coeff_Nmono_1_N(m)"][1], " v(m):a= ",fit_dic["mass_coeff_Nmono_1_N(m)"][2]," b= ",fit_dic["mass_coeff_Nmono_1_N(m)"][3]
+        print "ice: Atlas-type (D_eq): ",fit_dic[prop + "_coeff_Nmono_1_Deq"]
+
+        #snow
+        print "snow: m(D):a= ", fit_dic["mass_coeff_Nmono_allagg"][0]," b= ",fit_dic["mass_coeff_Nmono_allagg"][1], " v(D):a= ",fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][1]
+        print "snow: Atlas-type (D_max): ",fit_dic[prop + "_coeff_Nmono_allagg"]
+        #calculate the D(m) and v(m) coefficients
+        fit_dic["mass_coeff_Nmono_allagg_N(m)"] = __postprocess_SB.convert_ND_to_Nm_from_coeff(fit_dic["mass_coeff_Nmono_allagg"][0],fit_dic["mass_coeff_Nmono_allagg"][1],fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][0],fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][1])
+        print "snow: D(m):a= ", fit_dic["mass_coeff_Nmono_allagg_N(m)"][0]," b= ",fit_dic["mass_coeff_Nmono_allagg_N(m)"][1], " v(m):a= ",fit_dic["mass_coeff_Nmono_allagg_N(m)"][2]," b= ",fit_dic["mass_coeff_Nmono_allagg_N(m)"][3]
+        print "snow: Atlas-type (D_eq): ",fit_dic[prop + "_coeff_Nmono_allagg_Deq"]
+
+        
     #add a colorbar also for the histogram (which is "stolen" from the scatter plots)
     for ax in [axes[0],ax_dens]:
         cbar = fig.colorbar(im,ax=ax)
@@ -412,22 +519,33 @@ for particle_type_comb in particle_types:
         cbar.set_ticklabels(N_mono_list)
     
         #shrink colorbar lables
-        cbar.ax.tick_params(labelsize=colbarlabelsize) 
+        cbar.ax.tick_params(labelsize=colbarlabelsize)
     
     #save the plot (and open it)
     plt.tight_layout()
     dir_save = '/home/mkarrer/Dokumente/plots/Jagg/'
     if not os.path.exists(dir_save): #create direktory if it does not exists
         os.makedirs(dir_save)
-    out_filestring = "Jagg_mD_AD_vD_" + particle_type + "_gridres" + str(grid_res) + "_compscat2models"
+    if tumbling:
+        tumbling_add="_wtumbling"
+    else: 
+        tumbling_add="_wotumbling"
+    out_filestring = "Jagg_mD_AD_vD_" + particle_type_comb + "_gridres" + str(grid_res) + "_compscat2models" + tumbling_add + add_displayed_lines2string
     plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
     plt.savefig(dir_save + out_filestring + '.png', dpi=400)
     print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
-    subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
+    #subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
     #plt.clf()
     #plt.close()
     
     # Save just the portion _inside_ the second axis's boundaries
-    extent = axes[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-    axes[3].set_ylabel("terminal velocity / m s-1")
-    fig.savefig(dir_save + 'spec_ax_figure.png', bbox_inches=extent.expanded(1.4, 1.5),dpi=400)
+    save_axis=3
+    for i_axis in range(0,len(axes)):#clear all other axes
+        if i_axis==save_axis:
+            continue
+        axes[i_axis].set_xlabel("")
+        axes[i_axis].axes.get_xaxis().set_ticklabels([])
+    extent = axes[save_axis].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    axes[save_axis].set_ylabel("terminal velocity / m s-1")
+    fig.savefig(dir_save + out_filestring + 'spec_ax_figure.png', bbox_inches=extent.expanded(1.5, 1.4),dpi=400)
+    fig.savefig(dir_save + out_filestring + 'spec_ax_figure.pdf', bbox_inches=extent.expanded(1.5, 1.4),dpi=400)
