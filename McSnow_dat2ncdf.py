@@ -30,14 +30,15 @@ dtc = int(re.search(r'dtc(.*?)_nrp', experiment).group(1)) #this line gets the v
 
 #perform temporal averaging
 t_after_full = 0 #time after the timestep with the full output in seconds
-while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
+#while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
+for i_tstep,tstep in enumerate(range(300,601,60)):
     filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
     print 'reading: ' + filestring_mass2fr
-    if t_after_full==0: #Initialize tuple with SP dictionary for each individual timestep here
-        SP_nonaveraged = (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),) #errstat>0 means no SP data was found and we should skip all analysis on McSnow (but SB could be analyzed)
+    if i_tstep==0:
+        SP_nonaveraged = (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),) #save first timestep to SP_nonaveraged
     else:
-        SP_nonaveraged = SP_nonaveraged + (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),)
-    t_after_full=t_after_full+dtc
+        SP_nonaveraged = SP_nonaveraged + (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),) #add SP of other timestep to SP_nonaveraged
+        
 #from IPython.core.debugger import Tracer ; Tracer()()    
 if bool(SP_nonaveraged[0]): #skip the rest if no SP are there (f.e. when only analyzing the SB output) #the trick here is that empty dicts evaluate to False
     #2. compute the 'average' of the SP list, which results in a longer list (approx SP_pertimestep*averaged timesteps) but approx the same number of RP

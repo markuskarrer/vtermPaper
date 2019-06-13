@@ -244,6 +244,113 @@ def get_model_mDADs(model="MC"):
         for general_name,varlocal in zip(('a1','b1','a2', 'b2','c1','d1','c2','d2','Dth1','mth1'),('cs1_P3','ds1_P3','cs_P3', 'ds_P3','aas1_P3', 'bas1_P3','aas2_P3', 'bas2_P3','dcrit_P3','mcrit_P3')):
             print varlocal,general_name,locals()[varlocal]
             mDAD_dict[general_name] = locals()[varlocal]
+            
+    elif model=='GSFCcloudice':
+    
+        mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
+
+         
+        print "##################"
+        print "GSFC (Godard scheme) parameters: cloud ice"
+        # terminal velocity parameters
+        a_vel = 1.30493; b_vel = 0.11 #ATTENTION: check these parameters
+
+        #copy constants to dictionary and replace name following a general naming convention
+        #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space) #here we have additionally the coefficients as a function of mass and the fall speed coefficients, but no area (as in the scheme itself)
+        for general_name,varlocal in zip(('aterm','bterm'),('a_vel','b_vel')): 
+            #the variables are actually in a class, so we convert then here to normal vvariables
+            exec("varnow = " + varlocal)
+            print varnow
+            mDAD_dict[general_name] = varnow
+            
+    elif model=='GSFCsnow':
+    
+        mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
+
+         
+        print "##################"
+        print "GSFC (Godard scheme) parameters: snow"
+        # terminal velocity parameters
+        a_vel = 1.30493; b_vel = 0.11 #ATTENTION: check these parameters
+
+        #copy constants to dictionary and replace name following a general naming convention
+        #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space) #here we have additionally the coefficients as a function of mass and the fall speed coefficients, but no area (as in the scheme itself)
+        for general_name,varlocal in zip(('aterm','bterm'),('a_vel','b_vel')): 
+            #the variables are actually in a class, so we convert then here to normal vvariables
+            exec("varnow = " + varlocal)
+            print varnow
+            mDAD_dict[general_name] = varnow
+
+    elif model=='morr2mom_cloudice':
+    
+        mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
+         
+        print "##################"
+        print "Morrison2mom parameters: ice"
+        # terminal velocity parameters
+        a_vel = 700.; b_vel = 1.0
+
+        #copy constants to dictionary and replace name following a general naming convention
+        #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space) #here we have additionally the coefficients as a function of mass and the fall speed coefficients, but no area (as in the scheme itself)
+        for general_name,varlocal in zip(('aterm','bterm'),('a_vel','b_vel')): 
+            #the variables are actually in a class, so we convert then here to normal vvariables
+            exec("varnow = " + varlocal)
+            print varnow
+            mDAD_dict[general_name] = varnow #locals()[varlocal]
+
+    elif model=='morr2mom_snow':
+    
+        mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
+
+         
+        print "##################"
+        print "Morrison2mom parameters: snow"
+        # terminal velocity parameters
+        a_vel = 11.72; b_vel = 0.41
+
+        #copy constants to dictionary and replace name following a general naming convention
+        #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space) #here we have additionally the coefficients as a function of mass and the fall speed coefficients, but no area (as in the scheme itself)
+        for general_name,varlocal in zip(('aterm','bterm'),('a_vel','b_vel')): 
+            #the variables are actually in a class, so we convert then here to normal vvariables
+            exec("varnow = " + varlocal)
+            print varnow
+            mDAD_dict[general_name] = varnow #locals()[varlocal]
+            
+    elif model=='thompson_cloudice':
+    
+        mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
+         
+        print "##################"
+        print "Thompson parameters: ice"
+        # terminal velocity parameters
+        a_vel = 1847.5; b_vel = 1.0
+
+        #copy constants to dictionary and replace name following a general naming convention
+        #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space) #here we have additionally the coefficients as a function of mass and the fall speed coefficients, but no area (as in the scheme itself)
+        for general_name,varlocal in zip(('aterm','bterm'),('a_vel','b_vel')): 
+            #the variables are actually in a class, so we convert then here to normal vvariables
+            exec("varnow = " + varlocal)
+            print varnow
+            mDAD_dict[general_name] = varnow #locals()[varlocal]
+
+    elif model=='thompson_snow':
+    
+        mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
+
+         
+        print "##################"
+        print "Thompson parameters: snow"
+        # terminal velocity parameters
+        a_velthom = 40.0; b_velthom = 0.55; c_velthom = 100
+
+        #copy constants to dictionary and replace name following a general naming convention
+        #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space) #here we have additionally the coefficients as a function of mass and the fall speed coefficients, but no area (as in the scheme itself)
+        for general_name,varlocal in zip(('atermthom','btermthom', 'ctermthom'),('a_velthom','b_velthom','c_velthom')): 
+            #the variables are actually in a class, so we convert then here to normal vvariables
+            exec("varnow = " + varlocal)
+            print varnow
+            mDAD_dict[general_name] = varnow #locals()[varlocal]
+    
     elif model=="Jussis_needles":
         mDAD_dict["num_piecewise_fit"] = 1 #number of different m-D and A-D fits which are piecewise connected
 
@@ -296,10 +403,18 @@ def calc_area_mass_vterm_arrays(diam_array,mDADvD_dict):
             mDADvD_dict["v(D_array)"] = mDADvD_dict["aterm"]-mDADvD_dict["bterm"]*np.exp(-mDADvD_dict["cterm"]*D_array_molten) #these are formulated as a melted diameter!!
             #from IPython.core.debugger import Tracer ; Tracer()()
 
-        else: #power-law
+        elif "a1" in mDADvD_dict.keys() and "aterm" in mDADvD_dict.keys(): #power-law which has to be converted from Nm to ND space
             mDADvD_dict["m(D_array)"] = mDADvD_dict["a1"]*diam_array**mDADvD_dict["b1"]
             mDADvD_dict["v(D_array)"] = mDADvD_dict["aterm"]*(mDADvD_dict["a1"]*diam_array**mDADvD_dict["b1"])**mDADvD_dict["bterm"] #aterm and bterm are formulated as a function of mass
-        
+        elif "aterm" in mDADvD_dict.keys(): #just the powerlaw in v-D formulation
+            
+            mDADvD_dict["v(D_array)"] = mDADvD_dict["aterm"]*diam_array**mDADvD_dict["bterm"] #aterm and bterm are formulated as a function of mass
+        elif "atermthom": #the Thompson scheme has a special formulation for snow (and rain)
+            mDADvD_dict["v(D_array)"] = mDADvD_dict["atermthom"]*diam_array**mDADvD_dict["btermthom"]*np.exp(-mDADvD_dict["ctermthom"]*diam_array) #aterm and bterm are formulated as a function of mass
+
+            
+
+                
     elif mDADvD_dict["num_piecewise_fit"]==2:
         #initialize arrays
         mDADvD_dict["m(D_array)"] = np.zeros(diam_array.shape)

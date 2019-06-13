@@ -27,98 +27,101 @@ import generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg
 this code reads in properties from Jussis aggregate model
 and fits different functions to each property (m-D,A-D,v-D for all fallspeed models), displays them as a function of monomer and makes an appropriate multivariate fit
 '''
-#from matplotlib import rc
-#rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
-## for Palatino and other serif fonts use:
-#rc('font',**{'family':'serif','serif':['Palatino']})
-#rc('text', usetex=True)
+from matplotlib import rc
+#plt.rc('text', usetex=True)
+#plt.rc('font', family='serif')
 
 #define where the txt files with properties of the aggregates are stored
 #prop_file_folder = "/data/optimice/Jussis_aggregates/"
 #prop_file_folder = "/data/optimice/Jussis_aggregates/fromHPC_size50to100mum/"
-prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio_complete/"
+#prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio_complete/"
+prop_file_folder = "/data/optimice/Jussis_aggregates_bugfixedrotation/"
 
 tumbling=False #True: take the rotated projected area; False: take the area calculated from the aligned particle
-D_small_notuse = 4e-4 #ATTENTION: particle smaller than D_small_notuse are not considered (because of resolution issues) #i_row==0 or i_row==4 or i_row==9:
-N_small_notuse = 2 #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
+D_small_notuse = 1e-4 #ATTENTION: particle smaller than D_small_notuse are not considered (because of resolution issues) #i_row==0 or i_row==4 or i_row==9:
+N_small_notuse = 1 #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
+compare_hydro_models = False #True: plot different hydro-dynamic models in one v-D plot (therefore separate between some monomer numbers); False: plot Bohm only (in one plot)
 
-grid_res = 10e-6
-if grid_res==40e-6:
-    print "processing particle with resolution: ",grid_res
-    sensrun_folder = '/'
-else:
-    print "processing particle with resolution: ",grid_res
-    sensrun_folder = 'res_'+ str(int(grid_res*1e6)) + 'mum/'# if '/' this will be in /data/optimice/Jussis_aggregates
-
-    #sensrun_folder = '/' #res_10mum/'# if '/' this will be in /data/optimice/Jussis_aggregates
+#define which particles (with which resolution to read in)
+grid_res_array = [1e-6,5e-6,10e-6] #resolution for big medium and smaller particles in mum [10e-6,5e-5]
 
 
 #set up array of diameters for displaying the fit
-diam = np.logspace(-4,-1.5,50) #set up array of diameters (for bin edges and KDE-grid)
+low_diam_log_detailed= -4; high_diam_log_detailed=-1.3979400086720375
+diam = np.logspace(low_diam_log_detailed,high_diam_log_detailed,500) #set up array of diameters (for bin edges and KDE-grid)
 
 fit_dic = dict() #initialize fit dictionary
 fit_dic["diam"] = diam
 #read McSnow settings to overlay them at the m-D and A-D plot
 #McSnow
-show_lines = dict();  show_lines["MC"] = True
+show_lines = dict();  show_lines["MC"] = False
 mDADvD_dict_MC = __setup_mDAD_frommodels.get_model_mDADs(model="MC")
 mDADvD_dict_MC = __setup_mDAD_frommodels.calc_area_mass_vterm_arrays(fit_dic["diam"],mDADvD_dict_MC)
 
 #read the properties of the aggregates into the particle_dic dictionary
 particle_types = ["plate"] #"needle","column","plate","dendrite"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
 for particle_type in particle_types:
+
     #get m-D from the assumptions in the aggregate model (this is used at various places)
     a,b,c,d = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)
     ###
     #plot the m-D, A-D and v-D relations
     ###
-    number_of_plots = 14 #28
-
+    if compare_hydro_models:
+        number_of_plots = 18 #28
+    else:
+        number_of_plots = 15
     #optimize the appearance of the plot (figure size, fonts)
-    [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots)
+    [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,legend_fontsize='medium')
     
     print "########################"
     print "#####" + particle_type + "########"
     print "########################"
     particle_dic = __tools_for_processing_Jagg.init_particle_dict() #initialize dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the   
-    if not os.path.exists(prop_file_folder + sensrun_folder):
-        print prop_file_folder + sensrun_folder, " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
-        sys.exit()
-    for filename in glob.glob(prop_file_folder + sensrun_folder +  particle_type + '*properties.txt'): #loop over all property files (with different mean sizes)
-        #read size parameter from filename in order to disregard some size parameter
-        m=re.search(prop_file_folder + sensrun_folder + particle_type + '_(.+?)_properties.txt', filename) #search for patter
-        size_param_now = float(m.group(1))
-        if size_param_now>1000: #ignore all sizeparameter above ... or below ...
-           continue
+    for grid_res in grid_res_array: #loop over different grid-resolutions in order to have small monomer numbers modelled woth higher resolution
+        print "processing particle with resolution: ",grid_res
+        sensrun_folder = 'res_'+ str(int(grid_res*1e6)) + 'mum/'
+        if not os.path.exists(prop_file_folder + sensrun_folder):
+            print prop_file_folder + sensrun_folder, " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
+            sys.exit()
+        for filename in glob.glob(prop_file_folder + sensrun_folder +  particle_type + '*properties.txt'): #loop over all property files (with different mean sizes)
+            #read size parameter from filename in order to disregard some size parameter
+            m=re.search(prop_file_folder + sensrun_folder + particle_type + '_(.+?)_properties.txt', filename) #search for patter
+            size_param_now = float(m.group(1))
+            if size_param_now>1000: #ignore all sizeparameter above ... or below ...
+                continue
 
 
-        print "reading: " + filename
-        #if float(filename[39:44])<9.: continue #"2." in filename: continue #print "dont take this" #continue
-        #print filename[39:44],float(filename[39:44])<5
-        with open(filename,"rb") as txtfile: #TODO: this is just one file! #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
-            prop_reader = csv.reader(filter(lambda row: row[0]!='#',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+            #verbose reading of files
+            print "reading: " + filename
 
-            #define the monomer numbers to read in
-            take_all_Nmono_bool = True
-            if take_all_Nmono_bool:
-                #N_mono_list = np.append(np.array(range(1,10)),np.array(range(10,101,10))) #for quick tests run to monomer number of 100 only
-                N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100)))
-            else: #select certain monomer numbers
-                N_mono_list = np.array([1,2,3,4,5,6,7,8,9,10]) #10,50]) #,2,3,5,10,20,50,100,200,500,1000]) #-1 is the index shift
-            #for N_mono_now in N_mono_list: # magnitude in [1,10,100]: #itertools.islice (which is used for reading only certain rows in the txt files) just works with range() like input, so this is the workaround to be able to select all kind of monomer numbers
+            with open(filename,"rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+                prop_reader = csv.reader(filter(lambda row: row[0]!='#',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
 
-            #read the property file in to the particle_dic dictionary
-            for i_row,row_content in enumerate(prop_reader):
-                if row_content[0] in N_mono_list and row_content[0]>=N_small_notuse and row_content[3]>=D_small_notuse: #ATTENTION: here the smallest particle are not considered (because of resolution issues) #i_row==0 or i_row==4 or i_row==9:
-                    #print row_content[3]; raw_input("wait")
-                    particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
-                    particle_dic["N_monomer"] =     np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
-                    particle_dic["mass"] =          np.append(particle_dic["mass"],     row_content[1])
-                    if tumbling:
-                        particle_dic["area"] = np.append(particle_dic["area"],row_content[2]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
-                    elif not tumbling:
+                #define the monomer numbers to read in
+                take_all_Nmono_bool = True
+                if grid_res==1e-6: #particles < 10mum are modelled only for small monomer numbers
+                    N_mono_list_tmp = np.array(range(1,10))
+                elif grid_res==5e-6: #particles < 10mum are modelled only for small monomer numbers
+                    N_mono_list_tmp = np.array(range(10,101,10))
+                elif grid_res==10e-6:#take only the large monomer numbers from the low-resolution runs
+                    N_mono_list_tmp = np.array(range(100,1001,100))
+                
+                
+                for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
+                    if row_content[0] in N_mono_list_tmp: #i_row==0 or i_row==4 or i_row==9:
+                        particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
+                        particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
+                        particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
+
+                        particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
                         particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
-                    particle_dic["diam"] =          np.append(particle_dic["diam"],     row_content[3])
+                        particle_dic["as_ratio"] = np.append(particle_dic["as_ratio"],row_content[5]) 
+                        particle_dic["area_partal10std"] = np.append(particle_dic["area_partal10std"],row_content[6]) 
+                        particle_dic["area_partal20std"] = np.append(particle_dic["area_partal20std"],row_content[7])
+                        particle_dic["area_partal40std"] = np.append(particle_dic["area_partal40std"],row_content[2])
+                        particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8]) 
+            N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
                     
     print particle_dic #overview of the dictionary, might be helpful sometimes
 
@@ -195,7 +198,7 @@ for particle_type in particle_types:
         i_ax+=1
         axes[i_ax].semilogx(N_mono_list,fit_dic[prop +"_coeff_Nmono_merged"][:,0],label=particle_type)
         #make labels
-        axes[i_ax].set_xlabel("number of monomers / 1")
+        axes[i_ax].set_xlabel(r"number of monomers $N_{mono}$ / 1")
         if prop=="mass":
             axes[i_ax].set_ylabel("a coefficient in m=a*D**b")
         if prop=="area":
@@ -205,7 +208,7 @@ for particle_type in particle_types:
         i_ax+=1
         axes[i_ax].semilogx(N_mono_list,fit_dic[prop +"_coeff_Nmono_merged"][:,1],label=particle_type)
         #make labels
-        axes[i_ax].set_xlabel("number of monomers / 1")
+        axes[i_ax].set_xlabel(r"number of monomers $N_{mono}$ / 1")
         if prop=="mass":
             axes[i_ax].set_ylabel("b coefficient in m=a*D**b")
         if prop=="area":
@@ -270,7 +273,7 @@ for particle_type in particle_types:
             ##plot the property normalized by a sphere
             diam_selected1_handle_normsphere = axes[i_ax].loglog(N_mono_list,prop_at_diam_normed_by_sphere,label="{:.4f}mm-{:.4f}mm".format(diam_edges[i_diam]*1e3,diam_edges[i_diam+1]*1e3))
             #make labels
-            axes[i_ax].set_xlabel("number of monomers / 1")
+            axes[i_ax].set_xlabel(r"number of monomers $N_{mono}$ / 1")
             if prop=="mass":
                 axes[i_ax].set_ylabel("eff. density / kg m-3")
             if prop=="area":
@@ -287,17 +290,26 @@ for particle_type in particle_types:
         #D
         #diam_fit_eval = diam_center #link this to the selected diameter bins above #np.logspace(-4,-1.5,20)
         diam_log = np.log10(diam_center)
+        diam_log_detailed = np.log10(diam)
         #N_mono
-        Nmono_fit_eval = N_mono_list #evaluate the 
+        Nmono_fit_eval = np.array([1,2,5,10,100,1000]) #N_mono_list #evaluate the 
         Nmono_log = np.log10(Nmono_fit_eval)
         
         #self-defined discrete colormap (for the monomer number N)
         # define the colormap and the discrete boundaries (defined by the considered monomer numbers) and set up an array of the same colors (for line-plotting)
-        cmapN = plt.cm.viridis #brg
+        cmapN = plt.cm.hot #brg
         #modify lowest color in colormap
         cmaplistN = [cmapN(i) for i in range(cmapN.N)]
+        cmaplistN = cmaplistN[30:256-30] #crop colormap to avoid to light scatterer #out of 256 colors
+        #from IPython.core.debugger import Tracer ; Tracer()()
+
         #cmaplist = cmaplist[80:] #crop colormap to avoid to light scatterer
-        cmaplistN[0] = (1.0,0.0,0.0,1.0)
+        #colormonomer = (colors.ColorConverter.to_rgb("r"),1.0) #(1.0,0.0,0.0,1.0) #make Nmono=1 red
+        colormonomer = colors.ColorConverter.to_rgb("b") #(1.0,0.0,0.0,1.0) #make Nmono=1 blue
+        colorallagg =  colors.ColorConverter.to_rgb("g") #(1.0,0.0,0.0,1.0) #make Nmono=1 blue
+
+        cmaplistN[0] = colormonomer
+        #cmaplistN[-1] = colorallagg #ATTENTION this is just for seeing the color in the plot
         cmapN = colors.LinearSegmentedColormap.from_list('mcm',cmaplistN, cmapN.N)
         boundsN = np.append(N_mono_list,[9999])
         normN = colors.BoundaryNorm(boundsN, cmapN.N)
@@ -316,7 +328,7 @@ for particle_type in particle_types:
 
         #spanned grid from D-N
         D_N_grid =  np.meshgrid(diam_log,Nmono_log)
-        
+        D_N_grid_detailed = np.meshgrid(diam_log_detailed,Nmono_log)
         #apply the fit coefficients to the above spanned D,N field
         if ab_func=="powerlaw_polynom1":
             if prop=="mass" or (not tumbling):
@@ -326,6 +338,7 @@ for particle_type in particle_types:
         elif ab_func=="powerlaw_rational1":
             if prop=="mass" or (not tumbling):
                 prop_fitted = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
+                prop_fitted_detailed = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid_detailed,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
             if prop=="area" and tumbling:
                 prop_fitted = __tools_for_processing_Jagg.powerlaw_rational1(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3],fit_dic[prop +"_coeff_mod_powerlaw"][4],fit_dic[prop +"_coeff_mod_powerlaw"][5])#this is the logscaled property (mass/area) divided by the monomer property     
         elif ab_func=="powerlaw_rational2":
@@ -348,16 +361,18 @@ for particle_type in particle_types:
         #transform the normed property back   
         if prop=="mass":
             mass_fit = 10**(prop_fitted)*a*diam_center**b
+            mass_fit_detailed = 10**(prop_fitted_detailed)*a*diam**b#for plotting the velocity more bins are nicer
         if prop=="area":
             area_fit = 10**(prop_fitted)*c*diam_center**d
-        
+            area_fit_detailed = 10**(prop_fitted_detailed)*c*diam**d#for plotting the velocity more bins are nicer
+
             
         for i_diam,diam_center_now in enumerate(diam_center):
             #from IPython.core.debugger import Tracer ; Tracer()()
             axes[i_ax+1].plot(Nmono_fit_eval,10**prop_fitted[:,i_diam],label="fit@{:.4f}mm".format(diam_center_now*1.e3),linestyle="--",color=diam_selected1_handle_normmono[i_diam][0].get_color())
 
         #make labels
-        axes[i_ax+1].set_xlabel("number of monomers / 1")
+        axes[i_ax+1].set_xlabel(r"number of monomers $N_{mono}$ / 1")
         axes[i_ax+1].set_ylabel(prop + " / " + prop + " monomer / 1")
 
         ###
@@ -387,20 +402,23 @@ for particle_type in particle_types:
         im = axes[i_ax].scatter(particle_dic["diam"],particle_dic[prop],s=1,c=particle_dic["N_monomer"],rasterized=True,norm=normN,cmap=cmapN) #all used particles        
         
         #overlay the fit
-        for i_Nmono in range(0,Nmono_fit_eval.shape[0],5):
+        for i_Nmono,N_mono_now in enumerate(Nmono_fit_eval): #range(0,N_mono_list.shape[0],5):
             #from IPython.core.debugger import Tracer ; Tracer()()
             if prop=="mass":
-                fitlines = axes[i_ax].plot(diam_center,mass_fit[i_Nmono,:],c=usecolorsN[i_Nmono],linestyle="--")
+                fitlines = axes[i_ax].plot(diam_center,mass_fit[i_Nmono,:],c="white",linewidth=1.0,linestyle="-")
+                fitlines = axes[i_ax].plot(diam_center,mass_fit[i_Nmono,:],c=usecolorsN[N_mono_now==N_mono_list][0],linewidth=0.8,linestyle="-")
 
             if prop=="area":
-                fitlines = axes[i_ax].plot(diam_center,area_fit[i_Nmono,:],c=usecolorsN[i_Nmono],linestyle="--")
+                fitlines = axes[i_ax].plot(diam_center,area_fit[i_Nmono,:],c="white",linewidth=1.0,linestyle="-")
+                fitlines = axes[i_ax].plot(diam_center,area_fit[i_Nmono,:],c=usecolorsN[N_mono_now==N_mono_list][0],linewidth=0.8,linestyle="-")
+
                 
         if show_lines["MC"]:
             MC_snow_handle = axes[i_ax].semilogx(fit_dic["diam"],mDADvD_dict_MC[prop_short + "(D_array)"],color='orange',label="McSnow",linestyle='--')
             
         #make labels
-        axes[i_ax].set_xlabel("diameter / m")
-        axes[i_ax].set_ylabel((" / ").join((prop,prop_unit))) 
+        axes[i_ax].set_xlabel("diameter D / m")
+        axes[i_ax].set_ylabel((" / ").join((prop+ ' ' + prop_short,prop_unit))) 
         #from IPython.core.debugger import Tracer ; Tracer()()
         #change the axis
         axes[i_ax].set_ylim([0,np.array([1e-4,1e-3])[i_prop]]) #define the upper limit of the displayed axis
@@ -422,19 +440,19 @@ for particle_type in particle_types:
                     fit_string_coeff1 = "a= 10^(({:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][0])+"*log(N))/(1+{:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][1]) + "*log(N)))*{:.4f}".format(a)
                     fit_string_coeff2 = "b= ({:.4f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][2])+"*log(N))/(1+{:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][3]) + "*log(N))+{:.2f}".format(b)
                 elif prop =="area":
-                    fit_string_coeff1 = "c= 10^(({:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][0])+"*log(N))/(1+{:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][1]) + "*log(N)))*{:.4f}".format(c)
+                    fit_string_coeff1 = "c= 10\^(({:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][0])+"*log(N))/(1+{:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][1]) + "*log(N)))*{:.4f}".format(c)
                     fit_string_coeff2 = "d= ({:.4f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][2])+"*log(N))/(1+{:.2f}".format(fit_dic[prop +"_coeff_mod_powerlaw"][3]) + "*log(N))+{:.2f}".format(d)
                 
                 fitted_samples = ""
-                for Nmono in [1,2,3,10,100,1000]: 
+                for Nmono in Nmono_fit_eval: 
                     if prop=="mass":
                         a_fitted = 10**(fit_dic[prop +"_coeff_mod_powerlaw"][0]*np.log10(Nmono)/(1+fit_dic[prop +"_coeff_mod_powerlaw"][1]*np.log10(Nmono)))*a
                         b_fitted = (fit_dic[prop +"_coeff_mod_powerlaw"][2]*np.log10(Nmono)/(1+fit_dic[prop +"_coeff_mod_powerlaw"][3]*np.log10(Nmono)))+b
-                        fitted_samples+= "N_mono: " + str(Nmono) + " a: {:.4f}".format(a_fitted) + " b: {:.2f}".format(b_fitted) + "\n"
+                        fitted_samples+= "$N_{mono}$: " + str(Nmono) + " a: {:.4f}".format(a_fitted) + " b: {:.2f}".format(b_fitted) + "\n"
                     elif prop=="area":
                         c_fitted = 10**(fit_dic[prop +"_coeff_mod_powerlaw"][0]*np.log10(Nmono)/(1+fit_dic[prop +"_coeff_mod_powerlaw"][1]*np.log10(Nmono)))*c
                         d_fitted = (fit_dic[prop +"_coeff_mod_powerlaw"][2]*np.log10(Nmono)/(1+fit_dic[prop +"_coeff_mod_powerlaw"][3]*np.log10(Nmono)))+d
-                        fitted_samples+= "N_mono: " + str(Nmono) + " c: {:.4f}".format(c_fitted) + " d: {:.2f}".format(d_fitted) + "\n"
+                        fitted_samples+= "$N_{mono}$: " + str(Nmono) + " c: {:.4f}".format(c_fitted) + " d: {:.2f}".format(d_fitted) + "\n"
 
 
             axes[i_ax].text(0.02,0.98,fit_string_coeff1 + "\n" +fit_string_coeff2 + "\n" + fitted_samples,horizontalalignment='left',verticalalignment='top',transform=axes[i_ax].transAxes,fontsize=6)
@@ -450,7 +468,7 @@ for particle_type in particle_types:
                 for Nmono in [1,2,3,10,100,1000]: 
                     c_fitted = 10**((fit_dic[prop +"_coeff_mod_powerlaw"][0]+fit_dic[prop +"_coeff_mod_powerlaw"][1]*np.log10(Nmono))/(1+fit_dic[prop +"_coeff_mod_powerlaw"][2]*np.log10(Nmono)))*c
                     d_fitted = ((fit_dic[prop +"_coeff_mod_powerlaw"][3]+fit_dic[prop +"_coeff_mod_powerlaw"][4]*np.log10(Nmono))/(1+fit_dic[prop +"_coeff_mod_powerlaw"][5]*np.log10(Nmono)))+d
-                    c_d_fitted_samples+= "N_mono: " + str(Nmono) + " c: {:.4f}".format(a_fitted) + " d: {:.2f}".format(b_fitted) + "\n"
+                    c_d_fitted_samples+= "$N_{mono}$: " + str(Nmono) + " c: {:.4f}".format(a_fitted) + " d: {:.2f}".format(b_fitted) + "\n"
                     #axes[i_ax].plot(diam_center,a_fitted*diam_center**b_fitted,linestyle="-.",linewidth=3) #test if the above parameters are right
                     #add text for some monomer number to visualize the fit parameter
                     axes[i_ax].text(0.02,0.98,fit_string_coeff1 + "\n" +fit_string_coeff2 + "\n" + c_d_fitted_samples,horizontalalignment='left',verticalalignment='top',transform=axes[i_ax].transAxes,fontsize=6)
@@ -488,8 +506,10 @@ for particle_type in particle_types:
         #    area_rat_fit = 10**initial_guess*c*diam_fit_eval**d
         
         #overlay the fit
-        for i_Nmono in range(0,Nmono_fit_eval.shape[0],5):
-            fitlines = axes[i_ax].plot(np.log10(diam_center),(prop_fitted[i_Nmono,:]),c=usecolorsN[i_Nmono],linestyle="--")
+        for i_Nmono,N_mono_now in enumerate(Nmono_fit_eval):
+            #from IPython.core.debugger import Tracer ; Tracer()()
+            fitlines = axes[i_ax].plot(np.log10(diam_center),(prop_fitted[i_Nmono,:]),c="white",linewidth=1.0,linestyle="-")
+            fitlines = axes[i_ax].plot(np.log10(diam_center),(prop_fitted[i_Nmono,:]),c=usecolorsN[N_mono_now==N_mono_list][0],linewidth=0.8,linestyle="-")
             
             
         '''
@@ -501,7 +521,7 @@ for particle_type in particle_types:
         
         #make labels
         axes[i_ax].set_xlabel("log10(diameter)")
-        axes[i_ax].set_ylabel("log10(" +prop + "/ " + prop + " monomer)")
+        axes[i_ax].set_ylabel("log10(" +prop + "/ \n" + prop + " monomer)")
 
         #change the axis
         #axes[i_ax].set_ylim([0,np.array([1e-4,1e-3])[i_prop]]) #define the upper limit of the displayed axis
@@ -535,12 +555,12 @@ for particle_type in particle_types:
                 i_color+=1
                 
             if prop=="mass":
-                fitlines = axes[i_ax].plot(Nmono_fit_eval,(prop_fitted[:,i_diam]),c=usecolorsD[i_color],linestyle="--")
+                fitlines = axes[i_ax].plot(N_mono_list[::5],(prop_fitted[:,i_diam]),c=usecolorsD[i_color],linestyle="--")
             if prop=="area":
-                fitlines = axes[i_ax].plot(Nmono_fit_eval,(prop_fitted[:,i_diam]),c=usecolorsD[i_color],linestyle="--")
+                fitlines = axes[i_ax].plot(N_mono_list[::5],(prop_fitted[:,i_diam]),c=usecolorsD[i_color],linestyle="--")
 
         #make labels
-        axes[i_ax].set_xlabel("monomer number / m")
+        axes[i_ax].set_xlabel(r"number of monomers $N_{mono}$ / 1")
         axes[i_ax].set_ylabel("log10(" +prop + "/ " + prop + " monomer)")
 
         #change the axis
@@ -560,6 +580,46 @@ for particle_type in particle_types:
         ###
         #END: plot the prop(m or D) vs N_monomer as scatter and the 2D-fit (with transformed values D->log10(D) N->log10(N) prop->prop/prop_monomer)
         ###
+    
+    if compare_hydro_models:
+        #plot v-D corresponding to some selected monomer numbers
+        for i_Nmono,N_mono_now in enumerate(Nmono_fit_eval):
+            if N_mono_now in [1,10,100,1000]:
+                i_ax+=1
+                vel_models=["bohm","HW10","KC05"]
+                for i_velocity_model,velocity_model in enumerate(vel_models): #"HW10","KC05","bohm"]: #,"mitch_heym"]:
+                    vterm_fit = __fallspeed_relations.calc_vterm(velocity_model,mass_fit_detailed[i_Nmono,:],diam,area_fit_detailed[i_Nmono,:])
+                    #plot a line for each Nmono evaluation value
+                    if i_velocity_model==0: #label only the first
+                        fitlines = axes[i_ax].semilogx(diam,vterm_fit,c=usecolorsN[N_mono_now==N_mono_list][0],linestyle=np.array(["-","--","-."])[i_velocity_model],label="Nmono=" + str(Nmono_fit_eval[i_Nmono]),linewidth=1)
+                    else:
+                        fitlines = axes[i_ax].semilogx(diam,vterm_fit,c=usecolorsN[N_mono_now==N_mono_list][0],linestyle=np.array(["-","--","-."])[i_velocity_model],label="__None",linewidth=1)
+                for i_velocity_model,velocity_model in enumerate(vel_models): #"HW10","KC05","bohm"]: #,"mitch_heym"]:
+                    #add a label for the different term vel model (once only)
+                    axes[i_ax].semilogx(np.nan,np.nan,linestyle=np.array(["-","--","-."])[i_velocity_model],color='k',label=velocity_model)
+            
+    else:
+        i_ax+=1
+        for i_Nmono,N_mono_now in enumerate(Nmono_fit_eval):
+            if N_mono_now in [1,2,5,10,100,1000]:
+                vterm_fit = __fallspeed_relations.calc_vterm("bohm",mass_fit_detailed[i_Nmono,:],diam,area_fit_detailed[i_Nmono,:])
+                #plot a line for each Nmono evaluation value
+                fitlines = axes[i_ax].semilogx(diam,vterm_fit,c=usecolorsN[N_mono_now==N_mono_list][0],label="Nmono=" + str(Nmono_fit_eval[i_Nmono]),linewidth=1)
+            
+    #show legend
+    axes[i_ax].legend() 
+    
+    #make labels
+    axes[i_ax].set_xlabel("diameter D / m")
+    axes[i_ax].set_ylabel("terminal velocity v / m s-1" ) #TODO: plot also the untis of these properties
+
+    #change the axis
+    axes[i_ax].set_xlim([10**low_diam_log_detailed,10**high_diam_log_detailed]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
+    axes[i_ax].set_ylim([0,2.5]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
+    axes[i_ax].set_yticks([0,0.5,1.0,1.5,2.0,2.5])
+    axes[i_ax].grid(which="major")
+    cbar = fig.colorbar(im,ax=axes[i_ax])
+        
     #add legends
     for i_ax in [0,1,2,3,7,8,9,10]:
         axes[i_ax].legend(bbox_to_anchor=(1.02, 1.02))
@@ -578,10 +638,26 @@ for particle_type in particle_types:
         tumbling_add="_wtumbling"
     else: 
         tumbling_add="_wotumbling"
-    out_filestring = "mod_powerlaw_fit_Jagg_mD_AD_vD_" + particle_type + "_gridres" + str(grid_res) + '_' + tumbling_add
+    if compare_hydro_models:
+        comp_hydro_add="comphydro"
+    else:
+        comp_hydro_add=""
+    out_filestring = "mod_powerlaw_fit_Jagg_mD_AD_vD_" + particle_type + "_gridres" + str(grid_res) + '_' + tumbling_add + '_' + comp_hydro_add
     plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
     plt.savefig(dir_save + out_filestring + '.png', dpi=100)
     print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
     subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
-    plt.clf()
-    plt.close()
+    #plt.clf()
+    #plt.close()
+
+    # Save just the portion _inside_ the second axis's boundaries
+    save_axis=14
+    for i_axis in range(0,len(axes)):#clear all other axes
+        if i_axis==save_axis:
+            continue
+        axes[i_axis].set_xlabel("")
+        axes[i_axis].axes.get_xaxis().set_ticklabels([])
+    extent = axes[save_axis].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    axes[save_axis].set_ylabel("terminal velocity / m s-1")
+    fig.savefig(dir_save + out_filestring + 'spec_ax_figure.png', bbox_inches=extent.expanded(1.5, 1.6),dpi=400)
+    fig.savefig(dir_save + out_filestring + 'spec_ax_figure.pdf', bbox_inches=extent.expanded(1.5, 1.6),dpi=400)

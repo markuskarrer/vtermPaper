@@ -69,12 +69,24 @@ def vterm_hw10(mtot,diam,area,rho=1.287,eta=1.717696e-5):
     # modified Best number eq. on p. 2478
     Ar = area * 4.0/np.pi
     Xbest = rho* 8.0*mtot*grav*diam/(eta**2*np.pi*np.sqrt(Ar))
-    
+    #print "Xbest",Xbest
+    #additional turbulence correction (from B?hm)
+    X_0 = 2.8e6
+    psi = (1.0+1.6*(Xbest/X_0)**2)/(1.0+(Xbest/X_0)**2)
+    #psi = 1 #uncomment this line to get back to original HW10
+    Xbest = Xbest / psi
+
     # Re-X eq. on p. 2478
     c1 = 4.0 / ( do_i**2 * np.sqrt(co_i) )
+    #c1 = 0.292**0.5/6 #as in Boehm
+    #print "c1",c1
     c2 = 0.25 * do_i**2
     bracket = np.sqrt(1.0 + c1*np.sqrt(Xbest)) - 1.0
-    Re = c2*bracket**2
+    #turbulence correction from MH05
+    a0=1.0e-5
+    b0=1.0
+    Re = c2*bracket**2 #- a0*Xbest**b0 
+    #print "Re1",c2*bracket**2,"Re2",a0*Xbest**b0,"rel (Re-Re1)/Re1",(a0*Xbest**b0)/(c2*bracket**2)
 
     vt = eta * Re / (rho * diam)
     
@@ -105,10 +117,14 @@ FUNCTION X2Cd_kc05rough( Xbest ) RESULT( Cd )
 END FUNCTION X2Cd_kc05rough
 '''
 def X2Cd_kc05rough( Xbest ):
-    
+    Ct = 1.6
+    #original  
     do_i = 5.83
     co_i = 0.6
-    Ct = 1.6
+    '''# test from HW #with that vterm gets even faster
+    do_i = 8.0
+    co_i = 0.35
+    #'''    
     X0_i = .35714285714285714285e-6
     c1 = 4.0 / ( do_i**2 * np.sqrt(co_i) )
     c2 = 0.25 * do_i**2
@@ -169,7 +185,9 @@ def vterm_kc05(mtot,diam,area,rho=1.287,eta=1.717696e-5):
     #! Best number eq. (2.4b) with buoyancy
     Vb = mtot*rhoii #TODO: this function can not handle riming yet+ MAX(sp%v_r, sp%m_r*rhoii + sp%m_w*rholi)
     Fb = rho * Vb * grav
-    Xbest = 2. * abs(mtot*grav-Fb) * rho * diam**2 / (area * eta**2)
+    #Xbest = 2. * abs(mtot*grav-Fb) * rho * diam**2 / (area * eta**2)
+    Xbest = rho* 8.0*mtot*grav/(eta**2*np.pi*(area * 4.0/np.pi / diam**2)**(1./4)) #HW10 formulation, but exponent as in Bohm
+    #Xbest = rho* 8.0*mtot*grav/(eta**2*np.pi*(area * 4.0/np.pi / diam**2)**(1./2)) #HW10
 
 
     Cd  = X2Cd_kc05rough( Xbest )
@@ -251,18 +269,21 @@ def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
     grav  = 9.81 #from mo_atmo_types()
 
     #! 99 (7) or I (17)/(18)
-    X = 8.0*mtot*grav*rho/(np.pi*(eta**2)*max(alpha,1.0)*np.maximum(q**(1.0/4.0),q))
-
+    X = 8.0*mtot*grav*rho/(np.pi*(eta**2)*max(alpha,1.0)*np.maximum(q**(1.0/4.0),q)) #reduced to 8.0*mtot*grav*rho/(np.pi*(eta**2)*q**(1/4) = 8.0*mtot*grav*rho/(np.pi*(eta**2)*(area / (np.pi/4.0 * diam**2))**(1/4) for alpha=1 and q<1 (which is usually the case)
+    #print "q",q,"np.maximum(q**(1.0/4.0),q))",np.maximum(q**(1.0/4.0),q)
     #! 99 (9) attention sqrt(alpha) should be just alpha, see I (11)/(12)/(13)/(14)
-    k = min(max(0.82+0.18*alpha,0.85),0.37+0.63/alpha,1.33/(max(np.log(alpha),0.0)+1.19))
+    k = min(max(0.82+0.18*alpha,0.85),0.37+0.63/alpha,1.33/(max(np.log(alpha),0.0)+1.19)) #k is 1 for alpha=1
+    #print "k",k
     #! 99 (11) or I (11)
-    gama_big = max(1.0, min(1.98,3.76-8.41*alpha+9.18*alpha**2-3.53*alpha**3))
+    gama_big = max(1.0, min(1.98,3.76-8.41*alpha+9.18*alpha**2-3.53*alpha**3)) #1 for alpha=1
+    #print "gama_big",gama_big
     #! 99 (10) or I (7)/(8)
-    C_DP = np.maximum(0.292*k*gama_big,0.492-0.2/np.sqrt(alpha))
-    C_DP = np.maximum(1.0,q*(1.46*q-0.46))*C_DP
+    C_DP = np.maximum(0.292*k*gama_big,0.492-0.2/np.sqrt(alpha)) #0.292 for alpha=1
+    C_DP = np.maximum(1.0,q*(1.46*q-0.46))*C_DP #0.292 for alpha=1
+    #print "C_DP",C_DP
     #! I (23) turbulence correction
-    C_DP_prim = C_DP*(1.0+1.6*(X/X_0)**2)/(1.0+(X/X_0)**2)
-
+    C_DP_prim = C_DP*(1.0+1.6*(X/X_0)**2)/(1.0+(X/X_0)**2) #0.292 for small particles; larger for bigger particles 
+    #print "C_DP_prim",C_DP_prim
     #! I (21)
     beta = np.sqrt(1.0+C_DP_prim/6.0/k*np.sqrt(X/C_DP_prim))-1
     #! I (20)

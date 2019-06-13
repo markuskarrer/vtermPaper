@@ -38,14 +38,19 @@ if "separated_by_sensruns" in os.environ.keys():
 else:
     print "separated_by_sensruns not found in environ: set to False"
     separated_by_sensruns = False
+if "separated_by_fallspeedsens" in os.environ.keys():
+    separated_by_fallspeedsens = (os.environ["separated_by_fallspeedsens"]=="True") #plot a line for different sensitivity runs
+else:
+    print "separated_by_fallspeedsens not found in environ: set to False"
+    separated_by_fallspeedsens = False
 if "switch_off_processes" in os.environ.keys():
     switch_off_processes_str = os.environ["switch_off_processes"]
 else:
     switch_off_processes_str = ''
-if "McSnow_geom_list" in os.environ.keys():
-    McSnow_geom_list_str = os.environ["McSnow_geom_list"]
-else:
-    McSnow_geom_list_str = ''
+#if "McSnow_geom_list" in os.environ.keys():
+#    McSnow_geom_list_str = os.environ["McSnow_geom_list"]
+#else:
+#    McSnow_geom_list_str = ''
 #directory of experiments
 directory = MC_dir + "/experiments/"
 
@@ -76,15 +81,19 @@ axmassflux = plt.subplot2grid((number_of_plots, 1), (4, 0))
 for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB sensitivity runs
     for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list): #loop over different McSnow geometry sensitivity runs
         if separated_by_sensruns:#modify the experiment string
+            #replace the geometry string
             experiment_splitted = experiment.split('_',2) #this results e.g. in ['1d', 'powerlawJplate', 'xi10000000_
             experiment_splitted[1] = sensrun_now #replace experiment part
             experiment = "_".join(experiment_splitted)
+            
 
-        if len(McSnow_geom_list)>1:#modify the experiment string
+        if len(McSnow_geom_list)>1:#modify the experiment string to read the file with the write geometry
             experiment_splitted = experiment.split('_',3) #this results e.g. in ['1d', 'powerlawJplate', 'xi10000000_
             experiment_splitted[2] = sensrun_now_MC #replace experiment part
             experiment = "_".join(experiment_splitted)
-
+            McSnow_geom_list_str = McSnow_geom_specifier_onestring
+        else:
+            McSnow_geom_list_str = str(McSnow_geom_list[0])
 
 
         #read hei2massdens to get average /summed up values per height
@@ -182,7 +191,7 @@ if len(sensrun_list)>1:#add labels for the different sensruns
 if len(McSnow_geom_list)>1:#add labels for the different sensruns
     for i_sensMC,sensrun_now_MC in enumerate(McSnow_geom_list):
         for ax in [axnum,axmass,axmean,axnumflux,axmassflux]:
-            ax.plot(np.nan,np.nan,color='k',linestyle='--',marker=['','x','o','d'][i_sensMC],label=['default','N_mono \ndependent'][i_sensMC])
+            ax.plot(np.nan,np.nan,color='k',linestyle='--',marker=['','x','o','d'][i_sensMC],label=['default','binary','N_mono \ndependent'][i_sensMC])
             ax.legend()
 
 #save figure

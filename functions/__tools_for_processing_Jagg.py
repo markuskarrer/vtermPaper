@@ -19,6 +19,12 @@ def init_particle_dict():
     particle_dic["area"] = [] #particle area
     particle_dic["diam"] = [] #particle diameter
     particle_dic["sizeparam_index"] = [] #size parameter
+    particle_dic["as_ratio"] = [] #aspect ratio
+    particle_dic["area_partal10std"] = [] #particle area with a partial alignment (std-dev: 10deg)
+    particle_dic["area_partal20std"] = [] #particle area with a partial alignment (std-dev: 20deg)
+    particle_dic["area_partal40std"] = [] #particle area with a partial alignment (std-dev: 40deg)
+    particle_dic["area_partal60std"] = [] #particle area with a partial alignment (std-dev: 60deg)
+
     #particle_dic["HWJussi"] = [] #particle area
     #particle_dic["KCJussi"] = [] #particle diameter
     
@@ -94,6 +100,80 @@ def calc_mD_AD_coeffs(mono_type):
         c_theor=np.nan
         d_theor=np.nan
     return a_theor,b_theor,c_theor,d_theor
+
+def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregates_bugfixedrotation/',
+                                                D_small_notuse=1e-4, #ATTENTION: particle smaller than D_small_notuse are not considered (e.g. because of resolution issues)
+                                                N_small_notuse=1, #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
+                                                grid_res_array = [1e-6,5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
+                                                particle_type = "plate", #define the habit
+                                                test_with_small_sample = False #read only 1/10 of the data in for faster plotting
+                                                ):
+    '''
+    read the particle property files and save them in the "particle_dic" dictionary
+    INPUT:  
+            prop_file_folder: absolute path of the aggregates property file
+            D_small_notuse: particles smaller than that value (in m) are not used
+            N_small_notuse: monomer numbers smaller than N_small_notuse are not considered
+            grid_res_array: array with grid resolution
+    
+    OUTPUT: particle_dic: dictionary containing the properties of the individual simulated particles
+    '''
+    import os
+    import glob
+    import re
+    import csv
+    particle_dic = init_particle_dict() #initialize dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the   
+    for grid_res in grid_res_array: #loop over different grid-resolutions in order to have small monomer numbers modelled woth higher resolution
+        print "processing" + particle_type + " with resolution: ",grid_res
+        sensrun_folder = 'res_'+ str(int(grid_res*1e6)) + 'mum/'
+        
+        if not os.path.exists(prop_file_folder + sensrun_folder): #check if folder exists
+            print prop_file_folder + sensrun_folder, " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
+            sys.exit()
+        
+        if test_with_small_sample:
+            test_subsample = "*1E"
+        else:
+            test_subsample = ""
+        for filename in glob.glob(prop_file_folder + sensrun_folder +  particle_type + test_subsample + '*properties.txt'): #loop over all property files (with different mean sizes)
+            #read size parameter from filename in order to be able to disregard some size parameter
+            m=re.search(prop_file_folder + sensrun_folder + particle_type + '_(.+?)_properties.txt', filename) #search for patter
+            size_param_now = float(m.group(1))
+            if size_param_now<-999: #ignore all sizeparameter above ... or below ...
+                continue
+            
+            #verbose reading of files
+            print "reading: " + filename
+            with open(filename,"rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+                prop_reader = csv.reader(filter(lambda row: row[0]!='#',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+
+                #define the monomer numbers to read in
+                take_all_Nmono_bool = True
+                if grid_res==1e-6: #particles < 10mum are modelled only for small monomer numbers
+                    N_mono_list_tmp = np.array(range(1,10))
+                elif grid_res==5e-6: #particles < 10mum are modelled only for small monomer numbers
+                    N_mono_list_tmp = np.array(range(10,101,10))
+                elif grid_res==10e-6:#take only the large monomer numbers from the low-resolution runs
+                    N_mono_list_tmp = np.array(range(100,1001,100))
+                
+                
+                for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
+                    if row_content[0] in N_mono_list_tmp: #i_row==0 or i_row==4 or i_row==9:
+                        particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
+                        particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
+                        particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
+
+                        particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
+                        particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
+                        particle_dic["as_ratio"] = np.append(particle_dic["as_ratio"],row_content[5]) 
+                        particle_dic["area_partal10std"] = np.append(particle_dic["area_partal10std"],row_content[6]) 
+                        particle_dic["area_partal20std"] = np.append(particle_dic["area_partal20std"],row_content[7])
+                        particle_dic["area_partal40std"] = np.append(particle_dic["area_partal40std"],row_content[2])
+                        particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8]) 
+            N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
+                    
+    return particle_dic,N_mono_list
+
 
 def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None',habit='None',prop='None'):
     '''source: https://scipy-cookbook.readthedocs.io/items/FittingData.html
@@ -280,14 +360,16 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
     fit_dic["N_mono_list"] = N_mono_list
 
     for i_N_mono,N_mono_now in enumerate(N_mono_list): #loop over all monomer numbers
+
         if not any(particle_dic["N_monomer"]==N_mono_now): #if there are no particles with this monomer number just skip this loop
+            #raw_input("there is none of " + str(N_mono_now))
             continue
         
         # make a fit for the current number of monomers (power-law; always directly to the points coming from the aggregate model)
         if not isinstance(weight,str) and weight=='None':
             [fitresult,covar] = fit_data(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],particle_dic[prop][particle_dic["N_monomer"]==N_mono_now],func=function)
             print "check if you really want to get here 1 ( in tools_for_processing_Jagg.fitting_wrapper";from IPython.core.debugger import Tracer ; Tracer()()
-        else:#apply weighting
+        else :#apply a weight
             [fitresult,covar] = fit_data(particle_dic["diam"][particle_dic["N_monomer"]==N_mono_now],particle_dic[prop][particle_dic["N_monomer"]==N_mono_now],func=function,weight=weight)
             
         '''
@@ -323,7 +405,7 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
         if plot_binary_fits:
             #plot the power-law (for all particles with N_monomer>1)
             #ax.plot(fit_dic["diam"][fit_dic["diam_dens_enough_allagg"]],fit_dic[prop + "_Nmono_allagg"][fit_dic["diam_dens_enough_allagg"]],color='black',linewidth=linewidthvalid)
-            fitline_allagg, = ax.plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],color='g',linewidth=linewidthinvalid,label="Nmono>1")
+            fitline_allagg, = ax.plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],color='y',linewidth=linewidthinvalid,label="Nmono>1")
         else:
             fitline_allagg=0 #dummy
     else:
