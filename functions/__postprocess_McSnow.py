@@ -38,12 +38,16 @@ def read_mass2frdat(experiment,filestring):
 
     return SP
 
-def read_hei2massdens(filestring,timestep=0,empty_flag=False):
+def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     '''
     read height-profiles from the mass2fr.dat file into the SP-dictionary
     INPUT   experiment: descriptor (also folder name) of the experiment
+            timestep: integer defining which output step to choose
+            timestep_end: integer defining which output step to choose as the end of average (we just take all available)
             empty_flag: return arrays with zeros (but the same shape); this can be done to not plot McSnow data
     '''
+    if timestep_end==0:
+        timestep_end=timestep #set end timestep to start if not defined
     
     #load file from .dat
     heightprofiles_fullinfo = np.loadtxt(filestring)
@@ -71,18 +75,33 @@ def read_hei2massdens(filestring,timestep=0,empty_flag=False):
     #read z-array first to crop hei2massdens array to the relevant timesteps
     z_for_crop = heightprofiles_fullinfo[:,0]
     index_start_of_timesteps = np.where(z_for_crop==0)[0] #this is an array with indices which indicate at which line a new timestep starts
+    try:
+        N_heights = index_start_of_timesteps[1] - index_start_of_timesteps[0]
+    except:
+        print "error in __postprocess_McSnow.read_hei2massdens: is the file: " + filestring + " not complete?"
+        
+        from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+
     i_start = index_start_of_timesteps[timestep]; 
+
     #going to the beginning of next timestep and then one line back fails if the last timestep is read in -> treat this case seperately
-    if (index_start_of_timesteps.shape[0]-1)==timestep: #last timestep
+    if (index_start_of_timesteps.shape[0]-1)==timestep_end: #means: last timestep
         i_end = heightprofiles_fullinfo.shape[0]
     else: #not last timestep
-        i_end = index_start_of_timesteps[timestep+1]-1
-    
+        if timestep_end==0: #means: no average interval selected
+            i_end = index_start_of_timesteps[timestep+1]-1
+        else:
+            i_end = index_start_of_timesteps[timestep_end+1]-1
     for i,key in enumerate(varnames):
         if empty_flag:
             hei2massdens[key] = np.zeros_like(heightprofiles_fullinfo[i_start:i_end,i])
         else:
-            hei2massdens[key] = heightprofiles_fullinfo[i_start:i_end,i]
+            if key=="z": #z is structured differently
+                tmp_var_reshaped =  heightprofiles_fullinfo[i_start:i_end,i].reshape((timestep_end-timestep+1,N_heights)) #extract array with (n_heights,n_timesteps_to_average=timestep_end-timestep)
+                hei2massdens[key] = np.mean(tmp_var_reshaped,axis=0) #average over all timesteps
+            else:
+                tmp_var_reshaped =  heightprofiles_fullinfo[i_start:i_end,i].reshape((timestep_end-timestep+1,N_heights)) #extract array with (n_heights,n_timesteps_to_average=timestep_end-timestep)
+                hei2massdens[key] = np.mean(tmp_var_reshaped,axis=0) #average over all timesteps
 
     #calculate unrimed properties as residuum
     for prop in ["Nd","Md","Fn","Fm","Fmono"]: #loop over all properties
@@ -90,6 +109,8 @@ def read_hei2massdens(filestring,timestep=0,empty_flag=False):
         for categ in ["mm1","unr","grp","liq"]:
             prop_tmp = prop_tmp - hei2massdens[prop + '_' + categ][:] #subtract quantity of each category
         hei2massdens[prop + "_rimed"] = prop_tmp[:] #save residuum for _rimed of this property
+    for prop in ["Nd","Md","Fn","Fm","Fmono"]: #loop over all properties
+        hei2massdens[prop + "_rimed"] = np.where(hei2massdens["Md_rimed"]>2e-6,hei2massdens[prop + "_rimed"],0) #remove noisy height-levels
 
     return hei2massdens
 
@@ -253,31 +274,32 @@ def separate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange
     for i in range(0,nheights-1):
         if isinstance(calconly,basestring) or (heightvec[i] in calconly): #skip heights which are not needed for plotting
             for j in range(0,nbins):
-                        condition_in_bin = np.logical_and(
-                                        np.logical_and(d_bound_ds[j]<=SP["diam"],SP["diam"]<d_bound_ds[j+1]),
-                                        np.logical_and(heightvec[i]<=SP["height"],SP["height"]<heightvec[i+1]),
-                                        )
-                        binned_val["d_counts"][i,j] = np.sum(np.where(condition_in_bin,SP["xi"],0))
-                        binned_val["d_counts_no_mult"][i,j] = np.sum(np.where(condition_in_bin,1,0))
-                        binned_val["mass_in_bin"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
-                        #get total number of RP per bin
-                        multipl_bin = np.sum(np.where(condition_in_bin,SP["xi"],0))            
-                        #get sum of qirim per bin
-                        qirim_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"],0))
-                        #get sum of qitot
-                        qitot_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
-                        binned_val["av_Frim"][i,j] = qirim_bin/qitot_bin #calc. mass averaged rime fraction
-                        #calc. rime mass averaged rime density
-                        binned_val["av_rhor"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"]*SP["rhor"],0))/qitot_bin
-                        #calc. multipl averaged
-                        binned_val["av_mm"][i,j] = np.sum(np.where(condition_in_bin,SP["mm"]*SP["xi"],0))/multipl_bin
-                        #calc number averaged fall speed
-                        binned_val["nav_vt"][i,j] = np.sum(np.where(condition_in_bin,-SP["vt"]*SP["xi"],0))/multipl_bin
+                condition_in_bin = np.logical_and(
+                                np.logical_and(d_bound_ds[j]<=SP["diam"],SP["diam"]<d_bound_ds[j+1]),
+                                np.logical_and(heightvec[i]<=SP["height"],SP["height"]<heightvec[i+1]),
+                                )
+                
+                binned_val["d_counts"][i,j] = np.sum(np.where(condition_in_bin,SP["xi"],0))
+                binned_val["d_counts_no_mult"][i,j] = np.sum(np.where(condition_in_bin,1,0))
+                binned_val["mass_in_bin"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
+                #get total number of RP per bin
+                multipl_bin = np.sum(np.where(condition_in_bin,SP["xi"],0))            
+                #get sum of qirim per bin
+                qirim_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"],0))
+                #get sum of qitot
+                qitot_bin = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["xi"],0))
+                binned_val["av_Frim"][i,j] = qirim_bin/qitot_bin #calc. mass averaged rime fraction
+                #calc. rime mass averaged rime density
+                binned_val["av_rhor"][i,j] = np.sum(np.where(condition_in_bin,SP["m_tot"]*SP["Frim"]*SP["xi"]*SP["rhor"],0))/qitot_bin
+                #calc. multipl averaged
+                binned_val["av_mm"][i,j] = np.sum(np.where(condition_in_bin,SP["mm"]*SP["xi"],0))/multipl_bin
+                #calc number averaged fall speed
+                binned_val["nav_vt"][i,j] = np.sum(np.where(condition_in_bin,-SP["vt"]*SP["xi"],0))/multipl_bin
+                #print i,j,binned_val["mass_in_bin"][i,j]
         else:
             pass
 
     binned_val["RPpSP"] = binned_val["d_counts"]/binned_val["d_counts_no_mult"]
-
     return binned_val,heightvec,d_bound_ds,d_ds,zres
 
 

@@ -12,7 +12,7 @@ import __general_utilities
 
 # define some general functions which are useful for nice formatting of the plots
 
-def proper_font_and_fig_size(number_of_plots,aspect_ratio=1./3.):
+def proper_font_and_fig_size(number_of_plots,aspect_ratio=1./3.,legend_fontsize='large'):
     '''
     optimize the appearance of the plot (figure size, fonts)
     '''
@@ -20,7 +20,7 @@ def proper_font_and_fig_size(number_of_plots,aspect_ratio=1./3.):
     import matplotlib.pylab as pylab
 
     #increase font sizes
-    params = {'legend.fontsize': 'large',
+    params = {'legend.fontsize': legend_fontsize,
         'figure.figsize': (15, 5),
         'axes.labelsize': 'x-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
         'axes.titlesize':'x-large',
@@ -538,6 +538,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
             if any(hei2massdens["Fn" + cat][:])>0:
                 if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
                     axisqn += ax2.semilogx(hei2massdens["Fn" + cat][:-1:McSnow_plot_only_every],hei2massdens['z'][:-1:McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--')
+                
                 else:
                     axisqn += ax2.semilogx(hei2massdens["Fn" + cat][:-1:McSnow_plot_only_every],hei2massdens['z'][:-1:McSnow_plot_only_every],color=colors[j],label='_dontshowinlegend',linestyle='--',marker=forced_markerMC,markevery=4)
     if mass_num_flag==1:     #plot mass flux
@@ -621,6 +622,93 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
     
     return ax
 
+def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',forced_markerMC='',top_height=5000):
+    '''
+    plot number and mass fluxes of McSnow over height
+    INPUT:  ax: first x-axis
+            hei2massdens: dictionary with McSnow variables
+            i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
+            var_flag: which variable should be plotted 0:number 1: mass 2: number flux 3: mass flux
+            forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); 
+
+    '''
+    import matplotlib.ticker
+    colors=["blue","green","orange","brown","red"]
+    markerlist = ["^","s","*","x","d",""]
+    MC_specs = ["_mm1","_unr","_grp","_rimed",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
+    labellistMC = ["pristine","unrimed agg.","graupel","rimed","MC all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
+    #sum up all Sb categories
+
+    McSnow_plot_only_every = 4 #plot not every height point of the noisy McSnow fluxes (for better visibility)
+        
+
+    for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
+        if var_flag==0:  #plot number flux
+            plot_var=hei2massdens["Nd" + cat]
+        if var_flag==1:     #plot mass flux
+            plot_var=hei2massdens["Md" + cat]
+        if var_flag==2:  #plot number flux
+            plot_var=hei2massdens["Fn" + cat]
+        if var_flag==3:     #plot mass flux
+            plot_var=hei2massdens["Fm" + cat]
+        if var_flag==4:     #mean mass
+            plot_var=hei2massdens["Md" + cat]/hei2massdens["Nd" + cat]    
+
+        if any(hei2massdens["Md" + cat]>2e-6): #there might be some numerical rime therefore here is not >0
+            if forced_markerMC=='' and forced_linestyle=='-': #only add a label in case of no marker, which is the first MCSnow sensrun
+                ax.semilogx(plot_var[:-1:McSnow_plot_only_every],hei2massdens['z'][:-1:McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='-',marker=forced_markerMC)
+            else:
+                ax.semilogx(plot_var[:-1:McSnow_plot_only_every],hei2massdens['z'][:-1:McSnow_plot_only_every],color=colors[j],label='_dontshowinlegend',linestyle=forced_linestyle,marker=forced_markerMC,markevery=4)
+                
+                
+    #from IPython.core.debugger import Tracer ; Tracer()()
+    #change height limits and set y-label
+    ax.set_ylim([0,top_height])
+    ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
+    ax.set_ylabel("height / m")
+    
+    
+    #add labels and legend
+    fmass_min=-8; fmass_max=0
+    fnum_min=2; fnum_max=6
+    mass_min=-8; mass_max=-1
+    num_min=0; num_max=6
+    nmass_min=-10; nmass_max=-4
+
+    if var_flag==0:
+        ax.set_xlabel("number density / m-3",color="k")
+        xmin=num_min;xmax=num_max
+    elif var_flag==1:
+        ax.set_xlabel("mass density / kg m-3",color="k")
+        xmin=mass_min;xmax=mass_max
+    elif var_flag==2:
+        ax.set_xlabel("number flux density / m-2 s-1",color="k")
+        xmin=fnum_min;xmax=fnum_max
+    elif var_flag==3:
+        ax.set_xlabel("mass flux density / kg m-2 s-1",color="k")
+        xmin=fmass_min;xmax=fmass_max
+    elif var_flag==4:
+        ax.set_xlabel("mean mass / kg",color="k")
+        xmin=nmass_min;xmax=nmass_max
+    else:
+        print "error: var_flag in plot_fluxes must be in [0,1,2,3,4]"
+
+
+    #set a fix range of the x-axis
+    ax.set_xlim([10**xmin,10**xmax]) #[ax.get_xlim()[0],ax.get_xlim()[1]*100])
+    ax.set_xticks(np.logspace(xmin,xmax,xmax-xmin+1)) #set xticks
+    #remove every second ticklabel
+    for label in ax.xaxis.get_ticklabels()[::2]:
+        label.set_visible(False)
+    
+    #add legend
+    if var_flag in (1,3):
+        ax.legend(loc='upper right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    else: #if there is no qn in the plot label q
+        ax.legend(loc='lower right') #,loc='center left', bbox_to_anchor=(1, 0.5)) #position: the "center left" of the box is at (x=1,y=0.5, in relative coordinates of the whole plot)
+    
+    return ax
+
 def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_linestyle='None',forced_markerMC=''):
     '''
     plot number and mass concentration of SB and McSnow over height
@@ -638,7 +726,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
     colors=["blue","green","red"]
     markerlist = ["^","s","*","x","d",""]
     SB_specs = ['i','s','_all'] #specify here what categories should be used; all would be ['i','r','s','g','h']
-    MC_specs = ["_mm1","_unr",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
+    MC_specs = ["_mm1","_unr","_grp","_rimed",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
     labellistSB = ["cloud ice","snow","SB all"] #check consistency with SB_specs; all would be ["cloud ice","rain","snow","SB graupel","hail"]
     labellistMC = ["pristine","unrimed agg.","MC all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
     #sum up all Sb categories
