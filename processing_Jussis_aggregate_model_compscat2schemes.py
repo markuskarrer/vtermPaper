@@ -32,8 +32,8 @@ show_lines = dict()
 #define which lines to show (ATTENTION: default, can be overwritten by optional arguments below):
 show_lines["SB_mD"] = True #show the m-D relation of the SB scheme
 show_lines["vel_fits"] = True #show the velocity fits (power-law/Atlas)
-show_lines["powerlaw_fits"] = True
-show_lines["Atlas_fit"] = True #show the Atlas-type fit for cloud ice & snow
+show_lines["powerlaw_fits"] = False
+show_lines["Atlas_fit"] = False #show the Atlas-type fit for cloud ice & snow
 #show the fits as numbers
 show_lines["fittext_vel"] = False #show text for the velocity fits
 #from previous model settings
@@ -91,11 +91,12 @@ tumbling=False #True: take the rotated projected area; False: take the area calc
 take_mono_prop_theor=True #take theoretical values (as assumed in Jagg) instead of fits to N_mono=1
 
 #define where the txt files with properties of the aggregates are stored
-prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio_complete/"
+#prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio_complete/"
+prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation"
 #prop_file_folder = "/data/optimice/Jussis_aggregates_bugfixedrotation/tumbling_asratio/"
 
 #define which particles (with which resolution to read in)
-grid_res_array = [1e-6,5e-6,10e-6] #resolution for big medium and smaller particles in mum [10e-6,5e-5]
+grid_res_array = [10e-6] #[1e-6,5e-6,10e-6] #resolution for big medium and smaller particles in mum [10e-6,5e-5]
 
 ####
 #START: get model parameters
@@ -137,7 +138,7 @@ for dict_now in (mDADvD_dict_MC,mDADvD_dict_P3,mDADvD_dict_SBcloudice,mDADvD_dic
 ####
 
 #loop over different particle habits
-particle_types = ["plate"] #"needle","dendrite","plate","column","rosette","bullet","plate_dendrite",...]] # ,"bullet"rosette
+particle_types = ["bullet"] #"plate","needle","dendrite","column","rosette","bullet","plate_dendrite",...]] # ,"bullet"rosette
 for particle_type_comb in particle_types:
     print "########################"
     print "#####" + particle_type_comb + "########"
@@ -171,7 +172,7 @@ for particle_type_comb in particle_types:
 
                     #define the monomer numbers to read in
                     take_all_Nmono_bool = True
-                    if grid_res==1e-6: #particles < 10mum are modelled only for small monomer numbers
+                    if grid_res==1e-6 or len(grid_res_array)==1: #particles < 10mum are modelled only for small monomer numbers #len(grid_res_array)==1 is for some quick test
                         N_mono_list_tmp = np.array(range(1,10))
                     elif grid_res==5e-6: #particles < 10mum are modelled only for small monomer numbers
                         N_mono_list_tmp = np.array(range(10,101,10))
@@ -189,8 +190,11 @@ for particle_type_comb in particle_types:
                             elif not tumbling:
                                 particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
                             particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
-            N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
-
+            if len(grid_res_array)==1: #some quick tests
+                N_mono_list = np.array(range(1,10))
+            else:
+                N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
+            
     #########
     #END: read the properties of the aggregates into the particle_dic dictionary
     #########                
@@ -522,7 +526,7 @@ for particle_type_comb in particle_types:
         #calculate the relations which can be put into the SB-scheme and display it here
         ###
         print "####################"
-        print "#coefficients for SB derived from the here investigated particles"
+        print "#coefficients for SB derived from the here investigated particles (hydro_model:" + prop + ")"
         print "####################"
         #cloud ice
         print "ice: m(D):a= ",fit_dic["mass_coeff_Nmono_1"][0]," b= ",fit_dic["mass_coeff_Nmono_1"][1] ," v(D):a= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][1]

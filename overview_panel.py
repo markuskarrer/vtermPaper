@@ -26,7 +26,7 @@ testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
 adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
-skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs) #ATTENTION: not completely implemented yet
+skipMC = True #(os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs) #ATTENTION: not completely implemented yet
 
 #directory of experiments
 directory = MC_dir + "/experiments/"

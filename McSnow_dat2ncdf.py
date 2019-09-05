@@ -17,6 +17,8 @@ import __postprocess_McSnow
 
 #read variables passed by shell script
 tstep = int(os.environ["tstep"]) #string with 4 numbers and 'min'
+tstep_end = int(os.environ["tstep_end"]) #string with 4 numbers and 'min'
+
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"] #"more readable" string of the experiment specifications
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
@@ -31,8 +33,8 @@ dtc = int(re.search(r'dtc(.*?)_nrp', experiment).group(1)) #this line gets the v
 #perform temporal averaging
 t_after_full = 0 #time after the timestep with the full output in seconds
 #while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
-for i_tstep,tstep in enumerate(range(300,601,60)):
-    filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
+for i_tstep,tstep_now in enumerate(range(tstep,tstep_end,10)):
+    filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep_now).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
     print 'reading: ' + filestring_mass2fr
     if i_tstep==0:
         SP_nonaveraged = (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),) #save first timestep to SP_nonaveraged
@@ -47,7 +49,11 @@ if bool(SP_nonaveraged[0]): #skip the rest if no SP are there (f.e. when only an
     num_timesteps = len(SP_nonaveraged)
 
     #create netCDF4 file
-    dataset = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf', 'w',  format='NETCDF4_CLASSIC')
+    output_file=directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + '-' + str(tstep_end).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf'
+    dataset = Dataset(output_file, 'w',  format='NETCDF4_CLASSIC')
+    #ATTENTION: this has been previously:
+    #dataset = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf', 'w',  format='NETCDF4_CLASSIC')
+
     #Global attributes
     dataset.description = 'list with SP and their properties'
     dataset.history = 'Created ' + time.ctime(time.time())
@@ -61,7 +67,7 @@ if bool(SP_nonaveraged[0]): #skip the rest if no SP are there (f.e. when only an
         dataset.createVariable(key,np.float32,('dim_SP_all_av' +str((num_timesteps)*dtc),)); dataset.variables[key].units = unit[i]
         dataset.variables[key][:] = SP[key]
 
-    print "mass2fr... file created at: ",dataset.history
+    print output_file,dataset.history
     dataset.close()
 
 #################################################
@@ -71,7 +77,6 @@ if bool(SP_nonaveraged[0]): #skip the rest if no SP are there (f.e. when only an
 twomom_bool = True #TODO: do not hardcode this here?
 if not twomom_bool:
     sys.exit(0)
-
 #read number of vertical levels from string
 nz = int(re.search(r'nz(.*?)_', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
 
@@ -105,5 +110,5 @@ for i,key in enumerate(twomom.keys()):
     dataset.createVariable(key,np.float32,('time','height')); #dataset.variables[key].units = unit[i]
     dataset.variables[key][:] = twomom[key]
 
-print "twomom_d file created at: ",dataset.history
+print "twomom_d file created at: ",dataset.history,directory + experiment + '/twomom_d.ncdf'
 dataset.close()

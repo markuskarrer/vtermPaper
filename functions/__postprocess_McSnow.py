@@ -51,7 +51,6 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     
     #load file from .dat
     heightprofiles_fullinfo = np.loadtxt(filestring)
-    
     #create dictionary
     hei2massdens = dict()
     #names of variables in hei2massdens
@@ -91,12 +90,13 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
         if timestep_end==0: #means: no average interval selected
             i_end = index_start_of_timesteps[timestep+1]-1
         else:
-            i_end = index_start_of_timesteps[timestep_end+1]-1
+            i_end = index_start_of_timesteps[timestep_end+1]
     for i,key in enumerate(varnames):
         if empty_flag:
             hei2massdens[key] = np.zeros_like(heightprofiles_fullinfo[i_start:i_end,i])
         else:
             if key=="z": #z is structured differently
+                #from IPython.core.debugger import Tracer ; Tracer()()
                 tmp_var_reshaped =  heightprofiles_fullinfo[i_start:i_end,i].reshape((timestep_end-timestep+1,N_heights)) #extract array with (n_heights,n_timesteps_to_average=timestep_end-timestep)
                 hei2massdens[key] = np.mean(tmp_var_reshaped,axis=0) #average over all timesteps
             else:

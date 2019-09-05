@@ -38,6 +38,7 @@ if "separated_by_sensruns" in os.environ.keys():
 else:
     print "separated_by_sensruns not found in environ: set to False"
     separated_by_sensruns = False
+    separated_by_sensruns_onestring=""
 if "separated_by_fallspeedsens" in os.environ.keys():
     separated_by_fallspeedsens = (os.environ["separated_by_fallspeedsens"]=="True") #plot a line for different sensitivity runs
 else:
@@ -98,7 +99,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
 
         #read hei2massdens to get average /summed up values per height
         filestring_hei2massdens = directory + experiment + "/hei2massdens.dat"
-        timestep = tstep/60 #TODO: do not hardcode the 30 minute output interval here
+        timestep = tstep/10 #TODO: do not hardcode the 30 minute output interval here
         if skipMC:
             hei2massdens = __postprocess_McSnow.read_hei2massdens(filestring_hei2massdens,timestep=timestep,empty_flag=True) #get empty arrays with the same dimension as the true arrays in order to not plot the McSnow data
         else:
@@ -125,7 +126,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
             else:
                 twomom[var] = np.squeeze(twomom_file.variables[var])
 
-
+        #from IPython.core.debugger import Tracer ; Tracer()()
         ####################################
         #plot mixing ratio + number density
         ####################################

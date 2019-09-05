@@ -229,7 +229,7 @@ def N_D_Dmono_from_MC_and_Jagg(particle_type="plate"):
     #################
 
     #define where the txt files with properties of the aggregates are stored
-    prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio/"
+    prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation"
 
     grid_res = 10e-6
     if grid_res==40e-6:

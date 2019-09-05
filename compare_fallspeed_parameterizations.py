@@ -22,6 +22,7 @@ import __plotting_functions
 import __setup_mDAD_frommodels
 import generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg
 #from IPython.core.debugger import Tracer ; Tracer()()
+from matplotlib import rc
 
 '''
 this code reads in properties from Jussis aggregate model, calculate + plots the following fallspeed
@@ -39,7 +40,7 @@ show_lines["P3"] = True
 show_lines["MC"] = False
 show_lines["Morr2mom"] = True
 show_lines["GSFC"] = False #single Moment Godard scheme
-show_lines["THOM"] = True #two-moment Thompson scheme
+show_lines["THOM"] = False #two-moment Thompson scheme
 
 
 
@@ -93,11 +94,15 @@ number_of_plots = 3 #28
 
 #optimize the appearance of the plot (figure size, fonts)
 [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,aspect_ratio=0.25)
-params = {'legend.fontsize': 'medium',
-            'axes.labelsize': 'medium', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
-    'axes.titlesize':'medium',
-    'xtick.labelsize':'medium',
-    'ytick.labelsize':'medium'}
+#optimize the appearance of the plot (figure size, fonts)
+aspect_ratio=1./4.
+legend_fontsize='medium'
+#increase font sizes
+params = {'legend.fontsize': legend_fontsize,
+    'axes.labelsize': 'x-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
+    'axes.titlesize':'x-large',
+    'xtick.labelsize':'x-large',
+    'ytick.labelsize':'x-large'}
 pylab.rcParams.update(params)
 #define size of colorbar labels
 colbarlabelsize=11
@@ -149,7 +154,7 @@ for i_ax,scale in enumerate(["xlinylin","xlogylin","xlogylog"]):
 
     #make labels
     axes[i_ax].set_xlabel("diameter D / m")
-    axes[i_ax].set_ylabel("terminal velocity v / m s-1" ) #TODO: plot also the untis of these properties
+    axes[i_ax].set_ylabel("terminal velocity $v_{term}$ / $m s^{-1}$" ) #TODO: plot also the untis of these properties
     
     #change the axis
     if "xlog" in scale:
@@ -162,10 +167,10 @@ for i_ax,scale in enumerate(["xlinylin","xlogylin","xlogylog"]):
     if "ylog" in scale:
         axes[i_ax].set_yscale('log')
     else:
-        axes[i_ax].set_ylim([0,2.5])
+        axes[i_ax].set_ylim([0,2.0])
 
     #add grid
-    axes[i_ax].grid(which="major")
+    axes[i_ax].grid(which="both")
 
 
 dir_save = '/home/mkarrer/Dokumente/plots/'
@@ -178,5 +183,18 @@ fig.savefig(dir_save + out_filestring + 'spec_ax_figure.png')
 fig.savefig(dir_save + out_filestring + 'spec_ax_figure.pdf')
 print 'The pdf is at: ' + dir_save + out_filestring + 'spec_ax_figure.pdf'
 subprocess.Popen(['evince',dir_save + out_filestring + 'spec_ax_figure.pdf'])
+
+# Save just the portion _inside_ the second axis's boundaries
+save_axis=1
+for i_ax in range(0,len(axes)):#clear all other axes
+    if i_ax==save_axis:
+        continue
+    axes[i_ax].set_xlabel("")
+    axes[i_ax].axes.get_xaxis().set_ticklabels([])
+extent = axes[save_axis].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+
+fig.savefig(dir_save + 'tmp.pdf',bbox_inches=extent.expanded(1.5, 1.4),dpi=400)
+
+subprocess.call('cp ' + dir_save + 'tmp.pdf' + ' ' + dir_save + '4paper/' + out_filestring + '.pdf',shell=True)
 plt.clf()
 plt.close()

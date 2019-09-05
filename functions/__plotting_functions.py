@@ -633,10 +633,10 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
 
     '''
     import matplotlib.ticker
-    colors=["blue","green","orange","brown","red"]
+    colors=["blue","green","orange","brown","y","red"]
     markerlist = ["^","s","*","x","d",""]
-    MC_specs = ["_mm1","_unr","_grp","_rimed",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
-    labellistMC = ["pristine","unrimed agg.","graupel","rimed","MC all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
+    MC_specs = ["_mm1","_unr","_grp","_rimed","_liq",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
+    labellistMC = ["Nmono=1","Nmono>1","graupel","rimed","liquid","all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
     #sum up all Sb categories
 
     McSnow_plot_only_every = 4 #plot not every height point of the noisy McSnow fluxes (for better visibility)
@@ -645,13 +645,13 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
     for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
         if var_flag==0:  #plot number flux
             plot_var=hei2massdens["Nd" + cat]
-        if var_flag==1:     #plot mass flux
+        if var_flag==1:  #plot mass flux
             plot_var=hei2massdens["Md" + cat]
         if var_flag==2:  #plot number flux
             plot_var=hei2massdens["Fn" + cat]
-        if var_flag==3:     #plot mass flux
+        if var_flag==3:  #plot mass flux
             plot_var=hei2massdens["Fm" + cat]
-        if var_flag==4:     #mean mass
+        if var_flag==4:  #mean mass
             plot_var=hei2massdens["Md" + cat]/hei2massdens["Nd" + cat]    
 
         if any(hei2massdens["Md" + cat]>2e-6): #there might be some numerical rime therefore here is not >0
@@ -669,12 +669,18 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
     
     
     #add labels and legend
+    num_min=-1; num_max=7
+    mass_min=-9; mass_max=-2
+    nmass_min=-10; nmass_max=-4
+    fnum_min=-2; fnum_max=5
+    fmass_min=-9; fmass_max=0
+    '''
     fmass_min=-8; fmass_max=0
     fnum_min=2; fnum_max=6
     mass_min=-8; mass_max=-1
     num_min=0; num_max=6
     nmass_min=-10; nmass_max=-4
-
+    '''
     if var_flag==0:
         ax.set_xlabel("number density / m-3",color="k")
         xmin=num_min;xmax=num_max
@@ -723,12 +729,12 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
     import matplotlib.ticker
     #prop_cycle = plt.rcParams['axes.prop_cycle']
     #colors = prop_cycle.by_key()['color']
-    colors=["blue","green","red"]
+    colors=["blue","green","brown","orange","red"]
     markerlist = ["^","s","*","x","d",""]
-    SB_specs = ['i','s','_all'] #specify here what categories should be used; all would be ['i','r','s','g','h']
+    SB_specs = ['i','s','g','h','_all'] #specify here what categories should be used; all would be ['i','r','s','g','h']
     MC_specs = ["_mm1","_unr","_grp","_rimed",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
-    labellistSB = ["cloud ice","snow","SB all"] #check consistency with SB_specs; all would be ["cloud ice","rain","snow","SB graupel","hail"]
-    labellistMC = ["pristine","unrimed agg.","MC all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
+    labellistSB = ["cloud ice","snow","graupel","hail","SB all"] #check consistency with SB_specs; all would be ["cloud ice","rain","snow","SB graupel","hail"]
+    labellistMC = ["pristine","unrimed agg.","graupel","rimed","MC all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
     #sum up all Sb categories
     twomom['qn_all'] = np.zeros_like(twomom['qni']);    twomom['q_all'] = np.zeros_like(twomom['qni']);     twomom['fn_all'] = np.zeros_like(twomom['qni']);     twomom['f_all'] = np.zeros_like(twomom['qni'])
     for i,cat in enumerate(['i','s']): #['i','s','g','h','r']):#TODO: include other categories when analyzing rimed cases 
@@ -750,6 +756,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
         for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
             if ("Nd" + cat) in hei2massdens.keys() and any(hei2massdens["Nd" + cat][:])>0:
                 if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
+                    #from IPython.core.debugger import Tracer ; Tracer()()
                     axisqn += ax2.semilogx(hei2massdens["Nd" + cat][::McSnow_plot_only_every],hei2massdens['z'][::McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--',marker=forced_markerMC)
                 else:
                     axisqn += ax2.semilogx(hei2massdens["Nd" + cat][::McSnow_plot_only_every],hei2massdens['z'][::McSnow_plot_only_every],color=colors[j],label='_dontshowinlegend',linestyle='--',marker=forced_markerMC,markevery=4)

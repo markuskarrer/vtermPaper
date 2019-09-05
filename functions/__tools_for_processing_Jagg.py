@@ -12,21 +12,30 @@ def init_particle_dict():
     '''
     initialize the particle dictionary
     '''
-    particle_dic = dict() #dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the pristine crystals and the properties of the aggregates (m,A,D,...)
+    particle_dic = dict() #dictionary which contains information about the type of the pristine crystals (dendrites, needles, plates, ...) the underlying distribution of the pristine crystals and the properties of the aggregates (m,A,D,...)
     particle_dic["particle_type"] = [] #type of the pristine crystals
     particle_dic["N_monomer"] = [] #number of monomers
     particle_dic["mass"] = [] #particle mass
     particle_dic["area"] = [] #particle area
     particle_dic["diam"] = [] #particle diameter
-    particle_dic["sizeparam_index"] = [] #size parameter
+    #particle_dic["sizeparam_index"] = [] #size parameter
     particle_dic["as_ratio"] = [] #aspect ratio
     particle_dic["area_partal10std"] = [] #particle area with a partial alignment (std-dev: 10deg)
     particle_dic["area_partal20std"] = [] #particle area with a partial alignment (std-dev: 20deg)
     particle_dic["area_partal40std"] = [] #particle area with a partial alignment (std-dev: 40deg)
     particle_dic["area_partal60std"] = [] #particle area with a partial alignment (std-dev: 60deg)
+    particle_dic["N_initial"]        = [] #number of particles in initial distribution
+    particle_dic["area_aligned_side"]     = [] #side projected area of the aligned particle
+    particle_dic["area_partal40_side"]     = [] #side projected area of the tumbled particle
 
     #particle_dic["HWJussi"] = [] #particle area
     #particle_dic["KCJussi"] = [] #particle diameter
+    particle_dic["Dmax_xy"] = [] #maximum dimension projected to ..-.. plane
+    particle_dic["Dmax_xz"] = [] #maximum dimension projected to ..-.. plane
+    particle_dic["Dmax_yz"] = [] #maximum dimension projected to ..-.. plane
+    particle_dic["Dmax_xy_aligned"] = [] #maximum dimension projected to ..-.. plane
+    particle_dic["Dmax_xz_aligned"] = [] #maximum dimension projected to ..-.. plane
+    particle_dic["Dmax_yz_aligned"] = [] #maximum dimension projected to ..-.. plane  
     
     return particle_dic
 
@@ -38,27 +47,27 @@ def calc_mD_AD_coeffs(mono_type):
     '''
     rho_i = 917.6 #define ice density
 
-    if mono_type=="dendrite":
+    if mono_type in ("dendrite","mixdendneedle"):
         #theoretical m-D relationships
-        a_theor=8.43e-2 #ATTENTION: this comes from the 1mum simulation fit
-        b_theor=2.36 #ATTENTION: this comes from the 1mum simulation fit
+        a_theor=8.89e-2 #ATTENTION: this comes from the 1mum simulation fit
+        b_theor=2.37 #ATTENTION: this comes from the 1mum simulation fit
         #theoretical A-D relationships
-        c_theor=0.2 #np.nan
-        d_theor=2. #np.nan
+        c_theor=0.20 #ATTENTION: this comes from the 1mum simulation fit
+        d_theor=1.99 #ATTENTION: this comes from the 1mum simulation fit
     elif mono_type=="plate": #copied here from riming.py
         #theoretical m-D relationships
         a_theor=rho_i*3.*np.sqrt(3)/2./4*(1.737e-3)*(1./2.)**0.474
         b_theor=2.+0.474
         #theoretical A-D relationships
-        c_theor=3.*np.sqrt(3)/2. *1./4.
+        c_theor=3.*np.sqrt(3)/2. *1./4. #1/4 comes from D=a/2 with a as the side of the hexagon
         d_theor=2.
-    elif mono_type=="needle":
+    elif mono_type in ("needle"): #,"mixofdentneed"):
         #theoretical m-D relationships
         a_theor=rho_i*3.*np.sqrt(3)/2.*(1.319e-3)**2
         b_theor=2.*0.437+1
         #theoretical A-D relationships
-        c_theor=2.4e-3 #(1.+2./np.sqrt(2.))*1.319e-3
-        d_theor=1.44 #1+0.437
+        c_theor=(1.+2./np.sqrt(2.))*1.319e-3 #2.4e-3 #
+        d_theor=1+0.437 #1.44
     elif mono_type=="rosette":
         #theoretical m-D relationships
         a_theor=np.nan #6.*(3.*np.sqrt(3.)/2.*(1./9.351)**(1./0.63)*)
@@ -66,6 +75,13 @@ def calc_mD_AD_coeffs(mono_type):
         #theoretical A-D relationships
         c_theor=np.nan
         d_theor=np.nan
+        raw_input("attention: the monomer power-laws are taken from columns!")
+        #theoretical m-D relationships
+        a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
+        b_theor=2.14 #2.
+        #theoretical A-D relationships
+        c_theor=0.0143 #9.4e-3 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
+        d_theor=1.614 ##1.54 #1.5
     elif mono_type=="bullet":
         '''
         #From Hong, 2007
@@ -85,25 +101,36 @@ def calc_mD_AD_coeffs(mono_type):
         #theoretical A-D relationships
         c_theor=np.nan
         d_theor=np.nan
-    elif mono_type=="column":
+        raw_input("attention: the monomer power-laws are taken from columns!")
         #theoretical m-D relationships
-        a_theor=rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
-        b_theor=2.
+        a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
+        b_theor=2.14 #2.
         #theoretical A-D relationships
-        c_theor=9.4e-3 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
-        d_theor=1.54 #1.5
+        c_theor=0.0143 #9.4e-3 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
+        d_theor=1.614 ##1.54 #1.5
+    elif mono_type in ("column","mixcolumndend"):
+        #theoretical m-D relationships
+        a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
+        b_theor=2.14 #2.
+        #theoretical A-D relationships
+        c_theor=(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
+        d_theor=1.5 #a*L=L^0.5*L
     elif mono_type=="spheroid":
         #theoretical m-D relationships
-        a_theor=np.nan
-        b_theor=np.nan
+        a_theor=np.pi/6*rho_i
+        b_theor=3
         #theoretical A-D relationships
-        c_theor=np.nan
-        d_theor=np.nan
+        c_theor=np.pi/4
+        d_theor=2
+    else:
+        print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
+        sys.exit()
+    print mono_type,a_theor,b_theor,c_theor,d_theor
     return a_theor,b_theor,c_theor,d_theor
 
 def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregates_bugfixedrotation/',
                                                 D_small_notuse=1e-4, #ATTENTION: particle smaller than D_small_notuse are not considered (e.g. because of resolution issues)
-                                                N_small_notuse=1, #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
+                                                N_small_notuse=1,    #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
                                                 grid_res_array = [1e-6,5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
                                                 particle_type = "plate", #define the habit
                                                 test_with_small_sample = False #read only 1/10 of the data in for faster plotting
@@ -122,13 +149,17 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
     import glob
     import re
     import csv
+    import sys
     particle_dic = init_particle_dict() #initialize dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the   
     for grid_res in grid_res_array: #loop over different grid-resolutions in order to have small monomer numbers modelled woth higher resolution
         print "processing" + particle_type + " with resolution: ",grid_res
         sensrun_folder = 'res_'+ str(int(grid_res*1e6)) + 'mum/'
-        
+
         if not os.path.exists(prop_file_folder + sensrun_folder): #check if folder exists
             print prop_file_folder + sensrun_folder, " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
+            sys.exit()
+        if len(glob.glob(prop_file_folder + sensrun_folder +  particle_type + '*properties.txt'))==0: #check if any file of this habit is there
+            print prop_file_folder + sensrun_folder + particle_type + "*", " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
             sys.exit()
         
         if test_with_small_sample:
@@ -139,9 +170,8 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
             #read size parameter from filename in order to be able to disregard some size parameter
             m=re.search(prop_file_folder + sensrun_folder + particle_type + '_(.+?)_properties.txt', filename) #search for patter
             size_param_now = float(m.group(1))
-            if size_param_now<-999: #ignore all sizeparameter above ... or below ...
+            if size_param_now<-999: #ignore all sizeparameter above ... or below ... range:[50,50..,51.,..,1000]
                 continue
-            
             #verbose reading of files
             print "reading: " + filename
             with open(filename,"rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
@@ -152,26 +182,89 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                 if grid_res==1e-6: #particles < 10mum are modelled only for small monomer numbers
                     N_mono_list_tmp = np.array(range(1,10))
                 elif grid_res==5e-6: #particles < 10mum are modelled only for small monomer numbers
-                    N_mono_list_tmp = np.array(range(10,101,10))
+                    if 1e-6 in grid_res_array:
+                        N_mono_list_tmp = np.array(range(10,101,10))
+                    else:
+                        N_mono_list_tmp = np.array(np.append(range(1,11,1),np.array(range(10,101,10))))
                 elif grid_res==10e-6:#take only the large monomer numbers from the low-resolution runs
-                    N_mono_list_tmp = np.array(range(100,1001,100))
-                
+                    if 5e-6 in grid_res_array:
+                        N_mono_list_tmp = np.array(range(100,1001,100))
+                    else:
+                        if 1e-6 in grid_res_array:
+                            N_mono_list_tmp = np.array(np.append(np.array(range(10,101,10)),np.array(range(100,1001,100))))
+                        else:
+                            N_mono_list_tmp = np.array(np.append(np.array(range(1,11,1)),np.append(np.array(range(10,101,10)),np.array(range(100,1001,100)))))
+                            #N_mono_list_tmp = np.array([1])
+                else: #some tests with higher resolution
+                    N_mono_list_tmp = np.array(np.append(range(1,11,1),np.array(range(10,101,10))))
                 
                 for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
                     if row_content[0] in N_mono_list_tmp: #i_row==0 or i_row==4 or i_row==9:
+                        if (row_content[3]<D_small_notuse): #check size limit
+                            continue
                         particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
                         particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
                         particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
 
-                        particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3])
+                        particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3]) #np.sqrt(row_content[4]/np.pi)) #ATTENTION: test take area equivalent diameter
+
                         particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
+
                         particle_dic["as_ratio"] = np.append(particle_dic["as_ratio"],row_content[5]) 
                         particle_dic["area_partal10std"] = np.append(particle_dic["area_partal10std"],row_content[6]) 
                         particle_dic["area_partal20std"] = np.append(particle_dic["area_partal20std"],row_content[7])
                         particle_dic["area_partal40std"] = np.append(particle_dic["area_partal40std"],row_content[2])
-                        particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8]) 
+                        particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8])
+                        #try:
+                        #    particle_dic["area_aligned_side"] = np.append(particle_dic["area_aligned_side"],row_content[9])
+                        #except:
+                        #    pass
+                        #try:
+                        #    particle_dic["area_partal40_side"] = np.append(particle_dic["area_partal40_side"],row_content[10])
+                        #except:
+                        #    pass
+                        #try to read some lines, that might not always be there
+                        #try:
+                        #    particle_dic["area_side_aligned"] = np.append(particle_dic["N_initial"],row_content[10])
+                        #except:
+                        #    pass
+                        #try:
+                        #    particle_dic["N_initial"] = np.append(particle_dic["N_initial"],row_content[11])
+                        #except:
+                        #    pass
+                        #try:
+                        #    particle_dic["N_initial"] = np.append(particle_dic["N_initial"],row_content[11])
+                        #except:
+                        #    pass
+                        try:
+                            particle_dic["Dmax_xy"] = np.append(particle_dic["Dmax_xy"],row_content[9])
+                        except:
+                            pass
+                        try:
+                            particle_dic["Dmax_xz"] = np.append(particle_dic["Dmax_xz"],row_content[10])
+                        except:
+                            pass
+                        try:
+                            particle_dic["Dmax_yz"] = np.append(particle_dic["Dmax_yz"],row_content[11])
+                        except:
+                            pass
+                        try:
+                            particle_dic["Dmax_xy_aligned"] = np.append(particle_dic["Dmax_xy_aligned"],row_content[11])
+                        except:
+                            pass
+                        try:
+                            particle_dic["Dmax_xz_aligned"] = np.append(particle_dic["Dmax_xz_aligned"],row_content[12])
+                        except:
+                            pass
+                        try:
+                            particle_dic["Dmax_yz_aligned"] = np.append(particle_dic["Dmax_yz_aligned"],row_content[13])
+                        except:
+                            pass
+
             N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
-                    
+        if len(particle_dic["diam"])==0:
+            print "no particles found"
+            sys.exit()                    
     return particle_dic,N_mono_list
 
 

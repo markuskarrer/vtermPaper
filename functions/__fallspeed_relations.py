@@ -12,16 +12,18 @@ this code calculates different fallspeed models (f.e. taken from McSnow)
 '''
 #wrapper around different fall speed models
 
-def calc_vterm(velocity_model,mass,diam,area):
-    
+def calc_vterm(velocity_model,mass,diam,area,as_ratio=1.0,turb_corr="small"):
+    #turb_corr is only for mitch_heym
     if velocity_model=='HW10':
         vterm = vterm_hw10(mass,diam,area,rho=1.287,eta=1.717696e-5)
     elif velocity_model=='KC05':
         vterm = vterm_kc05(mass,diam,area,rho=1.287,eta=1.717696e-5) 
     elif velocity_model=='bohm':
-        vterm = vterm_bohm(mass,diam,area,rho=1.287,eta=1.717696e-5)
+        vterm = vterm_bohm(mass,diam,area,np.ones_like(mass),rho=1.287,eta=1.717696e-5)
+    elif velocity_model=='bohmar':
+        vterm = vterm_bohm(mass,diam,area,as_ratio,rho=1.287,eta=1.717696e-5)
     elif velocity_model=='mitch_heym':
-        vterm = vterm_mitch_heym(mass,diam,area,rho=1.287,eta=1.717696e-5)
+        vterm = vterm_mitch_heym(mass,diam,area,rho=1.287,eta=1.717696e-5,turb_corr=turb_corr)
     else:
         print velocity_model + " not implemented (in functions/__fallspeed_relations.py"
         
@@ -72,8 +74,8 @@ def vterm_hw10(mtot,diam,area,rho=1.287,eta=1.717696e-5):
     #print "Xbest",Xbest
     #additional turbulence correction (from B?hm)
     X_0 = 2.8e6
-    psi = (1.0+1.6*(Xbest/X_0)**2)/(1.0+(Xbest/X_0)**2)
-    #psi = 1 #uncomment this line to get back to original HW10
+    #psi = (1.0+1.6*(Xbest/X_0)**2)/(1.0+(Xbest/X_0)**2)
+    psi = 1 #uncomment this line to get back to original HW10
     Xbest = Xbest / psi
 
     # Re-X eq. on p. 2478
@@ -185,8 +187,8 @@ def vterm_kc05(mtot,diam,area,rho=1.287,eta=1.717696e-5):
     #! Best number eq. (2.4b) with buoyancy
     Vb = mtot*rhoii #TODO: this function can not handle riming yet+ MAX(sp%v_r, sp%m_r*rhoii + sp%m_w*rholi)
     Fb = rho * Vb * grav
-    #Xbest = 2. * abs(mtot*grav-Fb) * rho * diam**2 / (area * eta**2)
-    Xbest = rho* 8.0*mtot*grav/(eta**2*np.pi*(area * 4.0/np.pi / diam**2)**(1./4)) #HW10 formulation, but exponent as in Bohm
+    Xbest = 2. * abs(mtot*grav-Fb) * rho * diam**2 / (area * eta**2)
+    #Xbest = rho* 8.0*mtot*grav/(eta**2*np.pi*(area * 4.0/np.pi / diam**2)**(1./4)) #HW10 formulation, but exponent as in Bohm
     #Xbest = rho* 8.0*mtot*grav/(eta**2*np.pi*(area * 4.0/np.pi / diam**2)**(1./2)) #HW10
 
 
@@ -253,7 +255,7 @@ alias umount_MC='fusermount -u /home/mkarrer/Dokumente/McSnow'
   vterm_bohm = N_Re*atmo%eta/sp%d/atmo%rho
 END FUNCTION vterm_bohm
 '''
-def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
+def vterm_bohm(mtot,diam,area,as_ratio,rho=1.287,eta=1.717696e-5):
     '''
     returns the fall speed with assumptions from B?hm (1992)
     '''
@@ -263,19 +265,20 @@ def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
 
     q = area / (np.pi/4.0 * diam**2)
 
-
-    alpha = 1.0
+    
+    alpha = np.array(as_ratio) #1.0
+    #print a
     X_0 = 2.8e6
     grav  = 9.81 #from mo_atmo_types()
 
     #! 99 (7) or I (17)/(18)
-    X = 8.0*mtot*grav*rho/(np.pi*(eta**2)*max(alpha,1.0)*np.maximum(q**(1.0/4.0),q)) #reduced to 8.0*mtot*grav*rho/(np.pi*(eta**2)*q**(1/4) = 8.0*mtot*grav*rho/(np.pi*(eta**2)*(area / (np.pi/4.0 * diam**2))**(1/4) for alpha=1 and q<1 (which is usually the case)
+    X = 8.0*mtot*grav*rho/(np.pi*(eta**2)*np.maximum(alpha,np.ones_like(alpha)*1.0)*np.maximum(q**(1.0/4.0),q)) #reduced to 8.0*mtot*grav*rho/(np.pi*(eta**2)*q**(1/4) = 8.0*mtot*grav*rho/(np.pi*(eta**2)*(area / (np.pi/4.0 * diam**2))**(1/4) for alpha=1 and q<1 (which is usually the case)
     #print "q",q,"np.maximum(q**(1.0/4.0),q))",np.maximum(q**(1.0/4.0),q)
     #! 99 (9) attention sqrt(alpha) should be just alpha, see I (11)/(12)/(13)/(14)
-    k = min(max(0.82+0.18*alpha,0.85),0.37+0.63/alpha,1.33/(max(np.log(alpha),0.0)+1.19)) #k is 1 for alpha=1
+    k = np.minimum(np.maximum(0.82+0.18*alpha,np.ones_like(alpha)*0.85),0.37+0.63/alpha,1.33/(np.maximum(np.log(alpha),np.ones_like(alpha)*0.0)+1.19)) #k is 1 for alpha=1
     #print "k",k
     #! 99 (11) or I (11)
-    gama_big = max(1.0, min(1.98,3.76-8.41*alpha+9.18*alpha**2-3.53*alpha**3)) #1 for alpha=1
+    gama_big = np.maximum(np.ones_like(alpha)*1.0, np.minimum(np.ones_like(alpha)*1.98,3.76-8.41*alpha+9.18*alpha**2-3.53*alpha**3)) #1 for alpha=1
     #print "gama_big",gama_big
     #! 99 (10) or I (7)/(8)
     C_DP = np.maximum(0.292*k*gama_big,0.492-0.2/np.sqrt(alpha)) #0.292 for alpha=1
@@ -292,7 +295,7 @@ def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
 
     #! low Reynolds number
     #! I (16)
-    C_DO = 4.5*k**2*max(alpha,1.0)
+    C_DO = 4.5*k**2*np.maximum(alpha,np.ones_like(alpha)*1.0)
     #! I (26)
     gama_small = (C_DO - C_DP)/4.0/C_DP
     #! I (27)
@@ -341,7 +344,7 @@ def vterm_bohm(mtot,diam,area,rho=1.287,eta=1.717696e-5):
 ! velocity in terms of drag terms
           fall2(jj) = a1*mu**(1.-2.*b1)*(2.*cs1*g/(rho*aas1))**b1*d1**(b1*(ds1-bas1+2.)-1.)
 '''
-def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr=True):
+def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr="small"):
     '''
     returns fall speed as assumed by Mitchel and Heymsfield (2005)
     INPUT: 
@@ -363,8 +366,7 @@ def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr=True):
     c1   = 4./(del0**2*c0**0.5)
     c2   = del0**2/4.
     
-    
-    if turb_corr:
+    if turb_corr=="small":
         '''
         if False: #TODO: apply correction only for larger part of arrays # (diam < 500e-6): #no turbulence correction for small particles
             a0 = 0.
@@ -377,7 +379,9 @@ def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr=True):
         a0 = np.zeros_like(diam); b0 = np.zeros_like(diam)
         a0[diam>500e-6]=1.7e-3
         b0[diam>500e-6]=0.8
-        
+    elif turb_corr=="all":
+        a0=1.7e-3*np.ones_like(diam)
+        b0=0.8*np.ones_like(diam)
     # Best number
     X = 2.*mtot* g*rho*diam**2 / (area*(eta*rho)**2) #restructured from: 2.*cs1*g*rho*d1**(ds1+2.-bas1)/(aas1*(mu*rho)**2)# cs1*d1**ds1=mass; d1=diam; aas1*d1**bas1=area
     #drag terms

@@ -26,18 +26,17 @@ def setup_diam_arrays(n_steps = 1001,min_D = 1e-4, max_D = 1e-2):
     return D_array
 
 
-def get_model_mDADs(model="MC"):
+def get_model_mDADs(model="MC",verbose=True):
     '''
     get the mass-diameter and area-diameter relationships as assumed from the model
     INPUT: model: model from which the vD is returned
-    
+            verbose: show coefficients in terminal TODO: not fully implemented (only for SB powerlaws)
     OUTPUT: mDAD_dict: dictionary which contains the diameter and corresponding mass and area arrays for different models
     '''
 
     mDAD_dict = dict() #initialize dictionary which contains diameter and corresponding mass and area arrays for different models
     
     mDAD_dict["model_conf_name"] = model #name of the model and this specific configuration
-    
     #for model_now in modellist:
     if model=="MC":
         
@@ -62,7 +61,7 @@ def get_model_mDADs(model="MC"):
 
         
         #get parameter from McSnow in the state of Brdar&Seifert2018
-        mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam =  __postprocess_McSnow.return_parameter_mD_AD_rel("1d_xi") #the argument is a workaround to get the standard McSnow settings
+        mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam =  __postprocess_McSnow.return_parameter_mD_AD_rel("1d__xi") #the argument is a workaround to get the standard McSnow settings
         sph_alf=np.pi/6.*rhoi
         sph_bet=3.
 
@@ -98,16 +97,17 @@ def get_model_mDADs(model="MC"):
         # terminal velocity parameter
         a_vel_icecosmo5 = 2.77e1; b_vel_icecosmo5 = 0.215790
 
-        
-        print "##################"
-        print "SB parameters: cloud ice"
+        if verbose:
+            print "##################"
+            print "SB parameters: cloud ice"
         
         #copy constants to dictionary and replace name following a general naming convention
         #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space)
         for general_name,varlocal in zip(('a1','b1','am1','bm1',"aterm","bterm"),('cloud_ice.a_ms','cloud_ice.b_ms','cloud_ice.a_geo','cloud_ice.b_geo','a_vel_icecosmo5','b_vel_icecosmo5')): 
             #the variables are actually in a class, so we convert then here to normal vvariables
             exec("varnow = " + varlocal)
-            print general_name,varnow
+            if verbose:
+                print general_name,varnow
             mDAD_dict[general_name] = varnow #locals()[varlocal]
     
     elif model=='SBcloudice_uli':
@@ -120,16 +120,17 @@ def get_model_mDADs(model="MC"):
         cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
         # terminal velocity parameters
         a_vel_ulis_ice = 2.60e1; b_vel_ulis_ice = 0.215790
-
-        print "##################"
-        print "SB parameters: cloud ice"
+        if verbose:
+            print "##################"
+            print "SB parameters: cloud ice uli"
         
         #copy constants to dictionary and replace name following a general naming convention
         #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space)
         for general_name,varlocal in zip(('a1','b1','am1','bm1',"aterm","bterm"),('cloud_ice.a_ms','cloud_ice.b_ms','cloud_ice.a_geo','cloud_ice.b_geo','a_vel_ulis_ice','b_vel_ulis_ice')): 
             #the variables are actually in a class, so we convert then here to normal vvariables
             exec("varnow = " + varlocal)
-            print varnow
+            if verbose:
+                print varnow
             mDAD_dict[general_name] = varnow #locals()[varlocal]
             
     elif model=='SBcloudice_Atlas':
@@ -144,7 +145,7 @@ def get_model_mDADs(model="MC"):
         a_vel_icecosmo5nonsphere = 1.860; b_vel_icecosmo5nonsphere = 1.872; c_vel_icecosmo5nonsphere = 9.325e2 #fits to Ulis ice (despite the name) #this is as a function of the molten diameter
 
         print "##################"
-        print "SB parameters: cloud ice"
+        print "SB parameters: cloud ice Atlas"
         
         #copy constants to dictionary and replace name following a general naming convention
         #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space)
@@ -164,9 +165,9 @@ def get_model_mDADs(model="MC"):
         #get parameters from the SB-categories
         cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.init_particles()
         cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
-        
-        print "##################"
-        print "SB parameters: snow"
+        if verbose:
+            print "##################"
+            print "SB parameters: snow"
         # terminal velocity parameters
         a_vel_snowSBB = 8.294000; b_vel_snowSBB = 0.125000
 
@@ -175,7 +176,8 @@ def get_model_mDADs(model="MC"):
         for general_name,varlocal in zip(('a1','b1','am1','bm1',"aterm","bterm"),('snow.a_ms','snow.b_ms','snow.a_geo','snow.b_geo','a_vel_snowSBB','b_vel_snowSBB')): 
             #the variables are actually in a class, so we convert then here to normal vvariables
             exec("varnow = " + varlocal)
-            print varnow
+            if verbose:
+                print varnow
             mDAD_dict[general_name] = varnow #locals()[varlocal]
             
     elif model=='SBsnow_Atlas':

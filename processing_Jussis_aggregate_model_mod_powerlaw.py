@@ -35,7 +35,7 @@ from matplotlib import rc
 #prop_file_folder = "/data/optimice/Jussis_aggregates/"
 #prop_file_folder = "/data/optimice/Jussis_aggregates/fromHPC_size50to100mum/"
 #prop_file_folder = "/data/optimice/Jussis_aggregates/tumbling_asratio_complete/"
-prop_file_folder = "/data/optimice/Jussis_aggregates_bugfixedrotation/"
+prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation"
 
 tumbling=False #True: take the rotated projected area; False: take the area calculated from the aligned particle
 D_small_notuse = 1e-4 #ATTENTION: particle smaller than D_small_notuse are not considered (because of resolution issues) #i_row==0 or i_row==4 or i_row==9:

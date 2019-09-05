@@ -25,7 +25,7 @@ and fits different functions to each property (m-D,A-D,v-D for all fallspeed mod
 
 
 #define where the txt files with properties of the aggregates are stored
-prop_file_folder = "/data/optimice/Jussis_aggregates/"
+prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation"
 
 grid_res = 8e-6
 if grid_res==40e-6:
