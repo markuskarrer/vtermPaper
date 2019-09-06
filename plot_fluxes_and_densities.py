@@ -61,7 +61,7 @@ figsize_height = 6.0/2.0*(number_of_plots)
 fig	=	plt.figure(figsize=(8.0,figsize_height))#figsize=(4, 4))
 
 #get timestep
-i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
+i_timestep=(tstep/10)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
 
 #plot different lines for different sensitivity runs
 if separated_by_sensruns:
