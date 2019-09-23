@@ -70,11 +70,11 @@ def calc_mD_AD_coeffs(mono_type):
         d_theor=1+0.437 #1.44
     elif mono_type=="rosette":
         #theoretical m-D relationships
-        a_theor=np.nan #6.*(3.*np.sqrt(3.)/2.*(1./9.351)**(1./0.63)*)
-        b_theor=np.nan
+        #a_theor=np.nan #6.*(3.*np.sqrt(3.)/2.*(1./9.351)**(1./0.63)*)
+        #b_theor=np.nan
         #theoretical A-D relationships
-        c_theor=np.nan
-        d_theor=np.nan
+        #c_theor=np.nan
+        #d_theor=np.nan
         raw_input("attention: the monomer power-laws are taken from columns!")
         #theoretical m-D relationships
         a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6

@@ -126,36 +126,46 @@ def init_particles():
                             xmin   =  1.00e-10, #& !..x_min..minimale Teilchenmasse
                             mixrat_var = 'qs', #if set to 'qi': ATTENTION: set for testing 'qs',
                             numcon_var = 'qns') 
-    graupel = particle(nu_SB	        =  1.0,
-                    mu_SB        = 0.33333,
-                    a_geo      =  0.142,
-                    b_geo      =  0.314,
-                    xmax       =  5.00e-04, #& #!..x_max..maximale Teilchenmasse
-                    xmin       =  1.00e-09, #& !..x_min..minimale Teilchenmasse
-                    mixrat_var = 'qg',
-                    numcon_var = 'qng')
-    hail = particle(nu_SB	        =  1.0,
-                    mu_SB        =  0.33333,
-                    a_geo      =  0.1366,
-                    b_geo      =  0.3333333,
-                    xmax       =  5.00e-04, #& !..x_max..maximale Teilchenmasse
-                    xmin       =  2.60e-9,  #& !..x_min..minimale Teilchenmasse
-                    mixrat_var = 'qh',
-                    numcon_var = 'qnh')
-    return cloud_water,rain,cloud_ice,snow,graupel,hail
+    snowjplatesnonsphere= particle(
+                            nu_SB  =  5.0,
+                            mu_SB  =   0.333333,
+                            a_geo  =  3.202492,
+                            b_geo  =  0.450706,
+                            xmax   =  2.00e-05, #& !..x_max..maximale Teilchenmasse
+                            xmin   =  1.00e-10, #& !..x_min..minimale Teilchenmasse
+                            mixrat_var = 'qs', #if set to 'qi': ATTENTION: set for testing 'qs',
+                            numcon_var = 'qns') 
+    graupel = particle(     nu_SB      =  1.0,
+                            mu_SB      = 0.33333,
+                            a_geo      =  0.142,
+                            b_geo      =  0.314,
+                            xmax       =  5.00e-04, #& #!..x_max..maximale Teilchenmasse
+                            xmin       =  1.00e-09, #& !..x_min..minimale Teilchenmasse
+                            mixrat_var = 'qg',
+                            numcon_var = 'qng')
+    hail = particle(        nu_SB      =  1.0,
+                            mu_SB      =  0.33333,
+                            a_geo      =  0.1366,
+                            b_geo      =  0.3333333,
+                            xmax       =  5.00e-04, #& !..x_max..maximale Teilchenmasse
+                            xmin       =  2.60e-9,  #& !..x_min..minimale Teilchenmasse
+                            mixrat_var = 'qh',
+                            numcon_var = 'qnh')
+    return cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail
 
-def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail):
+def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail):
 
     #convert from N(m) to N(D) space
-    for n_cat,curr_cat in enumerate((cloud_water,rain,cloud_ice,snow,graupel,hail)):	
+    for n_cat,curr_cat in enumerate((cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)):	
         curr_cat.a_ms = (1./curr_cat.a_geo)**(1./curr_cat.b_geo)
         curr_cat.b_ms = 1./curr_cat.b_geo
-        curr_cat.mu = curr_cat.b_ms*curr_cat.nu_SB+curr_cat.b_ms-1
+        curr_cat.mu =  curr_cat.b_ms*curr_cat.nu_SB+curr_cat.b_ms-1
         curr_cat.gam = curr_cat.b_ms*curr_cat.mu_SB
         curr_cat.Dmax = (curr_cat.xmax/curr_cat.a_ms)**(1./curr_cat.b_ms)
         curr_cat.Dmin = (curr_cat.xmin/curr_cat.a_ms)**(1./curr_cat.b_ms)
-    
-    return cloud_water,rain,cloud_ice,snow,graupel,hail
+        #print [curr_cat.a_ms,curr_cat.b_ms,curr_cat.mu,curr_cat.gam]
+        #raw_input(n_cat)
+    return cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail
 
 def convert_ND_to_Nm_from_coeff(a_mD,b_mD,a_vD,b_vD):
     '''
@@ -191,9 +201,9 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
             i_time: timestep index of the entries in the twomom dictionary which should be analyzed
             i_height: height index of the entries in the twomom dictionary which should be analyzed
     '''
-    cloud_water,rain,cloud_ice,snow,graupel,hail = init_particles() #get all parameters from the SB-categories
+    cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = init_particles() #get all parameters from the SB-categories
     
-    [cloud_water,rain,cloud_ice,snow,graupel,hail] = convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
+    [cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail] = convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)
 
         
     #select the category
@@ -201,6 +211,8 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
         curr_cat = cloud_ice #if set to "
     elif category=="snowSBB":
         curr_cat = snow
+    elif category=="snowjplatesnonsphere":
+        curr_cat = snowjplatesnonsphere
     else:
         print category + " currently not implemented in __postprocess_SB.calc_distribution_from_moments"
     
@@ -227,11 +239,12 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     work3 = gamma((curr_cat.mu + 1.0) / curr_cat.gam)
     lam	=	(curr_cat.a_ms / q_h * n_tot * work2 / work3)**(curr_cat.gam / curr_cat.b_ms)
     N_0 = curr_cat.gam * n_tot / work3 * lam**((curr_cat.mu + 1.0) / curr_cat.gam)
-    N_D	=	N_0*diam**curr_cat.mu*np.exp(-lam*diam**curr_cat.gam) #/ del_diam		#normalized number concentrations with *del_diam-> not normalized
+    N_D	= N_0*diam**curr_cat.mu*np.exp(-lam*diam**curr_cat.gam) #/ del_diam		#normalized number concentrations with *del_diam-> not normalized
     #apply diameter (mass) limits #or better dont because they just limit the mean mass not truncate the spectrum
     #N_D[np.where( diam < curr_cat.Dmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
     #N_D[np.where( diam > curr_cat.Dmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
     M_D = N_D * curr_cat.a_ms*diam**curr_cat.b_ms
+    
     return N_D,M_D
 
 def calc_fmass_distribution_from_moments(twomom,category,m_ds,i_time=0,i_height=249):
@@ -243,13 +256,15 @@ def calc_fmass_distribution_from_moments(twomom,category,m_ds,i_time=0,i_height=
             i_time: timestep index of the entries in the twomom dictionary which should be analyzed
             i_height: height index of the entries in the twomom dictionary which should be analyzed
     '''
-    cloud_water,rain,cloud_ice,snow,graupel,hail = init_particles() #get all parameters from the SB-categories
+    cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = init_particles() #get all parameters from the SB-categories
 
     #select the category
     if category=="icecosmo5":
         curr_cat = cloud_ice #if set to "
     elif category=="snowSBB":
         curr_cat = snow
+    elif category=="snowjplatesnonsphere":
+        curr_cat = snowjplatesnonsphere
     else:
         print category + " currently not implemented in __postprocess_SB.calc_distribution_from_moments"
     ###
@@ -268,8 +283,9 @@ def calc_fmass_distribution_from_moments(twomom,category,m_ds,i_time=0,i_height=
     x_mean = q_h/n_tot
     lam = (gamma((curr_cat.nu_SB+1)/curr_cat.mu_SB)/gamma((curr_cat.nu_SB+2)/curr_cat.mu_SB)*x_mean)**(-curr_cat.mu_SB) #based on Seifert&Beheng 2006
     A = curr_cat.mu_SB*n_tot/gamma((curr_cat.nu_SB+1)/curr_cat.mu_SB)*lam**((curr_cat.nu_SB+1)/curr_cat.mu_SB) #based on Seifert&Beheng 2006
-    f_m = A*m_ds**curr_cat.nu_SB*np.exp(-lam*m_ds**curr_cat.mu_SB)
+    N_m = A*m_ds**curr_cat.nu_SB*np.exp(-lam*m_ds**curr_cat.mu_SB)
+    M_m = N_m * m_ds
     #apply mass limits
     #f_m[np.where( m_ds < curr_cat.xmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
     #f_m[np.where( m_ds > curr_cat.xmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
-    return f_m
+    return N_m,M_m

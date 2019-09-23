@@ -55,6 +55,7 @@ fit_dic = dict()
 for key in ["particle_type","mass_allagg_coeff","area_allagg_coeff","mass_Nmono1_coeff","area_Nmono1_coeff"]:
     fit_dic[key] = []
 
+#read the coefficients from processing_Jussis_aggregate_model_plots4paper_monodep_binary.py 
 with open("/home/mkarrer/Dokumente/plots/fit_results.txt","rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
     fit_param_reader = csv.reader(txtfile, delimiter='&', quoting=csv.QUOTE_NONE, lineterminator=os.linesep, escapechar=" ") #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
     for i_row,row_content in enumerate(fit_param_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
@@ -79,6 +80,9 @@ for prop in ["mass","area"]:
 ####
 #END: read modelled geometry (and vterm)
 ####
+
+
+
 
 #also show a sphere?
 sphere_dic = dict()
@@ -263,6 +267,25 @@ vL17new["vterm_coeff_LWPlarge"] = [117.4*10.**(-2+2*0.33),0.33,0.2e-3,13e-3] #si
 for habit in vL17new["particle_type"]:
     for prop in ["mass","vterm"]:
         vL17new[prop + '_' + habit]= vL17new[prop + "_coeff_" + habit][0]*diam**vL17new[prop + "_coeff_" + habit][1]
+        
+        
+####
+##Kneifel (2015) Figure 6
+#### 
+#constant for the mean v(D)=au*Dmelted[cm]*bu
+K15 = dict()
+
+K15["particle_type"] = ["t1","t2"] #,"LWPmedium","LWPlarge"]
+
+
+
+K15["vterm_coeff_t1"] = [0.714,0.149] #in mm 
+K15["vterm_coeff_t2"] = [0.705,0.240] #in mm
+
+for habit in K15["particle_type"]:
+    for prop in ["vterm"]:
+        K15[prop + '_' + habit]= K15[prop + "_coeff_" + habit][0]*(diam*1e3)**K15[prop + "_coeff_" + habit][1]
+        
 #other m-D 
 
 other_mD = dict()
@@ -362,6 +385,7 @@ with open(hyytiala_data,"rb") as txtfile: #http://effbot.org/zone/python-with-st
                 row_content[i_entry] = "NaN"
 
         vD_CARE_dic["Dmax"] = np.append(vD_CARE_dic["Dmax"],float(row_content[0]))
+        vD_CARE_dic["Dmax"][vD_CARE_dic["Dmax"]>10] = np.nan #mask out noisy values (>... mm)
         vD_CARE_dic["v_larger0"] = np.append(vD_CARE_dic["v_larger0"],float(row_content[1]))
         vD_CARE_dic["v_25perc_larger0"] = np.append(vD_CARE_dic["v_25perc_larger0"],float(row_content[2]))
         vD_CARE_dic["v_75perc_larger0"] = np.append(vD_CARE_dic["v_75perc_larger0"],float(row_content[3]))
@@ -385,16 +409,16 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
     if prop in ["mass_selected","mass","area"]: #plot m/A-D
 
         #sphere
-        if prop in ["mass_selected","mass"]:
-            axes[i_ax].plot(diam,sphere_dic["mass"],linestyle="-",color="gray",label="sphere")
-        elif prop=="area":
-            axes[i_ax].plot(diam,sphere_dic[prop],linestyle="-",color="gray",label="sphere")
+        #if prop in ["mass_selected","mass"]:
+        #    axes[i_ax].plot(diam,sphere_dic["mass"],linestyle="-",color="gray",label="sphere")
+        #elif prop=="area":
+        #    axes[i_ax].plot(diam,sphere_dic[prop],linestyle="-",color="gray",label="sphere")
         #aggregate model fits
         for i_particle_type,particle_type in enumerate(fit_dic["particle_type"]):
             if not prop=="mass_selected":
-                axes[i_ax].loglog(diam,fit_dic[prop + "_" + particle_type],linestyle=["-","--","--",":",":","--"][i_particle_type],marker=["","","o","","x","d"][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
+                axes[i_ax].loglog(diam,fit_dic[prop + "_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen","g","g"][i_particle_type],label="agg_model " + particle_type)
             else:
-                axes[i_ax].loglog(diam,fit_dic["mass_" + particle_type],linestyle=["-","--","--",":",":","--"][i_particle_type],marker=["","","o","","x","d"][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
+                axes[i_ax].loglog(diam,fit_dic["mass_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen","g","g"][i_particle_type],label="agg_model " + particle_type)
 
         #M96
         for i_particle_type,particle_type in enumerate(M96["particle_type"]):
@@ -422,9 +446,9 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
                 diam_flagged = np.where(((diam>(SZ10["mass_coeff_" + particle_type][2])) & (diam<(SZ10["mass_coeff_" + particle_type][3]))),diam,np.nan)
                 axes[i_ax].plot(diam_flagged,SZ10["mass_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="cyan",label="SZ10_" + particle_type)  
                 
-            for i_particle_type,particle_type in enumerate(other_mD["particle_type"]):
-                diam_flagged = diam #np.where(((diam>(SZ10["mass_coeff_" + particle_type][2])) & (diam<(SZ10["mass_coeff_" + particle_type][3]))),diam,np.nan)
-                axes[i_ax].plot(diam_flagged,other_mD["mass_" + particle_type],linestyle=["--","-.",":",":"][i_particle_type],color="magenta",label=particle_type)
+            #for i_particle_type,particle_type in enumerate(other_mD["particle_type"]):
+            #    diam_flagged = diam #np.where(((diam>(SZ10["mass_coeff_" + particle_type][2])) & (diam<(SZ10["mass_coeff_" + particle_type][3]))),diam,np.nan)
+            #    axes[i_ax].plot(diam_flagged,other_mD["mass_" + particle_type],linestyle=["--","-.",":",":"][i_particle_type],color="magenta",label=particle_type)
         if prop=="mass_selected":
             #M96
             for i_particle_type,particle_type in enumerate(M96["particle_type"]):
@@ -444,11 +468,11 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             #plot v-D
             
             #sphere
-            axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
+            #axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
             
             #aggregate model fits
             for i_particle_type,particle_type in enumerate(fit_dic["particle_type"]):
-                axes[i_ax].semilogx(diam,fit_dic[prop + "_" + particle_type],linestyle=["-","--","--",":",":","--"][i_particle_type],marker=["","","o","","x","d"][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
+                axes[i_ax].semilogx(diam,fit_dic[prop + "_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen","g"][i_particle_type],label="agg_model " + particle_type)
             
             
             #LH74
@@ -468,28 +492,42 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             for i_particle_type,particle_type in enumerate(fit_dic["particle_type"]):
                 #if particle_type=="mixcolumndend": #dont show this sensitivity test here
                 #    continue
-                axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--"][i_particle_type],marker=["","","o","","x","d"][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
+                if False:
+                    colors=["g","limegreen","g"] #temporary as long as we dont have all in side projection
+                    linestyles=["-","--","-."]
+                else:
+                    colors=["g","g","g","g","g","limegreen","g"]
+                    linestyles=["-","--","--",":",":","--","-."]
+                axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=colors[i_particle_type],label="agg_model " + particle_type)
             #LH74
             for i_particle_type,particle_type in enumerate(LH74["particle_type"]):
                 diam_flagged = np.where(((diam>(LH74["vterm_coeff_" + particle_type][2])) & (diam<(LH74["vterm_coeff_" + particle_type][3]))),diam,np.nan)
                 axes[i_ax].plot(diam_flagged,LH74["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="orange",label="LH74_" + particle_type)
-                
+            #B08
+            #for i_particle_type,particle_type in enumerate(B08["particle_type"]):
+            #    diam_flagged = np.where(((diam>(B08["vterm_coeff_" + particle_type][2])) & (diam<(B08["vterm_coeff_" + particle_type][3]))),diam,np.nan)
+            #    axes[i_ax].plot(diam_flagged,B08["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="deepskyblue",label="B08_" + particle_type)    
             
+            #K15 figure 6
+            #for i_particle_type,particle_type in enumerate(K15["particle_type"]):
+            #    diam_flagged = diam #np.where(((diam>(K15["vterm_coeff_" + particle_type][2])) & (diam<(K15["vterm_coeff_" + particle_type][3])K15)),diam,np.nan)
+            #    axes[i_ax].plot(diam_flagged,K15["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="darkblue",label="K15" + particle_type)  
+                
             #sphere
-            axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
+            #axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
             
             #plot v-D quantiles from Hyytiala data
-            axes[i_ax].plot(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v"],linestyle="-",color="y",label="PIP Hyytiala(v>0.5m/s)")
-            axes[i_ax].fill_between(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v_25perc"],vD_hyyt_dic["v_75perc"],color="y",alpha=0.1)
+            #axes[i_ax].plot(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v"],linestyle="-",color="y",label="PIP Hyytiala(v>0.5m/s)")
+            #axes[i_ax].fill_between(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v_25perc"],vD_hyyt_dic["v_75perc"],color="y",alpha=0.1)
 
             
             #plot v-D quantiles from CARE data
-            axes[i_ax].plot(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_larger0"],linestyle="-",color="red",label="PIP CARE(v>0.0m/s)")
-            axes[i_ax].fill_between(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_25perc_larger0"],vD_CARE_dic["v_75perc_larger0"],color="red",alpha=0.1)
+            axes[i_ax].plot(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_larger0"],linestyle="-",color="r",label="PIP CARE")
+            axes[i_ax].fill_between(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_25perc_larger0"],vD_CARE_dic["v_75perc_larger0"],color="r",alpha=0.1)
             
             #plot v-D quantiles from CARE data
-            axes[i_ax].plot(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_larger05"],linestyle="-",color="blue",label="PIP CARE(v>0.5m/s)")
-            axes[i_ax].fill_between(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_25perc_larger05"],vD_CARE_dic["v_75perc_larger05"],color="blue",alpha=0.1)
+            #axes[i_ax].plot(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_larger05"],linestyle="-",color="blue",label="PIP CARE(v>0.5m/s)")
+            #axes[i_ax].fill_between(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_25perc_larger05"],vD_CARE_dic["v_75perc_larger05"],color="blue",alpha=0.1)
             #i_ax+=1
             #i_ax+=1
         #i_ax+=-1
@@ -499,10 +537,11 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             
             #aggregate model fits
             for i_particle_type,particle_type in enumerate(fit_dic["particle_type"]):
-                if particle_type in ["mixcolumndend","mixdendneedle","needle"]: #dont show this sensitivity test here
+                if particle_type in ["mixcolumndend","mixdendneedle","needle","rosette"]: #dont show this sensitivity test here
                     continue
-                axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],marker=["","","","","","d"][i_particle_type],markevery=20,color=["g","g","g","g","g"][i_particle_type],label="agg_model " + particle_type)
-                axes[i_ax].semilogx(diam,fit_dic["vterm_Nmono1_" + particle_type],linestyle=["-","--","--",":",":",":"][i_particle_type],marker=["","","o","","","d"][i_particle_type],markevery=20,color=["b","b","b","b","b"][i_particle_type],label="agg_model mono " + particle_type)
+                print i_particle_type
+                axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen","g"][i_particle_type],label="agg_model " + particle_type)
+                axes[i_ax].semilogx(diam,fit_dic["vterm_Nmono1_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","","d",""][i_particle_type],markevery=20,color=["b","b","b","b","b","b"][i_particle_type],label="agg_model mono " + particle_type)
             #K89
             #for i_particle_type,particle_type in enumerate(K89["particle_type"]):
             #    diam_flagged = np.where(((diam>(K89["mass_coeff_" + particle_type][2])) & (diam<(K89["mass_coeff_" + particle_type][3]))),diam,np.nan)
@@ -521,18 +560,17 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             
              
             #sphere
-            axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
+            #axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
 
 
     elif prop=="vterm_frommass":
         for scale in  ["log"]: #["linear","log"]:
             ##sphere
-            axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
-            black cloth and it was dropped through the slit
-(the outer cylinder was taken away and the shutter was opened beforehand).
+            #axes[i_ax].plot(diam,sphere_dic["vterm"],linestyle="-",color="gray",label="sphere")
+
             #aggregate model fits
             for i_particle_type,particle_type in enumerate(fit_dic["particle_type"]):
-                axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--"][i_particle_type],marker=["","","o","","x","d"][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
+                axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen","g"][i_particle_type],label="agg_model " + particle_type)
             
             #M96
             for i_particle_type,particle_type in enumerate(["mixS3"]): #M96["particle_type"]):
@@ -552,7 +590,7 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             
             #aggregate model fits
             #for i_particle_type,particle_type in enumerate(fit_dic["particle_type"]):
-            #    axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--"][i_particle_type],marker=["","","o","","x","d"][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
+            #    axes[i_ax].semilogx(diam,fit_dic["vterm_" + particle_type],linestyle=["-","--","--",":",":","--","-."][i_particle_type],marker=["","","o","","x","d",""][i_particle_type],markevery=20,color=["g","g","g","g","g","limegreen"][i_particle_type],label="agg_model " + particle_type)
 
 
             #BS06
@@ -614,11 +652,12 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             axes[i_ax].set_ylabel(r"terminal velocity $v_{term}$ / m $s^{-1}$")
             axes[i_ax].set_xscale(scale)
             if prop in ["vterm_selected"]:
+                axes[i_ax].set_xlabel("diameter ${D_{sideproj}}$ / m")
                 axes[i_ax].legend(ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5))
             elif prop in ["vtermHyyt"]:
                 axes[i_ax].legend(ncol=1)
             else:
-                axes[i_ax].legend(ncol=2,loc='center left', bbox_to_anchor=(1.0, 0.5))
+                axes[i_ax].legend(ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5))
 
             axes[i_ax].grid(which="both")
             if scale=="linear":
@@ -656,7 +695,7 @@ for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","mass_selected",
             axes[i_ax].set_ylabel((" / ").join(("mass " + prop_short,prop_unit)))
         #axes[i_ax].set_xscale(scale)
         if not prop in ["mass_selected"]:
-            axes[i_ax].legend(ncol=2,loc='center left', bbox_to_anchor=(1.0, 0.5))
+            axes[i_ax].legend(ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5))
         else:
             axes[i_ax].legend(ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5))
         i_ax+=1
@@ -684,12 +723,12 @@ for save_axis,ax_description in enumerate(ax_description_array):
     except:
         pass
     extent = axes[save_axis].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-    axes[save_axis-1].set_xticks([]) #remove previous xlabel so that is not visible
-    axes[save_axis-1].set_xlabel("") #remove previous xlabel so that is not visible
+    #axes[save_axis-1].set_xticks([]) #remove previous xlabel so that is not visible
+    #axes[save_axis-1].set_xlabel("") #remove previous xlabel so that is not visible
     if ax_description=="vterm_disdro":
         fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(1.5, 1.4),dpi=400) #for the introduction it is nice to have the plot in the same size
     else:
-        fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(2.3, 1.3),dpi=400) #(1.6, 1.4) are width and height expanded around center
+        fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(1.8, 1.35),dpi=400) #(2.3, 1.3) are width and height expanded around center
 
     subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)
     

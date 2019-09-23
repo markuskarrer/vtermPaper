@@ -23,7 +23,7 @@ from functions import __general_utilities
 tstep = int(os.environ["tstep"]) #start of the averaging period
 tstep_end = int(os.environ["tstep_end"]) #string with 4 numbers and 'min'
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
-testcase = os.environ["testcase"]
+testcase = os.environ["testcase"] 
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
 if "MCtermvel_specifier_onestring" in os.environ.keys():

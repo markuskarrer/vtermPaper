@@ -32,8 +32,17 @@ def rchop(thestring, ending): #remove ending from a string
 
 tumbling=False 
 take_mono_prop_theor = True #so far only True is implemented
-forw_mod = False
-no_monomers_in_plot = False #skip plotting lines for monomers
+forw_mod = True
+
+if forw_mod==True:
+    no_monomers_in_plot = True #skip plotting lines for monomers
+    no_agg_in_plot = False #skip aggregates in plot
+
+else:
+    no_monomers_in_plot = True
+    no_agg_in_plot = False #skip aggregates in plot
+    
+
 #show which types of fit
 show_lines=dict()
 show_lines["powerlaw_fits"] = False
@@ -49,18 +58,19 @@ vnoisestdval2 = 0.4
 number_of_plots = 3
 
 #optimize the appearance of the plot (figure size, fonts)
-aspect_ratio=1./6.
-legend_fontsize='medium'
+aspect_ratio=1./4.
+legend_fontsize='x-large' #'medium'
 #increase font sizes
 params = {'legend.fontsize': legend_fontsize,
-    'axes.labelsize': 22, #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
-    'axes.titlesize': 2,
-    'xtick.labelsize':22,
-    'ytick.labelsize':22}
+    'axes.labelsize': 'xx-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
+    'axes.titlesize':'xx-large',
+    'xtick.labelsize':'xx-large',
+    'ytick.labelsize':'xx-large'}
 pylab.rcParams.update(params)
 #define figure
 figsize_height = 1./aspect_ratio*number_of_plots
 fig, axes = plt.subplots(nrows=number_of_plots, ncols=1, figsize=(12.5,figsize_height))
+
 
 ####
 #START: read in Hyytiala data from Annakaisa
@@ -120,6 +130,10 @@ with open(hyytiala_data,"rb") as txtfile: #http://effbot.org/zone/python-with-st
                 row_content[i_entry] = "NaN"
 
         vD_CARE_dic["Dmax"] = np.append(vD_CARE_dic["Dmax"],float(row_content[0]))
+        
+        vD_CARE_dic["Dmax"][vD_CARE_dic["Dmax"]>10] = np.nan #mask out noisy values (>... mm)
+
+        
         vD_CARE_dic["v_larger0"] = np.append(vD_CARE_dic["v_larger0"],float(row_content[1]))
         vD_CARE_dic["v_25perc_larger0"] = np.append(vD_CARE_dic["v_25perc_larger0"],float(row_content[2]))
         vD_CARE_dic["v_75perc_larger0"] = np.append(vD_CARE_dic["v_75perc_larger0"],float(row_content[3]))
@@ -139,7 +153,8 @@ for key in show_lines.keys():
     if show_lines[key]:
         add_displayed_lines2string+= '_' + key
 if forw_mod:
-    particle_types = ["plate","plate_sideproj","plate_vnoise0p2vcut","plate_vnoise0p4vcut"] #,"plate_vnoisesideprojvcut"]
+    particle_types = ["plate","column","mixcolumndend","rosette"]
+    #particle_types = ["plate","plate_sideproj","plate_vnoise0p2vcut","plate_vnoise0p4vcut"] #,"plate_vnoisesideprojvcut"]
     #particle_types = ["dendrite","dendrite_vcut","dendrite_vnoisevcut"] #,"dendrite_vnoisesideprojvcut"]
     #particle_types = ["mixdendneedle","mixdendneedle_vcut","mixdendneedle_vnoisevcut"] #,"mixdendneedle_vnoisesideprojvcut"]
     #particle_types = ["needle","needle_vcut","needle_vnoisevcut"] #,"needle_vnoisesideprojvcut"]
@@ -152,7 +167,7 @@ if forw_mod:
     #particle_types = ["mixcolumndend","mixcolumndend_sideproj","mixcolumndend_sideprojvcut"]
 
 else:
-    particle_types = ["plate","dendrite","mixdendneedle","needle","column","mixcolumndend","Seifert14"] #,"mixcolumndend"] #"mixdendneedle""needle","column","plate","dendrite"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
+    particle_types = ["plate","dendrite","mixdendneedle","needle","column","rosette","mixcolumndend"] #,"Seifert14"] #,"mixcolumndend"] #"mixdendneedle""needle","column","plate","dendrite"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
     
 for i_particle_type,particle_type in enumerate(particle_types):
     area_side_proj=False
@@ -466,11 +481,12 @@ for i_particle_type,particle_type in enumerate(particle_types):
 
         
         #add a line for the aggregates
-        if not forw_mod:
-            fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmonoallagg"],c=["g","g","g","g","g","limegreen","r"][i_particle_type],linestyle=["-","--","--",":",":","--","-"][i_particle_type],marker=["","","o","","x","d","P"][i_particle_type],markevery=50,linewidth=linewidth)
+        if (not forw_mod) and (not no_agg_in_plot):
+            #from IPython.core.debugger import Tracer ; Tracer()()
+            fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmonoallagg"],c=["g","g","g","g","g","g","limegreen","g","r"][i_particle_type],linestyle=["-","--","--",":","-.","--","-","-","-."][i_particle_type],marker=["","","o","","","x","d","P",""][i_particle_type],markevery=50,markersize=3,linewidth=linewidth)
             #add 50% percentile for all aggregates
             if particle_type!="Seifert14":
-                axes[i_ax].fill_between(diam_percentile[:-1],fit_dic[prop + "_" + str(25) + "perc_Nmono_allagg"],fit_dic[prop + "_" + str(75) + "perc_Nmono_allagg"],color="g",linestyle=["-","--",":",":","--","--"][i_particle_type],alpha=0.3)
+                axes[i_ax].fill_between(diam_percentile[:-1],fit_dic[prop + "_" + str(25) + "perc_Nmono_allagg"],fit_dic[prop + "_" + str(75) + "perc_Nmono_allagg"],color="g",linestyle=["-","--",":",":","--","--","-","-","-."][i_particle_type],alpha=0.3)
             ##add fitted lines
             #monomers
             if show_lines["Atlas_fit"]:
@@ -490,14 +506,17 @@ for i_particle_type,particle_type in enumerate(particle_types):
             
             #plot v-D quantiles (here just 50) from Hyytiala data
             #axes[i_ax].plot(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v"],linestyle="-",color="darkorange")
-        else:
-            axes[i_ax].semilogx(diam_percentile[:-1],fit_dic[prop + "_" + str(50) + "perc_Nmono_allagg"],color="g",linestyle=["-","--",":","-."][i_particle_type],marker=["","","","",""][i_particle_type], markersize=3)
+        elif forw_mod  and (not no_agg_in_plot):
+            color_forw_mod=["g","g","limegreen","g"]
+            linestyle_forw_mod=["-",":","--","-."]
+            marker_forw_mod=["","x","d",""]
+            axes[i_ax].semilogx(diam_percentile[:-1],fit_dic[prop + "_" + str(50) + "perc_Nmono_allagg"],color=color_forw_mod[i_particle_type],linestyle=linestyle_forw_mod[i_particle_type],marker=marker_forw_mod[i_particle_type])
             #add a line for the Hyytiala data in case we analyze the sideprojection data
             #add percentile range
-            axes[i_ax].fill_between(diam_percentile[:-1],fit_dic[prop + "_" + str(25) + "perc_Nmono_allagg"],fit_dic[prop + "_" + str(75) + "perc_Nmono_allagg"],color="g",linestyle=["-","--",":",":","--"][i_particle_type],alpha=0.1)
+            axes[i_ax].fill_between(diam_percentile[:-1],fit_dic[prop + "_" + str(25) + "perc_Nmono_allagg"],fit_dic[prop + "_" + str(75) + "perc_Nmono_allagg"],color=color_forw_mod[i_particle_type],linestyle=linestyle_forw_mod[i_particle_type],alpha=0.1)
             #plot v-D quantiles from Hyytiala data
-            axes[i_ax].plot(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v"],linestyle="-",color="darkorange")
-            axes[i_ax].fill_between(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v_25perc"],vD_hyyt_dic["v_75perc"],color="darkorange",alpha=0.1)
+            #axes[i_ax].plot(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v"],linestyle="-",color="darkorange")
+            #axes[i_ax].fill_between(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v_25perc"],vD_hyyt_dic["v_75perc"],color="darkorange",alpha=0.1)
             #plot v-D quantiles from CARE data
             axes[i_ax].plot(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_larger0"],linestyle="-",color="red") #,label="PIP CARE(v>0.0m/s)")
             axes[i_ax].fill_between(vD_CARE_dic["Dmax"]*1e-3,vD_CARE_dic["v_25perc_larger0"],vD_CARE_dic["v_75perc_larger0"],color="red",alpha=0.1)
@@ -514,19 +533,19 @@ for i_particle_type,particle_type in enumerate(particle_types):
 for i_ax,ax_now in enumerate(axes):
     for i_particle_type,particle_type in enumerate(particle_types):
         if forw_mod:
-            ax_now.plot(np.nan,np.nan,color="g",linestyle=["-","--",":","-.","--"][i_particle_type],marker=["","","","","",""][i_particle_type],linewidth=linewidth,label=particle_type,markevery=50)
+            ax_now.plot(np.nan,np.nan,color=color_forw_mod[i_particle_type],linestyle=linestyle_forw_mod[i_particle_type],marker=marker_forw_mod[i_particle_type],linewidth=linewidth,label=particle_type,markevery=50)
         else:
-            ax_now.plot(np.nan,np.nan,color="k",linestyle=["-","--","--",":",":","--","-"][i_particle_type],marker=["","","x","","x","d","P"][i_particle_type],linewidth=linewidth,label=particle_type,markevery=50, markersize=3)
+            ax_now.plot(np.nan,np.nan,color="k",linestyle=["-","--","--",":","-.","--","-","-","-."][i_particle_type],marker=["","","o","","","x","d","P",""][i_particle_type],linewidth=linewidth,label=particle_type,markevery=50, markersize=3)
     if not (("_sideproj" in ''.join(particle_types)) or no_monomers_in_plot):
         ax_now.plot(np.nan,np.nan,color="b",label="Nmono=1")
             
     if not forw_mod:
         ax_now.plot(np.nan,np.nan,color="g",label="Nmono>1")
     if forw_mod:
-        ax_now.plot(np.nan,np.nan,linestyle="-",color="darkorange",label="Hyytiala(v>0.5m/s)")
+        #ax_now.plot(np.nan,np.nan,linestyle="-",color="darkorange",label="Hyytiala(v>0.5m/s)")
         ax_now.plot(np.nan,np.nan,linestyle="-",color="red",label="PIP CARE(v>0.0m/s)")
     #show legend
-    axes[i_ax].legend() #ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5))
+    axes[i_ax].legend(ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5)) #ncol=1,loc='center left', bbox_to_anchor=(1.0, 0.5))
 #save the plot (and open it)
 plt.tight_layout()
 dir_save = '/home/mkarrer/Dokumente/plots/Jagg/'
@@ -556,12 +575,15 @@ for save_axis,ax_description in enumerate(ax_description_array):
         continue
     print "saving subfigure",save_axis,ax_description
     try: #clear label of axis before and recover current one
-        axes[save_axis].set_xlabel("diameter $D_{max}$ / m")
+        if forw_mod:
+            axes[save_axis].set_xlabel("diameter $D_{max,side}$ / m")            
+        else:
+            axes[save_axis].set_xlabel("diameter $D_{max}$ / m")
         axes[save_axis-1].set_xlabel("")
     except:
         pass
     extent = axes[save_axis].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
 
-    fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(2.1, 1.3),dpi=400) #bbox_inches=extent.expanded(1.6, 1.45),dpi=400) are width and height expanded around center
+    fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(2.3, 1.45),dpi=400) #,bbox_inches=extent.expanded(2.3, 1.3),dpi=400)bbox_inches=extent.expanded(1.6, 1.45),dpi=400) are width and height expanded around center
 
     subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)

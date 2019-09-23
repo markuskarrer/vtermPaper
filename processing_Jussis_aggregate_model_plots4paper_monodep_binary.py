@@ -28,13 +28,17 @@ and fits different functions to each property (m-D(monomer dependent and binary)
 tumbling=False #so far only the use of non-tumbling projected area is implemented here
 show_Nmono_fits = True #show fit lines for some selected monomer numbers
 v_small_notuse = 0.0  #ATTENTION: particle smaller than .5ms-1 are not used #ATTENTION: applied to B?hm only
-
-##open file for writing fit-parameters
-with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+Dmax_side = False  #ATTENTION: this should be false because it is not a valid forward operator (it also changes vterm of the particles not just vterm) #use Dmax from a side projection rather than from the full 3D-particle #ATTENTION: not calculated for each aggregate
+if Dmax_side:
+    Dmax_side_add="_Dmaxside"
+else:
+    Dmax_side_add=""
+##open file for writing fit-parameters 
+with open("/home/mkarrer/Dokumente/plots/fit_results" + Dmax_side_add + ".txt","w") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
     fit_param_writer = csv.writer(txtfile, delimiter='&', quoting=csv.QUOTE_NONE, lineterminator=os.linesep, escapechar=" ") #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
     fit_param_writer.writerow(["particle_type","am0","am1","am2","bm0","bm1","bm2","aA0","aA1","aA2","bA0","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"])
 
-    particle_types = ["plate"] #,"dendrite","mixdendneedle","needle","column","mixcolumndend"] #["plate","dendrite","mixdendneedle","needle","column","mixcolumndend"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
+    particle_types = ["plate","column","mixcolumndend","rosette"] #,"dendrite","mixdendneedle","needle","column","mixcolumndend","rosette"] #["plate","dendrite","mixdendneedle","needle","column","mixcolumndend"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
     for particle_type in particle_types:
 
         #read the properties of the individual particles from the files
@@ -62,6 +66,8 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
 
         if tumbling:
             particle_dic["area"] = particle_dic["area_partal40std"] #use the tumbled area instead
+        if Dmax_side:
+            particle_dic["diam"] = particle_dic["Dmax_xz"] #use the side projected maximum dimension
         
         #calculate the terminal velocitys of the simulated particles individually for each available velocity model
         for velocity_model in ["HW10","KC05","bohm"]: #,"mitch_heym"]:
@@ -259,7 +265,7 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
                 fitlines = axes[i_ax].plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],c="g",linewidth=2.*linewidth,label="all aggregates",linestyle='-.')
 
             #make labels
-            axes[i_ax].set_xlabel("diameter D_{max} / m")
+            axes[i_ax].set_xlabel("diameter $D_{max}$ / m")
             if not prop=="Aratio":
                 axes[i_ax].set_ylabel((" / ").join((prop+ ' ' + prop_short,prop_unit))) 
             else:
@@ -381,7 +387,7 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
             axes[i_ax].set_xscale("log")
 
             #make labels
-            axes[i_ax].set_xlabel("diameter D_{max} / m")
+            axes[i_ax].set_xlabel("diameter $D_{max}$ / m")
             axes[i_ax].set_ylabel(prop + "/ \n" + prop + " monomer")
             #change the axis
             axes[i_ax].set_xlim([1e-4,4e-2])
@@ -420,7 +426,7 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
             axes[i_ax].legend() 
             
             #make labels
-            axes[i_ax].set_xlabel("diameter D_{max} / m")
+            axes[i_ax].set_xlabel("diameter $D_{max}$ / m")
             axes[i_ax].set_ylabel(prop + " / m s-1" ) #TODO: plot also the untis of these properties
 
             #change the axis
@@ -542,7 +548,7 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
             #fitlines = axes2[i_ax].plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],c="g",linewidth=2.*linewidth,label="all aggregates",linestyle='-.')
 
             #make labels
-            axes2[i_ax].set_xlabel("diameter D_{max} / m")
+            axes2[i_ax].set_xlabel("diameter $D_{max}$ / m")
             axes2[i_ax].set_ylabel((" / ").join((prop_short,prop_unit))) 
 
             #change the axis
@@ -591,7 +597,7 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
         for save_axis,ax_description in enumerate(ax_description_array):
             print "saving subfigure",save_axis,ax_description
             try: #clear label of axis before and recover current one
-                axes[save_axis].set_xlabel("diameter D_{max} / m")
+                axes[save_axis].set_xlabel("diameter $D_{max}$ / m")
                 axes[save_axis-1].set_xlabel("")
             except:
                 pass
@@ -603,5 +609,5 @@ with open("/home/mkarrer/Dokumente/plots/fit_results_test.txt","w") as txtfile: 
 
             fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(1.6, 1.45),dpi=400) #(1.6, 1.4) are width and height expanded around center
 
-            subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)
+            #subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)
 

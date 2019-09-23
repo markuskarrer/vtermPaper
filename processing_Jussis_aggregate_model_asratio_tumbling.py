@@ -12,6 +12,7 @@ import itertools#to read only certain lines of the txt files
 import re
 from matplotlib.colors import LogNorm
 import matplotlib.pylab as pylab
+a=0
 import argparse; parser = argparse.ArgumentParser() #get optional arguments from shell
 #import other self-defined functions
 import __postprocess_McSnow

@@ -136,11 +136,11 @@ def average_SPlists(SP_nonaveraged):
         total_xi_after_round =  np.sum(SP_averaged['xi'])*num_timesteps
         print 'error made by rounding after merging of timestep:'
         print 'total_xi_before: ',total_xi_before_round ,'total_xi_after-total_xi_before: ',total_xi_after_round-total_xi_before_round,' ratio: ',(total_xi_after_round-total_xi_before_round)/total_xi_before_round
-    elif roundbool: # and 'xi' in SP_averaged.keys:
+    else: # and 'xi' in SP_averaged.keys:
         SP_averaged['xi'] = SP_averaged['xi']/num_timesteps #non-integer multiplicity is allowed
     #elif roundbool and (not 'xi' in SP_averaged.keys):
     #    pass #this is a workaround for just SB runs
-        
+    #from IPython.core.debugger import Tracer ; Tracer()()    
 
 
     return SP_averaged

@@ -23,7 +23,8 @@ from functions import __postprocess_SB
 plot_spectra = False #plot also the radar spectra?
 
 #read variables passed by shell script
-tstep = int(os.environ["tstep"])
+tstep = int(os.environ["tstep"]) #start of the averaging period
+tstep_end = int(os.environ["tstep_end"]) #string with 4 numbers and 'min'
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
@@ -33,6 +34,9 @@ skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no Mc
 skipSB = (os.environ["skipSB"]=="True") #ATTENTION: check the matching of the heights between SB and MC again
 #directory of experiments
 directory = MC_dir + "/experiments/"
+
+#number of heights in plot
+number_of_heights=5
 
 #small self-defined function
 def find_nearest(array, value):
@@ -44,7 +48,7 @@ if not skipMC:
     ###
     #load SP-file (keys are: "m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat")
     ###
-    SP_file = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
+    SP_file = Dataset(directory + experiment + '/mass2fr_' + str(tstep).zfill(4) + '-' + str(tstep_end).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
     #create dictionary for all variables from PAMTRA
     SP = dict()
     #if necessary change name of variables (not done yet)
@@ -77,7 +81,7 @@ if not skipMC:
     zres = model_top/(nheights-1) #vertical resolution
     Vbox = __postprocess_McSnow.calculate_Vbox(experiment,zres)    
 #get relevant timestep
-i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
+i_timestep=(tstep/10) #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
 
 #####
 ##organising the whole figure (including subplots)
@@ -112,7 +116,7 @@ if not skipMC:
     #for i_height in range(0,binned_val['d_counts'].shape[0],10): #
     i_lines = 0 #counter: used to get the right color of the lines
     heightvec = np.linspace(0,model_top,nheights) #has to be calculated before separate_by_height_and_diam to fasten calculation with calconly but is overwritten by seperate_by_height_and_diam
-    heightstep=nheights/10 #plot 5 different heights #del_z is model_top/n_heights
+    heightstep = nheights/number_of_heights #plot 5 different heights #del_z is model_top/n_heights
     for i_height in range(heightstep-1,heightvec.shape[0],heightstep): #
         if not plot_spectra:
             i_height-=1 #reduce i_height because of index problem ATTENTION: no final solution
@@ -136,7 +140,7 @@ varlist = twomom_file.variables
 for var in varlist:#read files and write it with different names in Data
     twomom[var] = np.squeeze(twomom_file.variables[var])
 
-heightstep = twomom["heights"].shape[0]/5 #100m for dz=20m
+heightstep = twomom["heights"].shape[0]/number_of_heights #100m for dz=20m
 #loop over certain heights (calculation and plotting)
 #initialize arrays for distribution
 twomom["i_mdist"] = np.zeros((twomom["heights"].shape[0],m_ds.shape[0]))
@@ -146,15 +150,16 @@ twomom["all_mdist"] = np.zeros((twomom["heights"].shape[0],m_ds.shape[0]))
 
 i_lines = 0 #counter: used to get the right color of the lines
 for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #ATTENTION: if you do changes here uncomment linelabel for checking consistent height labelling with McSnow data...
+    print i_timestep,tstep,i_height,twomom["heights"][i_height]
+    #from IPython.core.debugger import Tracer ; Tracer()()
     #calculate SB distribution
-    twomom["i_mdist"][i_height,:] = __postprocess_SB.calc_fmass_distribution_from_moments(twomom,'icecosmo5',m_ds,i_height=i_height,i_time=i_timestep)
-    twomom["s_mdist"][i_height,:] = __postprocess_SB.calc_fmass_distribution_from_moments(twomom,'snowSBB',m_ds,i_height=i_height,i_time=i_timestep)
+    twomom["i_mdist"][i_height,:],dummy = __postprocess_SB.calc_fmass_distribution_from_moments(twomom,'icecosmo5',m_ds,i_height=i_height,i_time=i_timestep)
+    twomom["s_mdist"][i_height,:],dummy = __postprocess_SB.calc_fmass_distribution_from_moments(twomom,'snowjplatesnonsphere',m_ds,i_height=i_height,i_time=i_timestep)
     #sum up distributions #ATTENTION: if there are more categories used update this here (include them)
-    twomom["all_mdist"][i_height,:] = np.nan_to_num(twomom["i_mdist"][i_height,:])+np.nan_to_num(twomom["s_mdist"][i_height,:]) #nan_to_num converts nan to 0 (this is helpful if 
+    twomom["all_mdist"][i_height,:] = np.nan_to_num(twomom["i_mdist"][i_height,:])+np.nan_to_num(twomom["s_mdist"][i_height,:]) #nan_to_num converts nan to 0 (this is helpful if one of the category doesnt exist)
     #plot distribution
     axes[0] = __plotting_functions.plot1Dhistline(axes[0],m_ds,twomom["all_mdist"][i_height,:],xlabel='mass / kg',ylabel='number density / m-3 kg-1',ylims=[10**8,10**19],logflag=3,color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
     i_lines += 1
-#from IPython.core.debugger import Tracer ; Tracer()()
 #add labels to distinguish the linestyle
 if not skipMC:
     axes[0].plot(0,0,color='k',linestyle='--',label='McSnow')
@@ -165,7 +170,7 @@ axes[0].legend()
 #end of N(m) plot
 ###
 #increase font size
-params = {'legend.fontsize': 'large',
+params = {'legend.fontsize': 'small',
     'figure.figsize': (10, 5),
     'axes.labelsize': 'x-large', #size: Either a relative value of 'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large' or an absolute font size, e.g., 12
     'axes.titlesize':'x-large',
@@ -177,7 +182,7 @@ nbins=100;diamrange=[-6,0]
 if not skipMC:
     #calculate binned values (histograms)
     heightvec = np.linspace(0,model_top,nheights) #has to be calculated before seperate_by_height_and_diam to fasten calculation with calconly but is overwritten by seperate_by_height_and_diam
-    heightstep = nheights/10
+    heightstep = nheights/number_of_heights
     plotted_heights_indices = range(0,heightvec.shape[0],heightstep)
     calconly = heightvec[plotted_heights_indices] #skip heights in seperate_by_height_and_diam calculation which are not plotted later
     binned_val,heightvec,d_bound_ds,d_ds,__ = __postprocess_McSnow.separate_by_height_and_diam(SP,nbins=nbins,diamrange=diamrange,nheights=nheights,model_top=model_top,calconly=calconly)
@@ -207,7 +212,7 @@ if not skipMC:
         
         #for i_height in range(0,binned_val['d_counts'].shape[0],10): #
         i_lines = 0 #counter: used to get the right color of the lines
-        heightstep=nheights/10 #plot 5 different heights #del_z is model_top/n_heights
+        heightstep=nheights/number_of_heights #plot 5 different heights #del_z is model_top/n_heights
         for i_height in plotted_heights_indices: #
             #binned_val[var] = __postprocess_McSnow.kernel_estimate(binned_val[var][i_height,:],number_of_SP) #TODO:? a kernel kernel_estimate for the distribution here
             #if not plot_spectra:
@@ -261,10 +266,10 @@ if not skipSB:
 
     #calculate sum of distributions of SB cloud ice + snow (based on number & mass density) and plot them
     i_lines = 0 #counter: used to get the right color of the lines
-    heightstep = twomom["heights"].shape[0]/5 #100m for dz=20m
+    heightstep = twomom["heights"].shape[0]/number_of_heights #100m for dz=20m
     for i_height in range(twomom["heights"].shape[0]-heightstep,-1,-heightstep): #ATTENTION: if you do changes here uncomment linelabel for checking consistent height labelling with McSnow data...
         twomom["i_dist"][i_height,:],twomom["i_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'icecosmo5',d_ds,i_height=i_height,i_time=i_timestep)
-        twomom["s_dist"][i_height,:],twomom["s_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'snowSBB',d_ds,i_height=i_height,i_time=i_timestep)
+        twomom["s_dist"][i_height,:],twomom["s_dist_mass"][i_height,:] = __postprocess_SB.calc_distribution_from_moments(twomom,'snowjplatesnonsphere',d_ds,i_height=i_height,i_time=i_timestep)
         twomom["all_dist"][i_height,:] = np.nan_to_num(twomom["i_dist"][i_height,:])+np.nan_to_num(twomom["s_dist"][i_height,:])
         twomom["all_dist_mass"][i_height,:] = np.nan_to_num(twomom["i_dist_mass"][i_height,:]) +np.nan_to_num(twomom["s_dist_mass"][i_height,:])
 
@@ -282,8 +287,8 @@ if not skipSB:
             dmaxm=max(dmaxn,dmaxm)    
 
         #plot a line corresponding to a specific height; N(D) on axes[1] and M(D) on axes[2]
-        axes[1] = __plotting_functions.plot1Dhistline(axes[1],d_ds,twomom["all_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[ylims_low[0],ylims_high[0]],logflag=3,xlims=[0,dmaxn],color=colors[i_lines], linelabel="__none") #>">{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")
-        axes[2] = __plotting_functions.plot1Dhistline(axes[2],d_ds,twomom["all_dist_mass"][i_height,:],xlabel='diameter / m',ylabel='mass density / kg m-4',ylims=[ylims_low[1],ylims_high[1]],logflag=3,xlims=[0,dmaxm],color=colors[i_lines], linelabel="__none") #>{:6.0f}m".format(twomom["heights"][i_height]))
+        axes[1] = __plotting_functions.plot1Dhistline(axes[1],d_ds,twomom["all_dist"][i_height,:],xlabel='diameter / m',ylabel='number density / m-4',ylims=[ylims_low[0],ylims_high[0]],logflag=3,xlims=[0,dmaxn],color=colors[i_lines], linelabel="_none")#linelabel="{:6.0f}m".format(twomom["heights"][i_height])) #linelabel="_none")#
+        axes[2] = __plotting_functions.plot1Dhistline(axes[2],d_ds,twomom["all_dist_mass"][i_height,:],xlabel='diameter / m',ylabel='mass density / kg m-4',ylims=[ylims_low[1],ylims_high[1]],logflag=3,xlims=[0,dmaxm],color=colors[i_lines], linelabel="_none")#linelabel="{:6.0f}m".format(twomom["heights"][i_height]))
         i_lines += 1
 #add labels to distinguish the linestyle
 if not skipMC:
@@ -291,8 +296,8 @@ if not skipMC:
     axes[2].plot(0,0,color='k',linestyle='--',label='McSnow')
 axes[1].plot(0,0,color='k',linestyle='-',label='SB')
 axes[2].plot(0,0,color='k',linestyle='-',label='SB')
-axes[1].legend(ncol=3)  
-axes[2].legend(ncol=3)  
+axes[1].legend(ncol=2)  
+axes[2].legend(ncol=2)  
 
 if plot_spectra:
 
