@@ -12,7 +12,7 @@ this code calculates different fallspeed models (f.e. taken from McSnow)
 '''
 #wrapper around different fall speed models
 
-def calc_vterm(velocity_model,mass,diam,area,as_ratio=1.0,turb_corr="small"):
+def calc_vterm(velocity_model,mass,diam,area,as_ratio=1.0,turb_corr="all"):
     #turb_corr is only for mitch_heym
     if velocity_model=='HW10':
         vterm = vterm_hw10(mass,diam,area,rho=1.287,eta=1.717696e-5)
@@ -22,7 +22,7 @@ def calc_vterm(velocity_model,mass,diam,area,as_ratio=1.0,turb_corr="small"):
         vterm = vterm_bohm(mass,diam,area,np.ones_like(mass),rho=1.287,eta=1.717696e-5)
     elif velocity_model=='bohmar':
         vterm = vterm_bohm(mass,diam,area,as_ratio,rho=1.287,eta=1.717696e-5)
-    elif velocity_model=='mitch_heym':
+    elif velocity_model=='mitch_heym': #the turbulence correction produces a jump at 0.5mm
         vterm = vterm_mitch_heym(mass,diam,area,rho=1.287,eta=1.717696e-5,turb_corr=turb_corr)
     else:
         print velocity_model + " not implemented (in functions/__fallspeed_relations.py"
@@ -344,7 +344,7 @@ def vterm_bohm(mtot,diam,area,as_ratio,rho=1.287,eta=1.717696e-5):
 ! velocity in terms of drag terms
           fall2(jj) = a1*mu**(1.-2.*b1)*(2.*cs1*g/(rho*aas1))**b1*d1**(b1*(ds1-bas1+2.)-1.)
 '''
-def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr="small"):
+def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr="all"):
     '''
     returns fall speed as assumed by Mitchel and Heymsfield (2005)
     INPUT: 
@@ -366,7 +366,7 @@ def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr="small")
     c1   = 4./(del0**2*c0**0.5)
     c2   = del0**2/4.
     
-    if turb_corr=="small":
+    if turb_corr=="small": #turbulence correction only for particles >500mum
         '''
         if False: #TODO: apply correction only for larger part of arrays # (diam < 500e-6): #no turbulence correction for small particles
             a0 = 0.
@@ -379,7 +379,7 @@ def vterm_mitch_heym(mtot,diam,area,rho=1.287,eta=1.717696e-5,turb_corr="small")
         a0 = np.zeros_like(diam); b0 = np.zeros_like(diam)
         a0[diam>500e-6]=1.7e-3
         b0[diam>500e-6]=0.8
-    elif turb_corr=="all":
+    elif turb_corr=="all": #turbulence correction for all
         a0=1.7e-3*np.ones_like(diam)
         b0=0.8*np.ones_like(diam)
     # Best number

@@ -575,7 +575,6 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
         for i,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
             if any(hei2massdens["Fn" + cat][:])>0:
                 axisqn += ax2.semilogx(hei2massdens["Fn" + cat][:],hei2massdens['z'],color='g',linestyle='--',marker=markerlist[i],markevery=20,markerfacecolor='None',label=labellistMC[i])
-    #from IPython.core.debugger import Tracer ; Tracer()()
     #change height limits and set y-label
     ax.set_ylim([0,twomom["heights"][0]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
@@ -593,10 +592,10 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
         xmin=mass_min;xmax=mass_max
         x2min=num_min;x2max=num_max
     elif mass_num_flag==0:
-        ax.set_xlabel("number flux density / m-2 s-1",color="k")
+        ax.set_xlabel("$F_N$ [m-2 s-1]",color="k")
         xmin=num_min;xmax=num_max
     elif mass_num_flag==1:
-        ax.set_xlabel("mass flux density / kg m-2 s-1",color="k")
+        ax.set_xlabel("$F_m$ [kg m-2 s-1]",color="k")
         xmin=mass_min;xmax=mass_max
     else:
         print "error: mass_num_flag in plot_fluxes must be in [0,1,2]"
@@ -622,7 +621,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
     
     return ax
 
-def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',forced_markerMC='',top_height=5000):
+def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',forced_markerMC='',top_height=5000,plot_totalice=True,catonly=None,show_label=True):
     '''
     plot number and mass fluxes of McSnow over height
     INPUT:  ax: first x-axis
@@ -630,20 +629,28 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
             i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
             var_flag: which variable should be plotted 0:number 1: mass 2: number flux 3: mass flux
             forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); 
-
+            plot_totalice: plot a line for the sum of the categories
+            catonly: plot a specific category (if None plot all avalable)
     '''
     import matplotlib.ticker
     colors=["blue","green","orange","brown","y","red"]
     markerlist = ["^","s","*","x","d",""]
     MC_specs = ["_mm1","_unr","_grp","_rimed","_liq",""] #specify here what categories should be used; all would be ["_mm1","_unr","_grp","_liq","_rimed",""]#
-    labellistMC = ["Nmono=1","Nmono>1","graupel","rimed","liquid","all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
+    if show_label:
+        labellistMC = ["Nmono=1","Nmono>1","graupel","rimed","liquid","all"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
+    else:
+        labellistMC = ["__","__","__","__","__","__"] #check consistency with MC_specs; all would be ["pristine","unrimed agg.","MC graupel","liquid","rimed","MC all"]
     #sum up all Sb categories
 
     McSnow_plot_only_every = 4 #plot not every height point of the noisy McSnow fluxes (for better visibility)
         
 
     for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
-        if var_flag==0:  #plot number flux
+        if (cat=="" and not plot_totalice): #plot all categories but not the total
+            continue
+        elif (catonly!=None and catonly!=cat): #plot only a specific category
+            continue
+	if var_flag==0:  #plot number flux
             plot_var=hei2massdens["Nd" + cat]
         if var_flag==1:  #plot mass flux
             plot_var=hei2massdens["Md" + cat]
@@ -665,7 +672,7 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
     #change height limits and set y-label
     ax.set_ylim([0,top_height])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
-    ax.set_ylabel("height / m")
+    ax.set_ylabel("height [m]")
     
     
     #add labels and legend
@@ -673,7 +680,8 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
     mass_min=-9; mass_max=-2
     nmass_min=-10; nmass_max=-4
     fnum_min=-2; fnum_max=5
-    fmass_min=-9; fmass_max=0
+    fmass_min=-9; fmass_max=-3
+    #fmass_min=-4; fmass_max=-3
     '''
     fmass_min=-8; fmass_max=0
     fnum_min=2; fnum_max=6
@@ -688,13 +696,13 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
         ax.set_xlabel("mass density / kg m-3",color="k")
         xmin=mass_min;xmax=mass_max
     elif var_flag==2:
-        ax.set_xlabel("number flux density / m-2 s-1",color="k")
+        ax.set_xlabel("$F_N$ [m-2 s-1]",color="k")
         xmin=fnum_min;xmax=fnum_max
     elif var_flag==3:
-        ax.set_xlabel("mass flux density / kg m-2 s-1",color="k")
+        ax.set_xlabel("$F_m$ [kg m-2 s-1]",color="k")
         xmin=fmass_min;xmax=fmass_max
     elif var_flag==4:
-        ax.set_xlabel("mean mass / kg",color="k")
+        ax.set_xlabel("$m_{mean}$ [kg]",color="k")
         xmin=nmass_min;xmax=nmass_max
     else:
         print "error: var_flag in plot_fluxes must be in [0,1,2,3,4]"

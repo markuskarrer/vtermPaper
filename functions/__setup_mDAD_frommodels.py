@@ -9,7 +9,7 @@ import sys
 import __postprocess_McSnow
 import __postprocess_SB
 import __fallspeed_relations
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer
 
 def setup_diam_arrays(n_steps = 1001,min_D = 1e-4, max_D = 1e-2):
     '''
@@ -49,7 +49,7 @@ def get_model_mDADs(model="MC",verbose=True):
         print "used constants (control MC)"
         print "mth,               unr_alf,    unr_bet,rhoi,  rhol,       Dth,     unr_sig,     unr_gam,  sph_sig,    sph_gam"
         print mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam
-        
+
         #copy constants to dictionary and replace name following a general naming convention
         #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space)
         for general_name,varlocal in zip(('a1','b1','a2', 'b2','c1','d1','c2','d2','Dth1','mth1'),('sph_alf','sph_bet','unr_alf', 'unr_bet','sph_sig', 'sph_gam','unr_sig', 'unr_gam','Dth','mth')):
@@ -92,8 +92,8 @@ def get_model_mDADs(model="MC",verbose=True):
 
         
         #get parameters from the SB-categories
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.init_particles()
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.init_particles()
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)
         # terminal velocity parameter
         a_vel_icecosmo5 = 2.77e1; b_vel_icecosmo5 = 0.215790
 
@@ -116,8 +116,8 @@ def get_model_mDADs(model="MC",verbose=True):
 
         
         #get parameters from the SB-categories
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.init_particles()
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.init_particles()
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)
         # terminal velocity parameters
         a_vel_ulis_ice = 2.60e1; b_vel_ulis_ice = 0.215790
         if verbose:
@@ -139,8 +139,8 @@ def get_model_mDADs(model="MC",verbose=True):
 
         
         #get parameters from the SB-categories
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.init_particles()
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.init_particles()
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)
         # terminal velocity parameters
         a_vel_icecosmo5nonsphere = 1.860; b_vel_icecosmo5nonsphere = 1.872; c_vel_icecosmo5nonsphere = 9.325e2 #fits to Ulis ice (despite the name) #this is as a function of the molten diameter
 
@@ -163,8 +163,8 @@ def get_model_mDADs(model="MC",verbose=True):
 
         
         #get parameters from the SB-categories
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.init_particles()
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.init_particles()
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)
         if verbose:
             print "##################"
             print "SB parameters: snow"
@@ -186,8 +186,8 @@ def get_model_mDADs(model="MC",verbose=True):
 
         
         #get parameters from the SB-categories
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.init_particles()
-        cloud_water,rain,cloud_ice,snow,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,graupel,hail)
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.init_particles()
+        cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = __postprocess_SB.convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail)
         # terminal velocity parameters
         a_vel_snowSBBnonsphere = 1.271; b_vel_snowSBBnonsphere = 1.252; c_vel_snowSBBnonsphere = 3.698e3
 
@@ -213,10 +213,12 @@ def get_model_mDADs(model="MC",verbose=True):
         #upper limit: dcrit=6.71e-05=67mu m (constant)
         ##############################################
         dcrit_P3 = 6.71e-05
-        mcrit_P3 = 1000. * dcrit_P3**3 
         #set up m-D relationship for solid ice with D < Dcrit
-        cs1_P3  = np.pi*1./6.*900.
+        rho_i=917.
+        cs1_P3  = np.pi*1./6.*rho_i
         ds1_P3  = 3.
+
+
         #########################################
         ####2:dense nonspherical m(D)=cs*D**ds###
         #########################################	
@@ -227,20 +229,30 @@ def get_model_mDADs(model="MC",verbose=True):
         # cs = 0.01855 # original (pre v2.3), based on assumption of Dmax
         cs_P3	=	0.0121 # scaled value based on assumtion of Dmean from Hogan et al. 2012, JAMC
 
+
+        #dcrit_P3 = (6.*cs_P3/(np.pi*rho_i))**(1./(3.-ds_P3))
+        mcrit_P3 = np.pi*1./6.*rho_i * dcrit_P3**3 
+
+
         ################
         #A-D-parameters
         ################
         ####1:spherical ice: 	 A(D)=aas1*D**bas1
         aas1_P3=np.pi/4.
-        bas1_P3=2
+        bas1_P3=2.
 
         ###2:dense nonspherical: A(D)=aas2*D**bas2
         bas2_P3=1.88
         aas2_P3=0.2285*100.**bas2_P3/(100.**2)
         
+        diam_test=4e-4
+        
         print "##################"
         print "P3 parameters: snow"
-        
+        #here DOESNT lay the explanation for the jump in vterm: the area is discontinuos BUT This is a 67mum #REASON IS the turbulence correction which is not applied for small particles
+        #print "Acritspher",aas1_P3*dcrit_P3**bas1_P3
+        #print "Acritagg",bas2_P3*dcrit_P3**bas2_P3
+        #raw_input()
         #copy constants to dictionary and replace name following a general naming convention
         #general names are following this naming convention: if piecewise: m1=a1Db1; m2=a2Db2; ... A1=c1D**d1,... Dth1,Dth2,...mth1,mth2,... (limiter between piecewise linear functions in diameter and mass space)
         for general_name,varlocal in zip(('a1','b1','a2', 'b2','c1','d1','c2','d2','Dth1','mth1'),('cs1_P3','ds1_P3','cs_P3', 'ds_P3','aas1_P3', 'bas1_P3','aas2_P3', 'bas2_P3','dcrit_P3','mcrit_P3')):
@@ -417,7 +429,7 @@ def calc_area_mass_vterm_arrays(diam_array,mDADvD_dict):
             
 
                 
-    elif mDADvD_dict["num_piecewise_fit"]==2:
+    elif mDADvD_dict["num_piecewise_fit"]==2: #e.g. P3
         #initialize arrays
         mDADvD_dict["m(D_array)"] = np.zeros(diam_array.shape)
         mDADvD_dict["A(D_array)"] = np.zeros(diam_array.shape)
@@ -428,14 +440,19 @@ def calc_area_mass_vterm_arrays(diam_array,mDADvD_dict):
             if D<=mDADvD_dict["Dth1"]:
                 mDADvD_dict["m(D_array)"][i] = mDADvD_dict["a1"]*D**mDADvD_dict["b1"]
                 mDADvD_dict["A(D_array)"][i] = mDADvD_dict["c1"]*D**mDADvD_dict["d1"]
-
             elif D>mDADvD_dict["Dth1"]:
                 mDADvD_dict["m(D_array)"][i] = mDADvD_dict["a2"]*D**mDADvD_dict["b2"]
                 mDADvD_dict["A(D_array)"][i] = mDADvD_dict["c2"]*D**mDADvD_dict["d2"]
-                
+
+        diam_test=2e-4
+        #raw_input(mDADvD_dict.keys())
+        #if "mDADvD_dict_P3" in mDADvD_dict:
+        am=mDADvD_dict["a1"];bm=mDADvD_dict["b1"];aA=mDADvD_dict["c1"];bA=mDADvD_dict["d1"]
+
         #now: calculate terminal velocity from the D,m,A-arrays
         for fallspeedmodel in ['HW10','mitch_heym','bohm','KC05']:#do this for all fall speed models in general
             mDADvD_dict["v_" + fallspeedmodel + "(D_array)"] = __fallspeed_relations.calc_vterm(fallspeedmodel,mDADvD_dict["m(D_array)"],diam_array,mDADvD_dict["A(D_array)"])
+
         
 
     return mDADvD_dict

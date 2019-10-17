@@ -349,11 +349,12 @@ for particle_type_comb in particle_types:
                 axes[i_ax].set_yscale("linear") #axes[i_ax].set_yscale(yscale_vec[i_prop])
                 for i,N_mono_now in enumerate([1]): #N_mono_list):
                     fit_dic["vterm_" + velocity_model + partal_add + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)] = __fallspeed_relations.calc_vterm(velocity_model,fit_dic["mass" + "_Nmono_" + str(N_mono_now)],fit_dic["diam"],fit_dic["area" + partal_add + "_Nmono_" + str(N_mono_now)])
+
                     if prop==prefer_vterm_model:
                         if show_lines["vel_fits"]:
                             if N_mono_now<2 or fitvel>=2:
                                 fitline_Nmonospecific, = axes[i_ax].plot(fit_dic["diam"],fit_dic["vterm_" + velocity_model + partal_add  + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)],marker='None',c=usecolors[i],label="Nmono=1") #,norm=colors.LogNorm(),cmap="gist_ncar")
-                                print partal_add,fit_dic["vterm_" + velocity_model + partal_add  + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)]; raw_input()
+                                #print partal_add,fit_dic["vterm_" + velocity_model + partal_add  + "_fitted_via_mD_AD_Nmono" + str(N_mono_now)]; raw_input()
                 
                 #now for all aggregates
                 fit_dic["vterm_" + velocity_model + partal_add + "_fitted_via_mD_AD_Nmonoallagg"] = __fallspeed_relations.calc_vterm(velocity_model,fit_dic["mass" + "_Nmono_allagg"],fit_dic["diam"],fit_dic["area" + partal_add + "_Nmono_allagg"])

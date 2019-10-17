@@ -32,6 +32,7 @@ av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
 MC_dir = os.environ["MC"]
 skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs)
 skipSB = (os.environ["skipSB"]=="True") #allows to hide plots for SB
+plot_totalice = (os.environ["plot_totalice"]=="True")
 
 if "McSnow_geom_specifier_onestring" in  os.environ.keys():
     McSnow_geom_specifier_onestring = os.environ["McSnow_geom_specifier_onestring"]
@@ -183,14 +184,13 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
             #number density
             var_flag = 0
             
-            axnum = __plotting_functions.plot_MC_profiles(axnum,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height)
+            axnum = __plotting_functions.plot_MC_profiles(axnum,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height,plot_totalice=plot_totalice)
             
 
             #mass density
             var_flag = 1
                 
-            axmass = __plotting_functions.plot_MC_profiles(axmass,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height)
-
+            axmass = __plotting_functions.plot_MC_profiles(axmass,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height,plot_totalice=plot_totalice)
 
 
             ############
@@ -199,17 +199,17 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
             #number flux
             var_flag = 2
                 
-            axnumflux = __plotting_functions.plot_MC_profiles(axnumflux,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height)
+            axnumflux = __plotting_functions.plot_MC_profiles(axnumflux,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height,plot_totalice=plot_totalice)
 
             #mass flux
             var_flag = 3
                 
-            axmassflux = __plotting_functions.plot_MC_profiles(axmassflux,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height)
+            axmassflux = __plotting_functions.plot_MC_profiles(axmassflux,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height,plot_totalice=plot_totalice)
 
             #calculate  Md/Nd in __plotting_functions.plot_MC_profiles
             var_flag = 4
         
-            axmean = __plotting_functions.plot_MC_profiles(axmean,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height)
+            axmean = __plotting_functions.plot_MC_profiles(axmean,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height,plot_totalice=plot_totalice)
             
             #from IPython.core.debugger import Tracer ; Tracer()()
             if separated_by_fallspeedsens:

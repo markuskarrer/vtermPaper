@@ -39,10 +39,11 @@ def init_particle_dict():
     
     return particle_dic
 
-def calc_mD_AD_coeffs(mono_type):
+def calc_mD_AD_coeffs(mono_type,skip_mono=False):
     '''
     calculate the coefficients in the m-D relation (m=aD**b)
     INPUT: mono_type monomer habit name
+    skip_mono: dont take the monomer and therefore ignore warnings
     OUTPUT: a_theor,b_theor: coefficients in m=a_theor*D**b_theor relation
     '''
     rho_i = 917.6 #define ice density
@@ -75,7 +76,8 @@ def calc_mD_AD_coeffs(mono_type):
         #theoretical A-D relationships
         #c_theor=np.nan
         #d_theor=np.nan
-        raw_input("attention: the monomer power-laws are taken from columns!")
+        if not skip_mono:
+            raw_input("attention: the monomer power-laws are taken from columns!")
         #theoretical m-D relationships
         a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
         b_theor=2.14 #2.
@@ -101,14 +103,15 @@ def calc_mD_AD_coeffs(mono_type):
         #theoretical A-D relationships
         c_theor=np.nan
         d_theor=np.nan
-        raw_input("attention: the monomer power-laws are taken from columns!")
+        if not skip_mono:
+            raw_input("attention: the monomer power-laws are taken from columns!")
         #theoretical m-D relationships
         a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
         b_theor=2.14 #2.
         #theoretical A-D relationships
         c_theor=0.0143 #9.4e-3 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
         d_theor=1.614 ##1.54 #1.5
-    elif mono_type in ("column","mixcolumndend"):
+    elif mono_type in ("column","mixcolumndend","mixcoldend1"):
         #theoretical m-D relationships
         a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
         b_theor=2.14 #2.
