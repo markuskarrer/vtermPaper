@@ -67,7 +67,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
     
             if write_fit_params:
                 fit_param_writer = csv.writer(txtfile, delimiter='&', quoting=csv.QUOTE_NONE, lineterminator=os.linesep, escapechar=" ") #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
-                fit_param_writer.writerow(["particle_type","am0","am1","am2","bm0","bm1","bm2","aA0","aA1","aA2","bA0","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"])
+                fit_param_writer.writerow(["particle_type","am1","am2","bm1","bm2","aA1","aA2","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"])
             
             #read the properties of the individual particles from the files
             particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/",
@@ -139,9 +139,31 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 #fit the modified power-law m(D,N_mono)= a(N_mono)*D**(b(N_mono)* a_0*D**b0
                 ab_func="powerlaw_rational1" # "powerlaw_polynom1"powerlaw_rational1" "powerlaw_rational2" and "powerlaw_rational3" need some more advanced initial guesses #select the functional form of a and b 
                 if prop=="mass" or (not tumbling): #for mass and area without tumbling we can constrain more parameters
-
+                    if particle_type=="dendrite" and prop=="area":
+                        #if prop=="mass":
+                        #    guess=[-0.1,0.0,-0.0,0.0]
+                        guess=[-0.05,0.0,-0.0,0.0]
+                        ftol=1e-2
+                    elif particle_type=="rosette" and prop=="area":
+                        #if prop=="mass":
+                        #    guess=[-0.1,0.0,-0.0,0.0]
+                        guess=[0.00,0.0,0.0,0.0]
+                        ftol=1e-2
+                    elif particle_type=="column" and prop=="mass":
+                        #if prop=="mass":
+                        #    guess=[-0.1,0.0,-0.0,0.0]
+                        guess=[0.00,0.0,0.0,0.0]
+                        ftol=1e-2
+                    elif particle_type=="needle" and prop=="mass":
+                        #if prop=="mass":
+                        #    guess=[-0.1,0.0,-0.0,0.0]
+                        guess=[0.00,0.0,0.0,0.0]
+                        ftol=1e-2
+                    else:
+                        guess=[0.0,0.0,0.0,0.0]
+                        ftol=1e-08
                     if ab_func=="powerlaw_rational1":
-                        fitresult_mod_powerlaw = __tools_for_processing_Jagg.fit_2D_rational_function_transformwrapper(particle_dic["diam"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic["N_monomer"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic[prop][particle_dic["vterm_bohm"]>v_small_notuse],func='powerlaw_rational1_fixp0_fixr0',method='lm',weight='None',habit=particle_type,prop=prop)
+                        fitresult_mod_powerlaw = __tools_for_processing_Jagg.fit_2D_rational_function_transformwrapper(particle_dic["diam"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic["N_monomer"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic[prop][particle_dic["vterm_bohm"]>v_small_notuse],func='powerlaw_rational1_fixp0_fixr0',method='lm',weight='None',habit=particle_type,prop=prop,guess=guess,ftol=ftol)
                     else: #look for other functions in process_Jussis_aggregate_model_mod_powerlaw
                         print "func: ", ab_func, " not (carefully) implemented in process_Jussis_aggregate_model_plots4paper (and its modules)"; sys.exit()
                 elif prop=="area" and tumbling:
@@ -168,22 +190,29 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 D_N_grid_detailed = np.meshgrid(diam_log_detailed,Nmono_log)
                 #apply the fit coefficients to the above spanned D,N field
                 if ab_func=="powerlaw_rational1":
-                    if prop=="mass" or (not tumbling):
-                        prop_fitted = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
-                        prop_fitted_detailed = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid_detailed,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
+                    if prop=="mass":
+                        mass_fitted = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
+                        mass_fitted_detailed = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid_detailed,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
+                        
+                    elif prop=="area" and (not tumbling):
+                        #ATTENTION: fits are overwritten here
+                        #if particle_type=="dendrite":
+                        #    fit_dic[prop +"_coeff_mod_powerlaw"] = [-0.8,0.0,-0.1,0.0]
+                        area_fitted = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
+                        area_fitted_detailed = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0(D_N_grid_detailed,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])#this is the logscaled property (mass/area) divided by the monomer property
                     elif prop=="area" and tumbling:
-                        prop_fitted = __tools_for_processing_Jagg.powerlaw_rational1(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3],fit_dic[prop +"_coeff_mod_powerlaw"][4],fit_dic[prop +"_coeff_mod_powerlaw"][5])#this is the logscaled property (mass/area) divided by the monomer property
-                        prop_fitted_detailed = __tools_for_processing_Jagg.powerlaw_rational1(D_N_grid_detailed,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3],fit_dic[prop +"_coeff_mod_powerlaw"][4],fit_dic[prop +"_coeff_mod_powerlaw"][5])#this is the logscaled property (mass/area) divided by the monomer property
+                        area_fitted = __tools_for_processing_Jagg.powerlaw_rational1(D_N_grid,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3],fit_dic[prop +"_coeff_mod_powerlaw"][4],fit_dic[prop +"_coeff_mod_powerlaw"][5])#this is the logscaled property (mass/area) divided by the monomer property
+                        area_fitted_detailed = __tools_for_processing_Jagg.powerlaw_rational1(D_N_grid_detailed,fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3],fit_dic[prop +"_coeff_mod_powerlaw"][4],fit_dic[prop +"_coeff_mod_powerlaw"][5])#this is the logscaled property (mass/area) divided by the monomer property
                     else: #TODO: include different fitting methods
                             print "func: ", ab_func, " not (carefully) implemented in process_Jussis_aggregate_model_mod_powerlaw (and its modules)"; sys.exit()
 
 
                 if prop=="mass":
-                    mass_fit = 10**(prop_fitted)*a*diam_center**b
-                    mass_fit_detailed = 10**(prop_fitted_detailed)*a*diam**b#for plotting the velocity more bins are nicer
+                    mass_fit = 10**(mass_fitted)*a*diam_center**b
+                    mass_fit_detailed = 10**(mass_fitted_detailed)*a*diam**b#for plotting the velocity more bins are nicer
                 if prop=="area":
-                    area_fit = 10**(prop_fitted)*c*diam_center**d
-                    area_fit_detailed = 10**(prop_fitted_detailed)*c*diam**d#for plotting the velocity more bins are nicer
+                    area_fit = 10**(area_fitted)*c*diam_center**d
+                    area_fit_detailed = 10**(area_fitted_detailed)*c*diam**d#for plotting the velocity more bins are nicer
 
                 ###
                 #END: get the fitted properties from the fit coefficients
@@ -220,10 +249,10 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
 
                 #fit_param_writer.writerow([particle_type + "_prec "," {:10.6f} ".format(a),' &'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str_prec"][0:2])," {:10.6f} ".format(b),' &'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str_prec"][2:])," {:10.6f} ".format(c),' &'.join(fit_dic["area_coeff_mod_powerlaw" + "_str_prec"][0:2])," {:10.6f} ".format(d),' &'.join(fit_dic["area_coeff_mod_powerlaw" + "_str_prec"][2:]),' &'.join(fit_dic["mass_coeff_Nmono_allagg" + "_str_prec"]),' &'.join(fit_dic["area_coeff_Nmono_allagg" + "_str_prec"])])
                 fit_param_writer.writerow([particle_type + "_prec","{:8.6f}".format(a),fit_dic["mass_coeff_mod_powerlaw" + "_str_prec"][0],fit_dic["mass_coeff_mod_powerlaw" + "_str_prec"][1],"{:8.6f}".format(b),fit_dic["mass_coeff_mod_powerlaw" + "_str_prec"][2],fit_dic["mass_coeff_mod_powerlaw" + "_str_prec"][3],"{:8.6f}".format(c),fit_dic["area_coeff_mod_powerlaw" + "_str_prec"][0],fit_dic["area_coeff_mod_powerlaw" + "_str_prec"][1],"{:8.6f}".format(d),fit_dic["area_coeff_mod_powerlaw" + "_str_prec"][2],fit_dic["area_coeff_mod_powerlaw" + "_str_prec"][3],fit_dic["mass_coeff_Nmono_allagg" + "_str_prec"][0],fit_dic["mass_coeff_Nmono_allagg" + "_str_prec"][1],fit_dic["area_coeff_Nmono_allagg" + "_str_prec"][0],fit_dic["area_coeff_Nmono_allagg" + "_str_prec"][1]])
-                fit_param_writer.writerow([particle_type,"{:4.2f}".format(a),'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][0:2]),"{:4.2f}".format(b),'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][2:]),"{:4.2f}".format(c),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][0:2]),"{:4.2f}".format(d),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][2:]),'&'.join(fit_dic["mass_coeff_Nmono_allagg" + "_str"]),'&'.join(fit_dic["area_coeff_Nmono_allagg" + "_str"])])
+                fit_param_writer.writerow([particle_type,'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][0:2]),'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][2:]),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][0:2]),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][2:]),'&'.join(fit_dic["mass_coeff_Nmono_allagg" + "_str"]),'&'.join(fit_dic["area_coeff_Nmono_allagg" + "_str"])])
                 #fit_param_writer.writerow([particle_type,'&'.join(fit_dic["area_coeff_Nmono_allagg" + "_str"]),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"])])
-                print ["particle_type","am0","am1","am2","bm0","bm1","bm2","aA0","aA1","aA2","bA0","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"]
-                print [particle_type,"{:4.2f}".format(a),'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][0:2]),"{:4.2f}".format(b),'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][2:]),"{:4.2f}".format(c),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][0:2]),"{:4.2f}".format(d),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][2:]),'&'.join(fit_dic["mass_coeff_Nmono_allagg" + "_str"]),'&'.join(fit_dic["area_coeff_Nmono_allagg" + "_str"])]
+                print ["particle_type","am1","am2","bm1","bm2","aA1","aA2","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"]
+                print [particle_type,'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][0:2]),'&'.join(fit_dic["mass_coeff_mod_powerlaw" + "_str"][2:]),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][0:2]),'&'.join(fit_dic["area_coeff_mod_powerlaw" + "_str"][2:]),'&'.join(fit_dic["mass_coeff_Nmono_allagg" + "_str"]),'&'.join(fit_dic["area_coeff_Nmono_allagg" + "_str"])]
             #####################
             ######END: fitting
             #####################
@@ -392,6 +421,10 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
 
                     #overlay the scatterer with the fit at some selected monomer numbers
                     for i_Nmono,N_mono_now in enumerate(Nmono_fit_eval):
+                        if prop=="mass":
+                            prop_fitted=mass_fitted
+                        elif prop=="area":
+                            prop_fitted=area_fitted
                         #fitlines = axes[i_ax].plot(np.log10(diam_center),(prop_fitted[i_Nmono,:]),c="white",linewidth=linewidth_white,linestyle="-")
                         fitlines = axes[i_ax].semilogx(diam_center,10**prop_fitted[i_Nmono,:],c="white",linewidth=linewidth_white,linestyle="-") #old with log10(..) as label
                         #fitlines = axes[i_ax].plot(np.log10(diam_center),(prop_fitted[i_Nmono,:]),c=usecolorsN[N_mono_now==N_mono_list][0],linewidth=linewidth,linestyle="-") #old with log10(..) as label
@@ -506,7 +539,10 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 #skip variables which are not requested by plot_vars
                 if plot_vars!=None and not ("vterm" in plot_vars) and i_ax>0: 
                     continue
-                axes[i_ax].legend(ncol=2,loc="upper left")
+                if i_ax=="0":
+                    axes[i_ax].legend(ncol=2,loc="upper left")
+                else:
+                    axes[i_ax].legend(ncol=2,loc="lower right")
             if called_by_main:
                 #save the plot (and open it)
                 plt.tight_layout()
@@ -534,7 +570,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                         continue
                     axes[i_ax].set_xlabel("")
                     axes[i_ax].axes.get_xaxis().set_ticklabels([])
-                
+                ''' 
                 ax_description_array=["mD","mDnorm","AD","ADnorm","AratioD","AratioDnorm","vterm_bohm","vterm_HW10","vterm_KC05"]
                 for save_axis,ax_description in enumerate(ax_description_array):
                     print "saving subfigure",save_axis,ax_description
@@ -550,7 +586,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                     #from IPython.core.debugger import Tracer ; Tracer()()
 
                     fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(1.6, 1.45),dpi=400) #(1.6, 1.4) are width and height expanded around center
-
+                '''
                 #subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)
                 fig.clf()
             else:
@@ -560,7 +596,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
 if __name__ == '__main__':
     
    
-    particle_types=["plate","dendrite","column","rosette","needle","mixcoldend1","mixcolumndend"]
+    particle_types=["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
     txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt"
     #optimize the appearance of the plot (figure size, fonts)
     fig=0 #will be overwritten in read_and_plot

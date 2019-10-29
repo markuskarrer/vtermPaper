@@ -1,4 +1,6 @@
 .ipynb_checkpoints/
 functions/*.pyc
+*.npz
+*.pyc
 old_scripts
 saved_dicts/

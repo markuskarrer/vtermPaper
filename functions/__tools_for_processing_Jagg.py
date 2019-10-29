@@ -47,56 +47,48 @@ def calc_mD_AD_coeffs(mono_type,skip_mono=False):
     OUTPUT: a_theor,b_theor: coefficients in m=a_theor*D**b_theor relation
     '''
     rho_i = 917.6 #define ice density
-
+    '''
     if mono_type in ("dendrite","mixdendneedle"):
         #theoretical m-D relationships
-        a_theor=8.89e-2 #ATTENTION: this comes from the 1mum simulation fit
-        b_theor=2.37 #ATTENTION: this comes from the 1mum simulation fit
+        a_theor=0.096 #8.89e-2 #ATTENTION: this comes from the 1mum simulation fit
+        b_theor=2.38 #ATTENTION: this comes from the 1mum simulation fit
         #theoretical A-D relationships
-        c_theor=0.20 #ATTENTION: this comes from the 1mum simulation fit
-        d_theor=1.99 #ATTENTION: this comes from the 1mum simulation fit
+        c_theor=0.222 #ATTENTION: this comes from the 1mum simulation fit
+        d_theor=2. #ATTENTION: this comes from the 1mum simulation fit
     elif mono_type=="plate": #copied here from riming.py
         #theoretical m-D relationships
         a_theor=rho_i*3.*np.sqrt(3)/2./4*(1.737e-3)*(1./2.)**0.474
         b_theor=2.+0.474
         #theoretical A-D relationships
-        c_theor=3.*np.sqrt(3)/2. *1./4. #1/4 comes from D=a/2 with a as the side of the hexagon
+        c_theor=0.675 #3.*np.sqrt(3)/2. *1./4. #1/4 comes from D=a/2 with a as the side of the hexagon
         d_theor=2.
     elif mono_type in ("needle"): #,"mixofdentneed"):
         #theoretical m-D relationships
         a_theor=rho_i*3.*np.sqrt(3)/2.*(1.319e-3)**2
         b_theor=2.*0.437+1
         #theoretical A-D relationships
-        c_theor=(1.+2./np.sqrt(2.))*1.319e-3 #2.4e-3 #
-        d_theor=1+0.437 #1.44
+        c_theor=0.0029#(1.+2./np.sqrt(2.))*1.319e-3 #2.4e-3 #
+        d_theor=1.47 #1+0.437 #1.44
     elif mono_type=="rosette":
         #theoretical m-D relationships
-        #a_theor=np.nan #6.*(3.*np.sqrt(3.)/2.*(1./9.351)**(1./0.63)*)
-        #b_theor=np.nan
+        a_theor=0.7762081
+        b_theor=2.48828817
         #theoretical A-D relationships
-        #c_theor=np.nan
-        #d_theor=np.nan
-        if not skip_mono:
-            raw_input("attention: the monomer power-laws are taken from columns!")
-        #theoretical m-D relationships
-        a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
-        b_theor=2.14 #2.
-        #theoretical A-D relationships
-        c_theor=0.0143 #9.4e-3 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
-        d_theor=1.614 ##1.54 #1.5
+        c_theor=0.0412075
+        d_theor=1.73699001
     elif mono_type=="bullet":
-        '''
+        
         #From Hong, 2007
-        alpha = 28*(np.pi/180.0)
-        f = np.sqrt(3)*1.552/np.tan(alpha)        
-        def L_func(L):
-            return 2*L + f*L**0.63 - D*1e6
+        #alpha = 28*(np.pi/180.0)
+        #f = np.sqrt(3)*1.552/np.tan(alpha)        
+        #def L_func(L):
+        #    return 2*L + f*L**0.63 - D*1e6
         #solve L from D numerically
-        self.L = brentq(L_func, 0, D*1e6/2.0) * 1e-6        
-        self.a = (1.552 * (self.L*1e6)**0.63) * 1e-6
-        self.t = np.sqrt(3)*self.a/(2*np.tan(alpha))
-        self.D = D
-        '''
+        #self.L = brentq(L_func, 0, D*1e6/2.0) * 1e-6        
+        #self.a = (1.552 * (self.L*1e6)**0.63) * 1e-6
+        #self.t = np.sqrt(3)*self.a/(2*np.tan(alpha))
+        #self.D = D
+        
         #theoretical m-D relationships
         a_theor=np.nan
         b_theor=np.nan
@@ -113,11 +105,11 @@ def calc_mD_AD_coeffs(mono_type,skip_mono=False):
         d_theor=1.614 ##1.54 #1.5
     elif mono_type in ("column","mixcolumndend","mixcoldend1"):
         #theoretical m-D relationships
-        a_theor=0.07819 #rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
-        b_theor=2.14 #2.
+        a_theor=rho_i*3.*np.sqrt(3)/2.*3.48**2*1e-6
+        b_theor=2.
         #theoretical A-D relationships
-        c_theor=(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
-        d_theor=1.5 #a*L=L^0.5*L
+        c_theor=0.010 #(1.+2./np.sqrt(2.))*3.48*1e-6**0.5
+        d_theor=1.58 #1.5 #a*L=L^0.5*L
     elif mono_type=="spheroid":
         #theoretical m-D relationships
         a_theor=np.pi/6*rho_i
@@ -125,6 +117,54 @@ def calc_mD_AD_coeffs(mono_type,skip_mono=False):
         #theoretical A-D relationships
         c_theor=np.pi/4
         d_theor=2
+    else:
+        print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
+        sys.exit()
+    print mono_type,a_theor,b_theor,c_theor,d_theor
+    return a_theor,b_theor,c_theor,d_theor
+    '''
+    #take all from the 5mum run
+    if mono_type in ("dendrite","mixdendneedle"):
+        #m-D relationships
+        a_theor=0.07368319
+        b_theor=2.33289694
+        #A-D relationships
+        c_theor=0.14248231
+        d_theor=1.93681387
+    elif mono_type=="plate": #copied here from riming.py
+        #m-D relationships
+        a_theor=0.78784625
+        b_theor=2.48057059
+        #A-D relationships
+        c_theor=0.63132449
+        d_theor=1.99485988
+    elif mono_type in ("needle"): #,"mixofdentneed"):
+        #m-D relationships
+        a_theor=0.00467768
+        b_theor=1.89199142
+        #A-D relationships
+        c_theor=0.00220797
+        d_theor=1.42440424
+    elif mono_type=="rosette":
+        #m-D relationships
+        a_theor=0.54662064
+        b_theor=2.43787266
+        #A-D relationships
+        c_theor=0.04434447
+        d_theor=1.7480942
+    elif mono_type=="bullet":
+        print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
+        sys.exit()
+    elif mono_type in ("column","mixcolumndend","mixcoldend1"):
+        #m-D relationships
+        a_theor=0.0458012
+        b_theor=2.07368716
+        #A-D relationships
+        c_theor=0.00798099
+        d_theor=1.53934525
+    elif mono_type=="spheroid":
+        print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
+        sys.exit()
     else:
         print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
         sys.exit()
@@ -510,128 +550,6 @@ def fitting_wrapper(ax,particle_dic,prop,N_mono_list,usecolors,fit_dic,diam,func
     return ax, particle_dic,fitline_allagg #particle_dic is returned, because vterm_..._calculated via mD_AD is added
 
 
-'''
-START: scripts of the rational function fit #THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!)
-'''
-'''
-def rational2d(x1, x2, p, q):
-    """
-    The general rational function description.
-    p is a list with the polynomial coefficients in the numerator
-    q is a list with the polynomial coefficients (except the first one)
-    in the denominator
-    The zeroth order coefficient of the denominator polynomial is fixed at 1.
-    Numpy stores coefficients in [x**2 + x + 1] order, so the fixed
-    zeroth order denominator coefficent must comes last. (Edited.)
-    """
-    return np.polynomial.polynomial.polyval2d(x1, x2, p) / np.polynomial.polynomial.polyval2d(x1,x2,q)
-
-def polynom(x1, x2, p):
-    return np.polynomial.polynomial.polyval2d(x1, x2, p)
-
-def rational2_2_pade(x, p00, p01, p02, p10, p11, p20, q00 , q01, q02, q10, q11, q20): 
-    x1,x2 = x
-    return rational2d(x1,x2, [[p00, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[q00, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
-
-def rational2_2_pade_fixp00(x, p01, p02, p10, p11, p20, q00 , q01, q02, q10, q11, q20): 
-    x1,x2 = x
-    return rational2d(x1,x2, [[1.0, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[q00, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
-
-def rational2_2_pade_fixq00(x, p00, p01, p02, p10, p11, p20, q01, q02, q10, q11, q20): #see Frick et. al (2013) GMD
-    x1,x2 = x
-    return rational2d(x1,x2, [[p00, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[1.0, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
-
-def rational2_2_pade_fixp00_and_fixq00(x, p01, p02, p10, p11, p20, q01, q02, q10, q11, q20):
-    x1,x2 = x
-    return rational2d(x1,x2, [[1.0, p01, p02], [p10, p11, 0.0], [p20, 0.0, 0.0]], [[1.0, q01, q02], [q10, q11, 0.0], [q20, 0.0, 0.0]])
-
-def rational1_1_pade_fixp00_and_fixq00(x, p01, p10, p11, q01, q10, q11):
-    x1,x2 = x
-
-    return rational2d(x1,x2, [[1.0, p01], [p10, p11]], [[1.0, q01], [q10, q11]])
-
-def polynom1_1_pade_fixp00(x, p01, p10, p11): #, q01, q10, q11):
-    x1,x2 = x
-    return polynom(x1,x2, [[1.0, p01], [p10, p11]])
-
-
-def fit_2D_rational_function(xdata,ydata,func='rational2_2_pade',method='lm',weight='None',habit='None',prop='None',fixp00=False,fixq00=False):
-
-    """ 
-        fit a rational function ( https://en.wikipedia.org/wiki/Polynomial_and_rational_function_modeling ) for a 2-dimensional dataset
-        #code-parts are taken from:
-            https://stackoverflow.com/questions/28372597/python-curve-fit-with-multiple-independent-variables
-            https://stackoverflow.com/questions/29815094/rational-function-curve-fitting-in-python
-        xdata: ordinate points (2-dimensional)
-        ydata: coordinate points
-        method='lm': Levenberg-Marquardt algorithm through leastsq (as in Frick. et. al 2010, GMD)
-        func: select the function to which the data should be fitted (determining e.g. the order of the polynom)
-        habit: used to normalize by the monomer habit (get parameter from monomer)
-        prop: used to normalize by the monomer habit (parameters are different for mass and area)
-        
-    """    
-
-
-    if func=="rational2_2_pade":
-        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade, xdata, ydata, p0=(1.0, 0.0, 0.0, #[p00,p01, p02]
-                                                                                    0.0, 0.0,   #[p10, p11]
-                                                                                    0.0,        #[p20]
-                                                                                    1.0, 0.0,0.0,#[q00, q01,q02]
-                                                                                    0.0, 0.0,   #[q10, q11]
-                                                                                    0.0))       #[q20]
-    elif func=="rational2_2_pade_fixp00":
-        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade_fixp00, xdata, ydata, p0=(     0.0, 0.0, 
-                                                                                 0.0, 0.0, 
-                                                                                 0.0,   
-                                                                                 1000.0, 0.0,0.0,  
-                                                                                 0.0, 0.0, 
-                                                                                 0.0))
-    elif func=="rational2_2_pade_fixq00":
-
-        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade_fixq00, xdata, ydata, p0=( 1.0, -0.2, -0.0, 
-                                                                                        -0.2, 0.0,
-                                                                                        0.0,
-                                                                                            0.0,0.0,
-                                                                                        0.0, 0.0,
-                                                                                        0.0))
-        #from IPython.core.debugger import Tracer ; Tracer()()
-        print "\n\n\n\nfitcoeffs: \n", "     p00,        p01,       p02 \n", fitcoeffs[0:3], "\n     p10,        p11 \n", fitcoeffs[2:4], "\n   p20 \n", fitcoeffs[4],"\n             q01,      q02 \n", fitcoeffs[5:7], "\n     q10,    q11 \n", fitcoeffs[7:9], "\n    q20 \n", fitcoeffs[10], "\n\n\n"
-        
-    
-    elif func=="rational2_2_pade_fixp00_and_fixq00":
-        fitcoeffs, pcov = optimize.curve_fit(rational2_2_pade_fixp00_and_fixq00, xdata, ydata, p0=(      -0.2, -0.0, 
-                                                                                                    -0.2, 0.0,
-                                                                                                    0.0,
-                                                                                                        0.0,0.0,
-                                                                                                    0.0, 0.0,
-                                                                                                    0.0))
-    elif func=="rational1_1_pade_fixp00_and_fixq00":
-        fitcoeffs, pcov = optimize.curve_fit(rational1_1_pade_fixp00_and_fixq00, xdata, ydata, p0=(      0.0, 
-                                                                                                    0.0, 0.2,
-                                                                                                         0.0,
-                                                                                                    0.0 , 0.0))
-        print "\n\n\n\nfitcoeffs: \n", "     p01,       \n", fitcoeffs[0], "\n     p10      p11 \n", fitcoeffs[1:3] , "\n    q01,       \n", fitcoeffs[3], "\n   q10,  q11,       \n", fitcoeffs[4:6],  "\n\n\n"
-                                     
-        
-    elif func=="polynom1_1_pade_fixp00":
-        fitcoeffs, pcov = optimize.curve_fit(polynom1_1_pade_fixp00, xdata, ydata, p0=(      0.0, 
-                                                                                                    0.0, 0.0)) #,
-        
-                                                                                                    #0.0,
-                                                                                                    #0.0 , 0.0))
-        
-        print "\n\n\n\nfitcoeffs: \n", "     p01,       \n", fitcoeffs[0], "\n     p10      p11 \n", fitcoeffs[1:3] #, "\n             q01,       \n", fitcoeffs[3], "\n             q10,  q11,       \n", fitcoeffs[4:6],  "\n\n\n"
-                                                                                                    
-    else:
-        print "function: " + func + " not implemented in tools_for_processing_Jagg.fit_2D_rational_function "; sys.exit() 
-    
-    
-    return fitcoeffs
-
-
-END: scripts of the rational function fit #THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!)
-
-'''
 
 '''
 START: scripts of the "polynomial/rational function powerlaw" fit
@@ -664,24 +582,25 @@ def polynom1_powerlaw_fixp0_fixr0(x, p1, r1):
     simple powerlaw with a and b in (a*x**b) depending on a second parameter (e.g. the monomer number)
     '''
     x1,x2 = x
- 
+
     return (p1*x2)+(r1*x2)*x1
 
 
 def polynom2_powerlaw_fixp00_and_fixq00(x, p1, p2, r1, r2):
-    
+
     x1,x2 = x
- 
+
     #from IPython.core.debugger import Tracer ; Tracer()()
     return (1+p1*x2 + p2*x2**2)+(r1*x2 + r2*x2**2)*x1
 
 #rational
 
 def powerlaw_rational1_fixp0_fixr0(x, p1, q1, r1, s1):
-    
+
     x1,x2 = x
- 
+
     return rational(x2, [0.0, p1], [1.0, q1]) + rational(x2, [0.0, r1], [1.0, s1])*x1
+    #return rational(x2, [0.0, 1.0], [1.0, 0.0]) + rational(x2, [0.0, 1.0], [1.0, 0.0])*x1
 
 def powerlaw_rational1(x, p0, p1, q1, r0, r1, s1):
     
@@ -689,7 +608,6 @@ def powerlaw_rational1(x, p0, p1, q1, r0, r1, s1):
  
     return rational(x2, [p0, p1], [1.0, q1]) + rational(x2, [r0, r1], [1.0, s1])*x1
 
-'''
 def powerlaw_rational2_fixp0_fixr0(x, p1, p2, q1, q2, r1, r2,  s1, s2):
     
     x1,x2 = x
@@ -713,9 +631,9 @@ def powerlaw_rational3(x,  p0, p1, p2, p3, q1, q2, q3, r0, r1, r2,r3,  s1, s2, s
     x1,x2 = x
  
     return rational(x2, [p0, p1, p2, p3], [1.0, q1, q2, q3]) + rational(x2, [r0, r1, r2, r3], [1.0, s1, s2, s3])*x1
-'''
 
-def fit_2D_rational_powerlaw_function(xdata,ydata,func='rational1_1_powerlaw_fixp00_and_fixq00',method='lm',weight='None',habit='None',prop='None',fixp00=False,fixq00=False):
+
+def fit_2D_rational_powerlaw_function(xdata,ydata,func='rational1_1_powerlaw_fixp00_and_fixq00',method='lm',weight='None',habit='None',prop='None',fixp00=False,fixq00=False,guess=None,ftol=1e-8):
 
     ''' fit a rational function ( https://en.wikipedia.org/wiki/Polynomial_and_rational_function_modeling ) for a 2-dimensional dataset
         #code-parts are taken from:
@@ -743,14 +661,19 @@ def fit_2D_rational_powerlaw_function(xdata,ydata,func='rational1_1_powerlaw_fix
     
     elif func=="powerlaw_rational1_fixp0_fixr0":
 
-
-
-        fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational1_fixp0_fixr0, xdata, ydata,method=method, p0=( 0.0,   #[p1]
+        if guess==None:
+            fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational1_fixp0_fixr0, xdata, ydata,method=method, p0=( 0.0,   #[p1]
                                                                                                             0.0,   #[q1]
                                                                                                             0.0,   #[r1]
                                                                                                             0.0,   #[s1]
                                                                                                             ))
-            
+        else:
+            #print ftol,guess; raw_input()
+            fitcoeffs, pcov = optimize.curve_fit(powerlaw_rational1_fixp0_fixr0, xdata, ydata,ftol=ftol,method=method, p0=( guess[0],   #[p1]
+                                                                                                            guess[1],   #[q1]
+                                                                                                            guess[2],   #[r1]
+                                                                                                            guess[3],   #[s1]
+                                                                                                            ))
         print "\n\n\n\nfitcoeffs: \n", "     p1,           q2,          r1,       s1  \n", fitcoeffs
     
     elif func=="powerlaw_rational1":
@@ -854,7 +777,7 @@ def fit_2D_rational_powerlaw_function(xdata,ydata,func='rational1_1_powerlaw_fix
 END: scripts of the "rational function powerlaw" fit
 """
 
-def fit_2D_rational_function_transformwrapper(diam,Nmono,ydata,func='powerlaw',method='lm',weight='None',habit='None',prop='None'):
+def fit_2D_rational_function_transformwrapper(diam,Nmono,ydata,func='powerlaw',method='lm',weight='None',habit='None',prop='None',guess='None',ftol=1e-8):
     """
     here we do the transformation of the variables and the "educated guess"
     """
@@ -873,7 +796,7 @@ def fit_2D_rational_function_transformwrapper(diam,Nmono,ydata,func='powerlaw',m
         ydata_normed = np.log10(ydata/(c*diam**d))
 
     if "powerlaw" in func:
-        fitcoeffs = fit_2D_rational_powerlaw_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop)
+        fitcoeffs = fit_2D_rational_powerlaw_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop,guess=guess,ftol=ftol)
     elif "rational" in func: #ATTENTION: THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!), #functions for this method are currently commented
         fitcoeffs = fit_2D_rational_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop)
 

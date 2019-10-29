@@ -79,7 +79,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
     ##open file for writing fit-parameters
     with open("/home/mkarrer/Dokumente/plots/fit_results_vterm.txt","w") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
         fit_param_writer = csv.writer(txtfile, delimiter='&', quoting=csv.QUOTE_NONE, lineterminator=os.linesep, escapechar=" ") #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
-        fit_param_writer.writerow(["particle_type","am","bm","aA","bA","vterm_Atlas_Dmax_A","vterm_Atlas_Dmax_B","vterm_Atlas_Dmax_C","vterm_Atlas_Deq_A","vterm_Atlas_Deq_B","vterm_Atlas_Deq_C","vterm_pow_Dmax_a","verm_pow_Dmax_b","vterm_pow_m_a","verm_pow_m_b"])
+        fit_param_writer.writerow(["particle_type","am","bm","aA","bA","vterm_Atlas_Deq_A","vterm_Atlas_Deq_B","vterm_Atlas_Deq_C","vterm_pow_Dmax_a","verm_pow_Dmax_b"])
         #particle_types = ["plate"] #["plate","dendrite","mixdendneedle","needle","column","mixcolumndend"] #"mixofdentneed""needle","column","plate","dendrite"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
         for particle_type in particle_types:
 
@@ -438,14 +438,14 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
                         fit_param_writer.writerow([particle_type + "_prec",
                                                 fit_dic["mass_coeff_Nmono_" + str_monomer_agg + "_str_prec"][0],fit_dic["mass_coeff_Nmono_" + str_monomer_agg + "_str_prec"][1], #m(D)
                                                 fit_dic["area_coeff_Nmono_" + str_monomer_agg + "_str_prec"][0],fit_dic["area_coeff_Nmono_" + str_monomer_agg + "_str_prec"][1], #A(D)
-                                                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg +  "_str_prec"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg+ "_str_prec"][1],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg+ "_str_prec"][2], #Atlas Dmax
+                                                #fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg +  "_str_prec"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg+ "_str_prec"][1],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg+ "_str_prec"][2], #Atlas Dmax
                                                 fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq" + "_str_prec"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"+ "_str_prec"][1],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq" + "_str_prec"][2], #Atlas Deq
                                                 fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"+ "_str_prec"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][1]]) #power law Dmax
                         #less digits for Table
                         fit_param_writer.writerow([particle_type,
                                                 fit_dic["mass_coeff_Nmono_" + str_monomer_agg + "_str"][0],fit_dic["mass_coeff_Nmono_" + str_monomer_agg + "_str"][1], #m(D)
                                                 fit_dic["area_coeff_Nmono_" + str_monomer_agg + "_str"][0],fit_dic["area_coeff_Nmono_" + str_monomer_agg + "_str"][1], #A(D)
-                                                fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_str"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_str"][1],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_str"][2], #Atlas Dmax
+                                                #fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_str"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_str"][1],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_str"][2], #Atlas Dmax
                                                     fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq" + "_str"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq" + "_str"][1],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq" + "_str"][2], #Atlas Deq
                                                 #Atlas Deq
                                                 fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw" + "_str"][0],fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw" + "_str"][1]]) #power law
@@ -479,7 +479,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
             ######END: plotting
             #####################
             #from IPython.core.debugger import Tracer ; Tracer()()
-            if particle_type=="plate":
+            if False: #particle_type=="plate":
                 ax_description_array=["bohm","HW10","KC05"]
                 for save_axis,ax_description in enumerate(ax_description_array):
                     if ax_description=="bohm":
@@ -504,5 +504,7 @@ if __name__ == '__main__':
 
     #optimize the appearance of the plot (figure size, fonts)
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,legend_fontsize='medium')
-    fig,axes = read_and_plot(fig,axes,["plate"],powerlawAtlas="powerlaw",hydro_model
+    axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model
     ="all")
+    
+   
