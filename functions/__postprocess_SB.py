@@ -88,6 +88,7 @@ def calc_Dmean(twomom,category):
 
     return twomom["D_mean_" + category]
 
+
 def init_particles():
     #define particle class
     class particle(object):
@@ -118,7 +119,7 @@ def init_particles():
                             xmin       =  1.00e-12, #& !..x_min..minimale Teilchenmasse D=200e-6m
                             mixrat_var = 'qi',
                             numcon_var = 'qni')
-    snow      = particle(nu_SB	=  0,
+    snow      = particle(nu_SB	=  nu_snow,
                             mu_SB = 0.5,
                             a_geo  =  5.13,
                             b_geo  =  0.5,
@@ -153,6 +154,7 @@ def init_particles():
                             numcon_var = 'qnh')
     return cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail
 
+
 def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail):
 
     #convert from N(m) to N(D) space
@@ -161,11 +163,28 @@ def convert_Nm_to_ND(cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupe
         curr_cat.b_ms = 1./curr_cat.b_geo
         curr_cat.mu =  curr_cat.b_ms*curr_cat.nu_SB+curr_cat.b_ms-1
         curr_cat.gam = curr_cat.b_ms*curr_cat.mu_SB
-        curr_cat.Dmax = (curr_cat.xmax/curr_cat.a_ms)**(1./curr_cat.b_ms)
-        curr_cat.Dmin = (curr_cat.xmin/curr_cat.a_ms)**(1./curr_cat.b_ms)
-        #print [curr_cat.a_ms,curr_cat.b_ms,curr_cat.mu,curr_cat.gam]
-        #raw_input(n_cat)
+    
     return cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail
+
+def convert_ND_to_Nmsingleclass(particle_class):
+
+    #convert from N(m) to N(D) space
+    particle_class.a_geo = (1./particle_class.a_ms)**(1./particle_class.b_ms)
+    particle_class.b_geo = 1./particle_class.b_ms
+    particle_class.nu_SB =  particle_class.b_geo*particle_class.mu+particle_class.b_geo-1
+    particle_class.mu_SB = particle_class.b_geo*particle_class.gam
+    
+    return particle_class
+
+def convert_Nm_to_NDsingleclass(particle_class):
+
+    #convert from N(m) to N(D) space
+    particle_class.a_ms = (1./particle_class.a_geo)**(1./particle_class.b_geo)
+    particle_class.b_ms = 1./particle_class.b_geo
+    particle_class.mu =  particle_class.b_ms*particle_class.nu_SB+particle_class.b_ms-1
+    particle_class.gam = particle_class.b_ms*particle_class.mu_SB
+    
+    return particle_class
 
 def convert_ND_to_Nm_from_coeff(a_mD,b_mD,a_vD,b_vD):
     '''
@@ -191,6 +210,43 @@ def convert_ND_to_Nm_from_coeff(a_mD,b_mD,a_vD,b_vD):
     b_vm = b_vD/b_mD
     
     return a_mm,b_mm,a_vm,b_vm
+def calc_distribution_from_moments_custom(twomom,particle_class,d_ds,i_time=0,i_height=249):
+    '''
+    calculate the normalized number concentration (as a function of diameter) corresponding to moments of a self-defined category 
+    INPUT:  twomom: dictionary containing the moments
+            particle_class: class containing particle properties
+            d_ds: diameter array at which the number concentration should be evaluated
+            i_time: timestep index of the entries in the twomom dictionary which should be analyzed
+            i_height: height index of the entries in the twomom dictionary which should be analyzed
+    '''
+    #get parameter for m-D space 
+    particle_class = convert_Nm_to_NDsingleclass(particle_class)
+
+    ###
+    #calculate the normalized number concentration 
+    ###
+    diam	=	d_ds
+    #initialize and calculate bin width (del_diam)
+    #del_diam = np.zeros(diam.shape)
+    #del_diam[0:(diam.shape[0]-1)]=	diam[1:]-diam[0:(diam.shape[0]-1)]
+    del_diam = np.diff(diam)
+    diam_2 = diam[:-1] #diameter without last element
+
+
+    #copy the mass density and the number concentration to PAMTRA conventions
+    q_h  =  twomom[particle_class.mixrat_var][i_time,i_height]
+    n_tot =  twomom[particle_class.numcon_var][i_time,i_height]
+    #print i_time,i_height,q_h,n_tot; raw_input()
+    #calculate the distribution based on PAMTRA code
+    #taken from PAMTRA make_dist_params.f90	
+    work2 = gamma((particle_class.mu + particle_class.b_ms + 1.0) / particle_class.gam)
+    work3 = gamma((particle_class.mu + 1.0) / particle_class.gam)
+    lam	=	(particle_class.a_ms / q_h * n_tot * work2 / work3)**(particle_class.gam / particle_class.b_ms)
+    N_0 = particle_class.gam * n_tot / work3 * lam**((particle_class.mu + 1.0) / particle_class.gam)
+    N_D	= N_0*diam_2**particle_class.mu*np.exp(-lam*diam_2**particle_class.gam) #/ del_diam		#normalized number concentrations with *del_diam-> not normalized
+    M_D = N_D * particle_class.a_ms*diam_2**particle_class.b_ms
+    
+    return N_D,M_D
 
 def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     '''
@@ -200,6 +256,7 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
             d_ds: diameter array at which the number concentration should be evaluated
             i_time: timestep index of the entries in the twomom dictionary which should be analyzed
             i_height: height index of the entries in the twomom dictionary which should be analyzed
+            nu: parameter in N(m)=N0*D**nu*exp(-lam*D**mu): if nu is not None it will overwrite the default
     '''
     cloud_water,rain,cloud_ice,snow,snowjplatesnonsphere,graupel,hail = init_particles() #get all parameters from the SB-categories
     
@@ -226,24 +283,26 @@ def calc_distribution_from_moments(twomom,category,d_ds,i_time=0,i_height=249):
     ###
     diam	=	d_ds
     #initialize and calculate bin width (del_diam)
-    del_diam = np.zeros(diam.shape)
-    del_diam[0:(diam.shape[0]-1)]=	diam[1:]-diam[0:(diam.shape[0]-1)]
+    #del_diam = np.zeros(diam.shape)
+    #del_diam[0:(diam.shape[0]-1)]=	diam[1:]-diam[0:(diam.shape[0]-1)]
+    del_diam=np.diff(diam)
+    diam_2 = diam[:-1]
 
     #copy the mass density and the number concentration to PAMTRA conventions
     q_h  =  twomom[curr_cat.mixrat_var][i_time,i_height]
     n_tot =  twomom[curr_cat.numcon_var][i_time,i_height]
-
+    print i_time,i_height,q_h,n_tot; raw_input()
     #calculate the distribution based on PAMTRA code
     #taken from PAMTRA make_dist_params.f90	
     work2 = gamma((curr_cat.mu + curr_cat.b_ms + 1.0) / curr_cat.gam)
     work3 = gamma((curr_cat.mu + 1.0) / curr_cat.gam)
     lam	=	(curr_cat.a_ms / q_h * n_tot * work2 / work3)**(curr_cat.gam / curr_cat.b_ms)
     N_0 = curr_cat.gam * n_tot / work3 * lam**((curr_cat.mu + 1.0) / curr_cat.gam)
-    N_D	= N_0*diam**curr_cat.mu*np.exp(-lam*diam**curr_cat.gam) #/ del_diam		#normalized number concentrations with *del_diam-> not normalized
-    #apply diameter (mass) limits #or better dont because they just limit the mean mass not truncate the spectrum
-    #N_D[np.where( diam < curr_cat.Dmin)] = 0.0 #N_D[diam<curr_cat.Dmin or
-    #N_D[np.where( diam > curr_cat.Dmax)] = 0.0 #N_D[diam<curr_cat.Dmin or
-    M_D = N_D * curr_cat.a_ms*diam**curr_cat.b_ms
+    N_D	= N_0*diam_2**curr_cat.mu*np.exp(-lam*diam_2**curr_cat.gam) #normalized number concentrations with *del_diam-> not normalized
+    #apply diam_2eter (mass) limits #or better dont because they just limit the mean mass not truncate the spectrum
+    #N_D[np.where( diam_2 < curr_cat.Dmin)] = 0.0 #N_D[diam_2<curr_cat.Dmin or
+    #N_D[np.where( diam_2 > curr_cat.Dmax)] = 0.0 #N_D[diam_2<curr_cat.Dmin or
+    M_D = N_D * curr_cat.a_ms*diam_2**curr_cat.b_ms
     
     return N_D,M_D
 

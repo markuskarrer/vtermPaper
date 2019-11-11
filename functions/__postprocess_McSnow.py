@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug=Tracer()
 
 
 # define functions to postprocess McSnow
@@ -79,7 +79,6 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     except:
         print "error in __postprocess_McSnow.read_hei2massdens: is the file: " + filestring + " not complete?"
         
-        from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
 
     i_start = index_start_of_timesteps[timestep]; 
 
@@ -145,10 +144,10 @@ def average_SPlists(SP_nonaveraged):
 
     return SP_averaged
 
-def read_twomom_d(experiment,filestring,nz):
+def read_twomom_d(filestring,nz):
     '''
     read output from twomoment-scheme (embedded in McSnow) from the twomom_d.dat file into the twomom-dictionary
-    INPUT   experiment: descriptor (also folder name) of the experiment
+    INPUT   experiment: descriptor (also folder name) of the experiment #ATTENTION: removed, because it was not used
             filestring: full path of file which has the twomom_d data
             nz: number of vertical levels in output file
     '''
@@ -241,6 +240,38 @@ def interpolate_2height(dictio,target_heightvec,curr_heightvec):
     
         
     return dictio
+
+def read_MCdistribution(filestring,n_tsteps):
+    '''
+    read the distribution of the McSnow run
+    ARGUMENTS:
+        filestring: name of file to read
+        n_tsteps: number of timesteps in file
+    '''
+
+    #load file from .dat
+    distributions_fullinfo = np.loadtxt(filestring) #distributions_fullinfo.shape -> (...,26) (200radii*timesteps,26variables)
+    distributions_fullinfo_reshaped = np.reshape(distributions_fullinfo,(n_tsteps,200,26))
+    
+    #distributions_fullinfo_reshaped = [1,:,2] #timestep 1 var 2 all sizes
+    distribution_dic=dict()
+
+    #names of variables in hei2massdens
+    varnames = ["radius", 
+                "Nd",           "Md",          "Fn",           "Fm",            "Fmono", 
+                "Nd_liq",   "Md_liq",           "Fn_liq",   "Fm_liq",       "Fmono_liq",
+                "Nd_mm1",   "Md_mm1",           "Fn_mm1",   "Fm_mm1",       "Fmono_mm1", 
+                "Nd_unr",   "Md_unr",           "Fn_unr",   "Fm_unr",       "Fmono_unr", 
+                "Nd_grp",   "Md_grp",           "Fn_grp",   "Fm_grp",       "Fmono_grp"] 
+    for i_key,key in enumerate(varnames):
+        if key!="radius":
+            distribution_dic[key] = distributions_fullinfo_reshaped[:,:,i_key] #dimensions (diam,timestep)
+        else:
+            distribution_dic["radius"] = distributions_fullinfo[0:200,0]
+     
+        #print key,distribution_dic[key][:,-1]
+    #debug()
+    return distribution_dic
 
 def separate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0],calconly="None"):
     '''
