@@ -68,7 +68,7 @@ def read_and_plot(axes,hydro_model
     for key in show_lines.keys():
         if show_lines[key]:
             add_displayed_lines2string+= '_' + key
-    particle_types = ["plate","dendrite","column","needle","rosette"]
+    particle_types = ["plate","dendrite","column","needle"]
     particle_typelabel = particle_types #["plate","dendrite","needle","column","rosette"]#,"Seifert14"] #,"mixcolumndend"] #"mixdendneedle""needle","column","plate","dendrite"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
         
     for i_particle_type,particle_type in enumerate(particle_types):

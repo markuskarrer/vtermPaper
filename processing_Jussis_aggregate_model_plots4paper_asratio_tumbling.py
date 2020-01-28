@@ -175,7 +175,7 @@ for particle_type_comb in particle_types:
                 fit_dic[prop + '_coeff_Nmono_1'] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[2:4]
             fit_dic[prop + "_Nmono_1"] = fit_dic[prop + "_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_1"][1] #recalculate arrays of masses and areas 
             
-    for i_prop,prop in enumerate(["vterm_B92","vterm_HW10","vterm_KC05","vterm_mitch_heym"]):
+    for i_prop,prop in enumerate(["vterm_B92","vterm_HW10","vterm_KC05","vterm_mitch_heym","vterm_bohm89"]):
 
         #calculate vterm based on the m-D/A-D fits
         for partal_add in ["","_partal10std","_partal20std","_partal40std","_partal60std"]:
@@ -197,7 +197,7 @@ for particle_type_comb in particle_types:
     i_ax_mono=i_ax
     i_ax_agg=i_ax+1
     for i_align,partal_add in enumerate(["","_partal20std","_partal40std"]): #,"_partal60std"]): #,"_partal10std","_partal20std","_partal40std","_partal60std"]):
-        for i_prop,prop in enumerate(["vterm_B92","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #"vterm_B92","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
+        for i_prop,prop in enumerate(["vterm_B92","vterm_HW10","vterm_KC05"]): #,"vterm_bohm89"]): #,"vterm_mitch_heym"]): #"vterm_B92","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
             velocity_model = prop[6:] #get the name of the terminal velocity model from the property name (prop) which starts with "vterm"
             
             #lines for monomers
@@ -231,7 +231,7 @@ for particle_type_comb in particle_types:
                 print "absol vdiff",np.min(fit_dic[prop + "_fitted_via_mD_AD_"+ Nmonotype][fit_dic["diam"]<dconsidered]-fit_dic["vterm_B92_fitted_via_mD_AD_" + Nmonotype][fit_dic["diam"]<dconsidered]),np.max(fit_dic[prop + "_fitted_via_mD_AD_"+ Nmonotype][fit_dic["diam"]<dconsidered]-fit_dic["vterm_B92_fitted_via_mD_AD_" + Nmonotype][fit_dic["diam"]<dconsidered]) 
                 print "rel vdiff",np.min((fit_dic[prop + "_fitted_via_mD_AD_"+ Nmonotype][fit_dic["diam"]<dconsidered]-fit_dic["vterm_B92_fitted_via_mD_AD_" + Nmonotype][fit_dic["diam"]<dconsidered])/fit_dic["vterm_B92_fitted_via_mD_AD_" + Nmonotype][fit_dic["diam"]<dconsidered]),np.max((fit_dic[prop + "_fitted_via_mD_AD_"+ Nmonotype][fit_dic["diam"]<dconsidered]-fit_dic["vterm_B92_fitted_via_mD_AD_" + Nmonotype][fit_dic["diam"]<dconsidered])/fit_dic["vterm_B92_fitted_via_mD_AD_" + Nmonotype][fit_dic["diam"]<dconsidered]) 
         #debug()
-        raw_input("seen it? then press a key")
+        #raw_input("seen it? then press a key")
 
     for i_ax_now in [i_ax_mono,i_ax_agg]:
         

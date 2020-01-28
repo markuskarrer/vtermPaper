@@ -15,7 +15,7 @@ import __tools_for_processing_Jagg
 import __plotting_functions
 import __setup_mDAD_frommodels
 import generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg 
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug = Tracer()
 from matplotlib import rc
 
 
@@ -189,7 +189,7 @@ def read_and_plot(axes,hydro_model
         if show_lines[key]:
             add_displayed_lines2string+= '_' + key
     if forw_mod:
-        particle_types = ["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
+        particle_types = ["plate","dendrite","column","needle","mixcoldend1","mixcolumndend"]
         #particle_types = ["plate","plate_sideproj","plate_vnoise0p2vcut","plate_vnoise0p4vcut"] #,"plate_vnoisesideprojvcut"]
         #particle_types = ["dendrite","dendrite_vcut","dendrite_vnoisevcut"] #,"dendrite_vnoisesideprojvcut"]
         #particle_types = ["mixdendneedle","mixdendneedle_vcut","mixdendneedle_vnoisevcut"] #,"mixdendneedle_vnoisesideprojvcut"]
@@ -203,7 +203,7 @@ def read_and_plot(axes,hydro_model
         #particle_types = ["mixcolumndend","mixcolumndend_sideproj","mixcolumndend_sideprojvcut"]
 
     else:
-        particle_types = ["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
+        particle_types = ["plate","dendrite","column","needle","mixcoldend1","mixcolumndend"]
         
     for i_particle_type,particle_type in enumerate(particle_types):
         area_side_proj=False
@@ -291,7 +291,7 @@ def read_and_plot(axes,hydro_model
                                                                                     N_small_notuse=1, #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
                                                                                     grid_res_array = [5e-6,10e-6], #[5e-6,10e-6], #[1e-6,5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
                                                                                     particle_type = particle_type, #define the particle_type
-                                                                                    test_with_small_sample = True
+                                                                                    test_with_small_sample = False
                                                                                     )
         #show the dictionary (e.g. to check that it's not empty because the path was wrong)
         print particle_dic
@@ -475,7 +475,7 @@ def read_and_plot(axes,hydro_model
         i_ax=-1
         linewidth=1.0
         linewidth_white=1.0
-        markersize=2.0
+        markersize=5.0
         ##define colormaps
         #self-defined discrete colormap (for the monomer number N)
         # define the colormap and the discrete boundaries (defined by the considered monomer numbers) and set up an array of the same colors (for line-plotting)
@@ -499,9 +499,9 @@ def read_and_plot(axes,hydro_model
         ###
         
         
-        #         plate,dendrite,column,needle,rosette,mix1,mix2
-        linestyles=["-","--",      ":",  "-.",    ":"  ,"-","-"]
-        markers=   ["", ""  ,      "" ,   ""  ,    "o" ,"o","x"]
+        #         plate,dendrite,column,needle,mix1,mix2
+        linestyles=["-","--",      ":",  "-.",    "-","-"]
+        markers=   ["", ""  ,      "" ,   ""  ,   "o","x"]
         ####
         #plot vterm (and its fits)
         ####
@@ -527,7 +527,8 @@ def read_and_plot(axes,hydro_model
             #add a line for the aggregates
             if (not forw_mod) and (not no_agg_in_plot):
                 #from IPython.core.debugger import Tracer ; Tracer()()
-                fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmonoallagg"],c=["g","g","g","g","g","black","black","g","r"][i_particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markevery=50,markersize=markersize,linewidth=linewidth)
+                print i_particle_type
+                fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmonoallagg"],c=["g","g","g","g","black","black","g","r"][i_particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markevery=50,markersize=markersize,linewidth=linewidth,fillstyle='none')
                 #add 50% percentile for all aggregates
                 #if particle_type!="Seifert14":
                 #    axes[i_ax].fill_between(diam_percentile[:-1],fit_dic[prop + "_" + str(25) + "perc_Nmono_allagg"],fit_dic[prop + "_" + str(75) + "perc_Nmono_allagg"],color="g",linestyle=["-","--",":",":","--","--","-","-","-."][i_particle_type],alpha=0.3)
@@ -552,7 +553,7 @@ def read_and_plot(axes,hydro_model
                 #axes[i_ax].plot(vD_hyyt_dic["Dmax"]*1e-3,vD_hyyt_dic["v"],linestyle="-",color="darkorange")
             elif forw_mod  and (not no_agg_in_plot): 
                 
-                color_forw_mod      =["g","g" ,"g","g","g" ,"black","black"] #["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
+                color_forw_mod      =["g" ,"g","g","g" ,"black","black"] #["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
                 linestyle_forw_mod= linestyles#["-","--",":","-.",":","-",        "-"]
                 marker_forw_mod     = markers#["", ""  ,"" ,""  ,"o","o",      "x"]
 
@@ -560,7 +561,7 @@ def read_and_plot(axes,hydro_model
                 #color_forw_mod=    ["g","g" ,"g","g" ,"g" ,"black","black"] #["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
                 #linestyle_forw_mod=["-","--",":","-.","--","-."     ,"-"]
                 #marker_forw_mod=   ["" ,""  ,"" ,""  ,"d" ,"o"      ,"d"]
-                axes[i_ax].semilogx(diam_percentile_center,fit_dic[prop + "_" + str(50) + "perc_Nmono_allagg"],color=color_forw_mod[i_particle_type],linewidth=linewidth,linestyle=linestyle_forw_mod[i_particle_type],marker=marker_forw_mod[i_particle_type],markersize=markersize)
+                axes[i_ax].semilogx(diam_percentile_center,fit_dic[prop + "_" + str(50) + "perc_Nmono_allagg"],color=color_forw_mod[i_particle_type],linewidth=linewidth,linestyle=linestyle_forw_mod[i_particle_type],marker=marker_forw_mod[i_particle_type],markersize=markersize,fillstyle='none')
                 #add a line for the Hyytiala data in case we analyze the sideprojection data
                 #add percentile range
                 if called_by_main:
@@ -600,7 +601,7 @@ def read_and_plot(axes,hydro_model
                         data_dic["LH74"][prop + '_' + key]= data_dic["LH74"][prop + "_coeff_" + key][0]*diam**data_dic["LH74"][prop + "_coeff_" + key][1]
                 for i_particle_type,particle_type in enumerate(data_dic["LH74"]["particle_type"]):
                     diam_flagged = np.where(((data_dic["diam"]>(data_dic["LH74"]["vterm_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["LH74"]["vterm_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-                    axes[i_ax].plot(diam_flagged,data_dic["LH74"]["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="orange",label="LH74 " + particle_type)
+                    axes[i_ax].plot(diam_flagged,data_dic["LH74"]["vterm_" + particle_type],linestyle=["--","-.",":","-",":"][i_particle_type],color="orange",label="LH74 " + particle_type)
                 #'''
                 #######
                 #Mitchell 1996 #parameterization for m-D and A-D
@@ -627,8 +628,33 @@ def read_and_plot(axes,hydro_model
                 #data_dic["M96"]
                 for i_particle_type,particle_type in enumerate(data_dic["M96"]["particle_type"]):
                     diam_flagged = np.where(((data_dic["diam"]>(data_dic["M96"]["mass_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["M96"]["mass_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-                    axes[i_ax].plot(diam_flagged,data_dic["M96"]["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="r",label="__None") #,label="M96" + particle_type + "_bohm")
-                #'''
+                    axes[i_ax].plot(diam_flagged,data_dic["M96"]["vterm_" + particle_type],linestyle=["-.",":","-",":",":"][i_particle_type],color="r",label="__None") #,label="M96" + particle_type + "_bohm")
+                #####
+                #Kajikawa 1973 individual crystals 
+                #####
+                data_dic["K73"] = dict()
+
+                data_dic["K73"]["particle_type"] = ["plate","dendrite"] #,"thickplate"]
+                data_dic["K73"]["particle_type_label"] = ["plate","dendrite"] #,"thick plate"]
+
+                data_dic["K73"]["diam"]          = np.arange(0.1,1.9,0.05) #np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]) #[mm]
+                data_dic["K73"]["diam"] = data_dic["K73"]["diam"]/1000 #[m]
+                data_dic["K73"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+                data_dic["K73"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+                #data_dic["K73"]["vterm_plate"]      = np.array([np.nan,8,  10,13, 15, 17.5, 20, 22.5, 25,28,30.5,33,35,37.5,40,43,46,48.5,51,53.5,56,58,60,62.5,65,67.5,70,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+                data_dic["K73"]["diam_platelin"]      = np.array([0.15,1.4])/1000.
+                data_dic["K73"]["vterm_plate"]      = np.array([8.,70.])
+                data_dic["K73"]["vterm_dendrite"]      = np.array([np.nan,np.nan,  np.nan,np.nan, np.nan,np.nan,np.nan, 11.5 ,12.5,13,14,14.9,15.5,16.2,17,17.5,18,18.5,19,19.6,20,20.6,21,21.3,21.5,21.8,22,22.3,22.5,22.8,23,23.3,23.5,23.8,24,24.2]) #[cm/s]
+
+    
+                for prop in data_dic["K73"]["particle_type"]:
+                    data_dic["K73"]["vterm_"+ prop] = data_dic["K73"]["vterm_"+ prop]/100. #[m/s]
+                #data_dic["K73"]
+                #for i_particle_type,particle_type in enumerate(["dendrite"]):
+                #    axes[i_ax].semilogx(data_dic["K73"]["diam"],data_dic["K73"]["vterm_" + particle_type],linestyle=["--",":",":",":"][i_particle_type],color="b",label="K73 " + data_dic["K73"]["particle_type_label"][i_particle_type])
+                axes[i_ax].semilogx(data_dic["K73"]["diam"],data_dic["K73"]["vterm_dendrite"],linestyle="--",color="b",label="K73 dendrite")
+                axes[i_ax].semilogx(data_dic["K73"]["diam_platelin"],data_dic["K73"]["vterm_plate"],linestyle="-",color="b",label="K73 plate")
+
             #make labels
             axes[i_ax].set_xlabel("$D_{max}$ [m]")
             axes[i_ax].set_ylabel("$v_{term}$ [m/s]" ) #TODO: plot also the untis of these properties
@@ -641,16 +667,16 @@ def read_and_plot(axes,hydro_model
     for i_ax,ax_now in enumerate(axes):
         for i_particle_type,particle_type in enumerate(particle_types):
             if particle_type=="mixcolumndend":
-                particle_type_label="mix2 (col. dend.)"
+                particle_type_label="Mix2"
             elif particle_type=="mixcoldend1":
-                particle_type_label="mix1 (col. dend.)"
+                particle_type_label="Mix1"
             else:
                 particle_type_label=particle_type
 
             if forw_mod:
-                ax_now.plot(np.nan,np.nan,color=color_forw_mod[i_particle_type],linestyle=linestyle_forw_mod[i_particle_type],marker=marker_forw_mod[i_particle_type],linewidth=linewidth,label=particle_type_label,markevery=50,markersize=markersize)
+                ax_now.plot(np.nan,np.nan,color=color_forw_mod[i_particle_type],linestyle=linestyle_forw_mod[i_particle_type],marker=marker_forw_mod[i_particle_type],linewidth=linewidth,label=particle_type_label,markevery=50,markersize=markersize,fillstyle='none')
             else:
-                ax_now.plot(np.nan,np.nan,color=["g","g","g","g","g","black","black","g","r"][i_particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],linewidth=linewidth,label=particle_type_label,markevery=50, markersize=markersize)
+                ax_now.plot(np.nan,np.nan,color=["g","g","g","g","black","black","g","r"][i_particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],linewidth=linewidth,label=particle_type_label,markevery=50, markersize=markersize,fillstyle='none')
         if not (("_sideproj" in ''.join(particle_types)) or no_monomers_in_plot):
             ax_now.plot(np.nan,np.nan,color="b",label="Nmono=1")
                 

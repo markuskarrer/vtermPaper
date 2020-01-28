@@ -64,14 +64,16 @@ data_dic = compare_geom.read_data()
 ax[0][0] = compare_geom.comp_prop(data_dic,ax[0][0],prop="mass",get_reldiff=False)
 ax[0][1] = compare_geom.comp_prop(data_dic,ax[0][1],prop="area",get_reldiff=False)
 
-ax[1][0] = processing_Jussis_aggregate_model_plots4paper_aggvDfits.read_and_plot([ax[1][0]],hydro_model="vterm_bohm",forw_mod=True,called_by_main=False)[0]
 #ax[1][0] = .compare_geomcomp_vterm_discussion(data_dic,ax[1][0])
 
-ax[1][1] = compare_geom.comp_vterm_discussion(data_dic,ax[1][1])
-
+#ax[1][0] = compare_geom.comp_vterm_discussion(data_dic,ax[1][0])
+ax[1][0] = processing_Jussis_aggregate_model_plots4paper_aggvDfits.read_and_plot([ax[1][0]],hydro_model="vterm_bohm",forw_mod=True,called_by_main=False)[0]
+ax[1][1] = processing_Jussis_aggregate_model_plots4paper_aggvDfits.read_and_plot([ax[1][1]],hydro_model="vterm_bohm",forw_mod=True,called_by_main=False)[0]
+ax[1][1].set_xscale("linear")
+ax[1][0].set_xscale("linear")
 
 titles = ['', '', '', '']
-xlabels = [r'$D_{max}$ [m]', r'$D_{max}$ [m]', r'$D_{max,side}$ [m]', r'$D_{max}$ [m]']
+xlabels = [r'$D_{max}$ [m]', r'$D_{max}$ [m]', r'$D_{max,side}$ [mm]', r'$D_{max,side}$ [mm]']
 ylabels = [r'm [kg]',r'A [$m^2$]', r'$v_{term}$ [m/s]', r'$v_{term}$ [m/s]']
 letters=['a) ', 'b) ', 'c)','d)','e','f']
 xticks = np.logspace(-4,-2,20) #ATTENTION: currently not used
@@ -95,10 +97,14 @@ for i, axes in enumerate(ax.flat):
         stylize_axes(axes, titles[i], xlabels[i], ylabels[i],  xlims=[1e-4,1e-2],ylims=[2e-9,3e-5])
         #axes.grid(which="both") #this is turned off when called twice (here thirs call)
     elif i==2:
-        stylize_axes(axes, titles[i], xlabels[i], ylabels[i], yticks=yticks,  xlims=[1e-4,1e-2],ylims=[0.0,1.6])
+        stylize_axes(axes, titles[i], xlabels[i], ylabels[i], yticks=yticks,  xlims=[1e-4,2e-3],ylims=[0.0,1.0])#,xticks=[1e-4,1e-3]) #,yticks=[0.0,0.5]) 
+
+        axes.set_xticklabels(axes.get_xticks()*1000.)#convert to mm
         axes.grid(which="both")
     elif i==3:
-        stylize_axes(axes, titles[i], xlabels[i], ylabels[i], xlims=[1e-4,2e-3],ylims=[0.0,0.8],xticks=[1e-4,1e-3],yticks=[0.0,0.5]) 
+        stylize_axes(axes, titles[i], xlabels[i], ylabels[i],yticks=yticks, xlims=[2e-3,1e-2],ylims=[0.3,1.6]) #,yticks=[0.0,0.5]) 
+        axes.set_xticklabels(axes.get_xticks()*1000.)#convert to mm
+        axes.grid(which="both")
     #add a label for the subplot
     axes.text(0.02, 0.99,letters[i],fontsize=10, fontweight='bold',
      horizontalalignment='left',

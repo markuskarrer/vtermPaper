@@ -29,7 +29,7 @@ else:
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
-MC_dir = os.environ["MC"]
+MC_dir = os.environ["MCexp"]
 skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs)
 skipSB = (os.environ["skipSB"]=="True") #allows to hide plots for SB
 plot_totalice = (os.environ["plot_totalice"]=="True")
@@ -64,14 +64,16 @@ else:
 #read bool
 if "separated_by_habit" in os.environ.keys():
     separated_by_habit= (os.environ["separated_by_habit"]=="True") #plot a line for different sensitivity runs
-    #read string for sensitivity runs
-    if "habits_onestring" in os.environ.keys():
-        habits_onestring= os.environ["habits_onestring"]
-    else:
-        print "error in 4paper_plot_fluxes_and_densities_MCsensruns.py:habits_onestring not found but separated_by_habit=True" 
 else:
     separated_by_habit=False
-    habits_onestring=''
+#read string for sensitivity runs
+if "habits_onestring" in os.environ.keys():
+    habits_onestring= os.environ["habits_onestring"]
+else:
+    print "error in 4paper_plot_fluxes_and_densities_MCsensruns.py:habits_onestring not found but separated_by_habit=True" 
+#else:
+#    separated_by_habit=False
+#    habits_onestring=''
 
 #switch of processes (for McSnow this is so far not used)
 if "switch_off_processes" in os.environ.keys():
@@ -116,7 +118,7 @@ axmean_snow     = plt.subplot2grid((3, 2), (2, 1))
 
 precip_string = "surface precip. rate\n[kg m-2 h-1]" #header of precipitation annotation
 mmean_string = "$m_{mean}$\n[$\mu g$]]" #header of precipitation annotation
-for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list): #loop over different McSnow geometry sensitivity runs
+for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list):#[McSnow_geom_list[0]]):show first only #loop over different McSnow geometry sensitivity runs
     for i_sensMCfallspeed, sensrun_now_MC_fallspeed in enumerate(MCtermvel_list): #loop over different fall speed models (boehm, KC05,HW10,powerlaw, powerlawSB)
         for i_habit, habit in enumerate(MCsnowhabit_list):
             linestyleorder=['-','--',':','-.']
@@ -212,18 +214,47 @@ for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list): #loop over differe
             #mean mass at ground [mu g]
             meanmassground=hei2massdens["Md"][0]/hei2massdens["Nd"][0]*1e6
             if experiment.startswith("1d___monodep"):#this should be the control run
-                np.savez("CTR_precip", precip_rate=hei2massdens["Fm"][0]*3600.,meanmassground=meanmassground)
+                fulldic={"0": hei2massdens}
+                np.savez("CTRL", **fulldic)
                 rel_diff=""
                 rel_diff_mmean=""
                 factor_mmean=""
             else:
-                reference_precip_dic = np.load("CTR_precip.npz")
-                reference_precip = reference_precip_dic["precip_rate"]
+                #read full dictionary to plot CTRL profiles
+                CTRLdic = np.load("CTRL.npz")
+                hei2massdensCTRL = CTRLdic['0'].item()
+                reference_precip = precip_rate=hei2massdensCTRL["Fm"][0]*3600. 
                 rel_diff=" ({:+.1f}%)".format((hei2massdens["Fm"][0]*3600.-reference_precip)/reference_precip*100)
                 
-                reference_mmean = reference_precip_dic["meanmassground"]
+                reference_mmean = hei2massdensCTRL["Md"][0]/hei2massdensCTRL["Nd"][0]*1e6 
                 rel_diff_mmean=" ({:+.1f}%)".format((meanmassground-reference_mmean)/reference_mmean*100)
                 factor_mmean=" (x{:.1f})".format(meanmassground/reference_mmean)
+                
+                #debug() 
+                if "vt6" in experiment: #vt6 is Atlas type #overlay CTRL run for fallspeedsens
+                    ############
+                    #plot fluxes of CTRL run
+                    ############
+                    #number flux
+                    var_flag = 2
+                    axnumflux_ice = __plotting_functions.plot_MC_profiles(axnumflux_ice,hei2massdensCTRL,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],forced_markerMC=['','','',''][i_sensMC+i_sensMCfallspeed+i_habit],top_height=model_top_height,plot_totalice=plot_totalice,catonly='_mm1',show_label=False,force_gray=True)
+
+                    axnumflux_snow = __plotting_functions.plot_MC_profiles(axnumflux_snow,hei2massdensCTRL,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],forced_markerMC=['','','',''][i_sensMC+i_sensMCfallspeed+i_habit],top_height=model_top_height,plot_totalice=plot_totalice,catonly='_unr',show_label=False,force_gray=True)
+                    #mass flux
+                    var_flag = 3
+                        
+                    axmassflux_ice  = __plotting_functions.plot_MC_profiles(axmassflux_ice,hei2massdensCTRL,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],forced_markerMC=['','','',''][i_sensMC+i_sensMCfallspeed+i_habit],top_height=model_top_height,plot_totalice=plot_totalice,catonly='_mm1',show_label=False,force_gray=True)
+
+                    axmassflux_snow  = __plotting_functions.plot_MC_profiles(axmassflux_snow,hei2massdensCTRL,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],forced_markerMC=['','','',''][i_sensMC+i_sensMCfallspeed+i_habit],top_height=model_top_height,plot_totalice=plot_totalice,catonly='_unr',show_label=False,force_gray=True)
+                    #calculate  Md/Nd in __plotting_functions.plot_MC_profiles
+                    var_flag = 4
+                
+                    axmean_ice = __plotting_functions.plot_MC_profiles(axmean_ice,hei2massdensCTRL,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],forced_markerMC=['','','',''][i_sensMC+i_sensMCfallspeed+i_habit],top_height=model_top_height,plot_totalice=plot_totalice,catonly='_mm1',show_label=False,force_gray=True)
+                    axmean_snow = __plotting_functions.plot_MC_profiles(axmean_snow,hei2massdensCTRL,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],forced_markerMC=['','','',''][i_sensMC+i_sensMCfallspeed+i_habit],top_height=model_top_height,plot_totalice=plot_totalice,catonly='_unr',show_label=False,force_gray=True)
+                    
+                    if (i_sensMC+i_sensMCfallspeed+i_habit)==0:
+                        axnumflux_ice.plot(np.nan,np.nan,color='gray',label="CTRL")
+
             if separated_by_fallspeedsens:
                 '''
                 if i_sensMCfallspeed==0:
@@ -252,8 +283,8 @@ for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list): #loop over differe
 if len(McSnow_geom_list)>1:#add labels for the different sensruns
     for i_sensMC,sensrun_now_MC in enumerate(McSnow_geom_list):
         for ax in [axnumflux_ice]:
-            labellist=["$N_{mono}$ independent","$N_{mono}$=1,$N_{mono}$>1$","$N_{mono}$ independet"]
-            ax.plot(np.nan,np.nan,color='k',linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],label=McSnow_geom_list[i_sensMC+i_sensMCfallspeed+i_habit])
+            labellist=["monodep/CTRL",McSnow_geom_list[1],McSnow_geom_list[2]]
+            ax.plot(np.nan,np.nan,color='k',linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],label=labellist[i_sensMC+i_sensMCfallspeed+i_habit])
             ax.legend(loc="lower right")
             ax.set_title("$N_{mono}$=1")
         for ax in [axnumflux_snow]:
@@ -273,7 +304,7 @@ if len(MCsnowhabit_list)>1:#add labels for the different sensruns
         for ax in [axnumflux_ice]:
             labellist=MCsnowhabit_list
             if habit=="mixcolumndend":
-                labelhabit="mix2\n(col.\ndend.)"
+                labelhabit="mix2"
             else:
                 labelhabit=habit
             ax.plot(np.nan,np.nan,color='k',linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],label=labelhabit)

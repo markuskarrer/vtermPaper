@@ -621,7 +621,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
     
     return ax
 
-def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',forced_markerMC='',top_height=5000,plot_totalice=True,catonly=None,show_label=True):
+def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',forced_markerMC='',top_height=5000,plot_totalice=True,catonly=None,show_label=True,force_gray=False):
     '''
     plot number and mass fluxes of McSnow over height
     INPUT:  ax: first x-axis
@@ -646,6 +646,8 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
         
 
     for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
+        if force_gray:
+            colors[j]="gray"
         if (cat=="" and not plot_totalice): #plot all categories but not the total
             continue
         elif (catonly!=None and catonly!=cat): #plot only a specific category

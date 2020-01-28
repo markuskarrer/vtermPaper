@@ -17,7 +17,7 @@ import __tools_for_processing_Jagg
 import __plotting_functions
 import __setup_mDAD_frommodels
 import generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg 
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug=Tracer()
 from matplotlib import rc
 
 
@@ -28,14 +28,9 @@ and fits different functions to each property (m-D(monomer dependent and binary)
 tumbling=False #so far only the use of non-tumbling projected area is implemented here
 show_Nmono_fits = True #show fit lines for some selected monomer numbers
 v_small_notuse = 0.0  #ATTENTION: particle smaller than .5ms-1 are not used #ATTENTION: applied to B?hm only
-Dmax_side = False  #ATTENTION: this should be false because it is not a valid forward operator (it also changes vterm of the particles not just vterm) #use Dmax from a side projection rather than from the full 3D-particle #ATTENTION: not calculated for each aggregate
-if Dmax_side:
-    Dmax_side_add="_Dmaxside"
-else:
-    Dmax_side_add=""
 
 
-def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots/fit_results_test.txt",write_fit_params=False,plot_vars=None,called_by_main=False):
+def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt",write_fit_params=False,plot_vars=None,called_by_main=False,use_Deq=False):
     '''
     this performs all the processing and plotting
     
@@ -47,13 +42,17 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
     write_fit_params: should coefficients be written
     plot_vars: which variables should be processes and plotted (fm comes always with mass; fA comes always with area)? (if "None" all are plotted)
     called_by_main: if this script has been executed directly save the figures here
+    use_Deq: use mass equivalent mass instead of Dmax
     '''
     #flatten axes in case we have more than one column
     try:
         axes = axes.flat
     except:
         print axes," cannot be flattened any more"
-        
+    if use_Deq:
+        show_Nmono_fits=False
+    else: 
+        show_Nmono_fits=True        
     with open(txtfile,"w") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
 
         for i_particle_type,particle_type in enumerate(particle_types):    
@@ -70,18 +69,23 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 fit_param_writer.writerow(["particle_type","am1","am2","bm1","bm2","aA1","aA2","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"])
             
             #read the properties of the individual particles from the files
-            particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/",
-                                                                                    #prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation_local/tumbling_asratio/",
+            particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(
+            prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/",
+            #prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation_local/samesizeparam/",
+            #prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation_local/diffsizeparam/",
                                                                                     D_small_notuse=1e-4, #ATTENTION: particle smaller than D_small_notuse are not considered (e.g. because of resolution issues)
-                                                                                    N_small_notuse=1, #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
+                                                                                    N_small_notuse=1, #ATTENTION: THIS HAS NO EFFECT!!  monomer numbers smaller than N_small_notuse are not considered
                                                                                     grid_res_array = [5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
-                                                                                    #grid_res_array = [20e-6], #array of grid resolutions (defines the files which are read in)
+                                                                                    #grid_res_array = [40e-6], #array of grid resolutions (defines the files which are read in)
 
                                                                                     particle_type = particle_type, #define the habit
                                                                                     test_with_small_sample = False
                                                                                     )
             #show the dictionary (e.g. to check that it's not empty because the path was wrong)
-            print particle_dic
+            print particle_dic;
+            #particle_dic["diam"] = particle_dic["Dmax_xy_aligned"]
+            print particle_dic.keys()
+            #particle_dic["diam"] = particle_dic["rad_gyr"]*2.0
             #randomize order in dictionary (for an unbiased view in scatter-plot)
             N_particles = particle_dic["area"].shape[0]
             particle_indices_array = range(0,N_particles)
@@ -94,14 +98,14 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
 
             if tumbling:
                 particle_dic["area"] = particle_dic["area_partal40std"] #use the tumbled area instead
-            if Dmax_side:
-                particle_dic["diam"] = particle_dic["Dmax_xz"] #use the side projected maximum dimension
-            
             #calculate the terminal velocitys of the simulated particles individually for each available velocity model
             for velocity_model in ["HW10","KC05","bohm"]: #,"mitch_heym"]:
                     particle_dic["vterm_" + velocity_model] = __fallspeed_relations.calc_vterm(velocity_model,particle_dic["mass"],particle_dic["diam"],particle_dic["area"]) #+np.random.randn(particle_dic["mass"].shape[0])*0.4 #test noise on data
             #calculate the area ratio
             particle_dic["Aratio"] = particle_dic["area"]/(np.pi/4*particle_dic["diam"]**2)
+            if use_Deq:
+                rho_i = 917.6 #bulk ice density
+                particle_dic["diam"] = (6.*particle_dic["mass"]/(np.pi*rho_i))**(1./3.)    
 
             #if : #TODO: do this with a flag for all hydro-models?
             #for i_particle,vterm_particle_now in enumerate(particle_dic["vterm_" + velocity_model]):
@@ -227,6 +231,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 ##
                 #fit to m-D and A-D coefficients for all particles with N_monomer>1
                 [fit_dic[prop + "_coeff_Nmono_allagg"],covar] = __tools_for_processing_Jagg.fit_data(particle_dic["diam"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic[prop][particle_dic["vterm_bohm"]>v_small_notuse],func='powerlaw',weight="None")
+                print "\n",prop,fit_dic[prop + "_coeff_Nmono_allagg"] 
                 #if prop=="area":
                 #    fit_dic["area_coeff_Nmono_allagg"][0] = np.pi/4 #test: use opaque particles as suggested by Westbrook, PhD thesis
                 #    fit_dic["area_coeff_Nmono_allagg"][1] = 2.0 #test: use opaque particles as suggested by Westbrook, PhD thesis
@@ -323,13 +328,20 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                     fitlines = axes[i_ax].plot(fit_dic["diam"],fit_dic[prop + "_Nmono_allagg"],c="g",linewidth=2.*linewidth,label=r"$N_{mono}$>1",linestyle='--')
 
                 #make labels
-                axes[i_ax].set_xlabel("$D_{max}$ [m]")
+                if use_Deq:
+                    axes[i_ax].set_xlabel("$D_{eq}$ [m]")
+                else:
+                    axes[i_ax].set_xlabel("$D_{max}$ [m]")
                 if not prop=="Aratio":
                     axes[i_ax].set_ylabel(prop_short + " [" +prop_unit+ "]") 
                 else:
                     axes[i_ax].set_ylabel(' arearatio '+ ' ' + prop_short + " [" +prop_unit+ "]") 
                 #change the axis
-                axes[i_ax].set_xlim([1e-4,4e-2])
+                if use_Deq:
+                    axes[i_ax].set_xlim([1e-5,1e-3])
+                else:
+                    axes[i_ax].set_xlim([1e-4,4e-2])
+
                 axes[i_ax].set_ylim([0,np.array([1e-4,1e-3,1e-0])[i_prop]]) #define the upper limit of the displayed axis
                 axes[i_ax].grid(which="both")
                 #add colorbar (not when plotting only selected variables)
@@ -457,7 +469,10 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                     axes[i_ax].set_ylabel("$f_m$")
 
                 #change the axis
-                axes[i_ax].set_xlim([1e-4,4e-2])
+                if use_Deq:
+                    axes[i_ax].set_xlim([1e-5,1e-3])
+                else:
+                    axes[i_ax].set_xlim([1e-4,4e-2])
                 #axes[i_ax].set_ylim([0,np.array([1e-4,1e-3])[i_prop]]) #define the upper limit of the displayed axis
                 axes[i_ax].grid(which="both")
                 
@@ -497,11 +512,14 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 axes[i_ax].legend() 
                 
                 #make labels
-                axes[i_ax].set_xlabel("$D_{max}$ [m]")
+                if use_Deq:
+                    axes[i_ax].set_xlabel("$D_{eq}$ [m]")
+                else:
+                    axes[i_ax].set_xlabel("$D_{max}$ [m]")
                 axes[i_ax].set_ylabel(prop + " [m s-1]" ) #TODO: plot also the untis of these properties
 
                 #change the axis
-                axes[i_ax].set_xlim([10**low_diam_log_detailed,10**high_diam_log_detailed]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
+                #axes[i_ax].set_xlim([10**low_diam_log_detailed,10**high_diam_log_detailed]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
                 axes[i_ax].set_ylim([0,2.5]) #np.array([1e-5,1e-4,2.0,2.0,2.0])[i_prop]])
                 axes[i_ax].grid(which="both")
 
@@ -531,7 +549,8 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
 
                 #fitlines_monomers = axes[i_ax].semilogx(np.nan,np.nan,c="b",linestyle="-",label="monomers",linewidth=2.*linewidth)
                 #fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],vterm_fit_allagg,c="w",linestyle="-",label="__None",linewidth=2.*linewidth_white)
-                fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],vterm_fit_allagg,c="g",label="$N_{mono}$>1",linewidth=2.*linewidth,linestyle='--')
+                if not use_Deq:
+                    fitlines_allagg = axes[i_ax].semilogx(fit_dic["diam"],vterm_fit_allagg,c="g",label="$N_{mono}$>1",linewidth=2.*linewidth,linestyle='--')
 
                 
             #add legends
@@ -596,7 +615,8 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
 if __name__ == '__main__':
     
    
-    particle_types=["plate","dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]
+    particle_types=["plate","dendrite","column","needle","mixcoldend1","mixcolumndend"]
+
     txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt"
     #optimize the appearance of the plot (figure size, fonts)
     fig=0 #will be overwritten in read_and_plot

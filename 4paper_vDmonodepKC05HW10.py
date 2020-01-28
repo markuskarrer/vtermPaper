@@ -47,7 +47,7 @@ def stylize_axes(ax, title, xlabel, ylabel, xticks, yticks, xticklabels, ytickla
 
 
 #select monotype
-for monotype in ["plate"]:
+for monotype in ["dendrite"]:
 
     #define the figure grid
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16,6))

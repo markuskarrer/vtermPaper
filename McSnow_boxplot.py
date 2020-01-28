@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import __postprocess_McSnow
 import __postprocess_SB
+import vtermstudy_coeffs
 import McSnow_boxruns
 from matplotlib import rc 
 '''
@@ -17,34 +18,34 @@ def init_particles_custom_fm(nu=0.0,mu=0.333333,a_geo  =  3.202492,b_geo  =  0.4
     #define new particle class by define all variables #formulated as N(D)
     #default are the variables for jplates and snowSBB size distribution
     class particle(object):
-            def __init__(self, **kwargs):
-                    self.__dict__.update(kwargs)
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
     return particle(nu_SB = nu,
-                    mu_SB = mu,
-                    a_geo = a_geo,
-                    b_geo = b_geo,
-                    mixrat_var = mixrat_var,
-                    numcon_var = numcon_var)
+            mu_SB = mu,
+            a_geo = a_geo,
+            b_geo = b_geo,
+            mixrat_var = mixrat_var,
+            numcon_var = numcon_var)
 
 def init_particles_custom_fd(mu=0.0,gam=1,a_ms  = 0.08 ,b_ms  =  2.22,mixrat_var = 'qs',numcon_var = 'qns'):
-    #define new particle class by define all variables #formulated as N(m)
+        #define new particle class by define all variables #formulated as N(m)
     class particle(object):
-            def __init__(self, **kwargs):
-                    self.__dict__.update(kwargs)
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
     return particle(mu = mu,
-                    gam = gam,
-                    a_ms = a_ms,
-                    b_ms = b_ms,
-                    mixrat_var = mixrat_var,
-                    numcon_var = numcon_var)
+            gam = gam,
+            a_ms = a_ms,
+            b_ms = b_ms,
+            mixrat_var = mixrat_var,
+            numcon_var = numcon_var)
 
 def read_MC_SPlist(pathname):
     ###
     #load SP-file (keys are: "m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",         "m_rime",   "m_wat")
     ###
     from netCDF4 import Dataset
-    
-    
+
+
     model_top=5000;heights=1;heightstep=1
     SP_file = Dataset(  pathname + '/mass2fr_' + str(tstep).zfill(4) + '-' + str(tstep_end).zfill(4) + 'min_avtstep_' + str(av_tstep) + '.ncdf',mode='r')
     #create dictionary for all variables from PAMTRA
@@ -56,7 +57,6 @@ def read_MC_SPlist(pathname):
         SP[var] = np.squeeze(SP_file.variables[var])
 
 def calc_ND_MD(particle_class,q_h,n_tot,diam):
-
     '''
     calculate ND and MD for a given particle class (which must contain all paramters in N(D)=N0*D**mu*exp(-lam*D**gam) and m=a_ms*D**b_ms taking the 1st (n_tot) and 3rd (q_h) moment
     INPUT:
@@ -71,13 +71,13 @@ def calc_ND_MD(particle_class,q_h,n_tot,diam):
     work3 = gamma((particle_class.mu + 1.0) / particle_class.gam)
     lam =       (particle_class.a_ms / q_h * n_tot * work2 / work3)**(particle_class.gam / particle_class.b_ms)
     N0 = particle_class.gam * n_tot / work3 * lam**((particle_class.mu + 1.0) / particle_class.gam)
-   
+
     N_D = N0*diam**particle_class.mu*np.exp(-lam*diam**particle_class.gam)
     M_D = N_D*particle_class.a_ms*diam**particle_class.b_ms
 
     return N_D,M_D
 
-def read_and_plot_onerun(ax,pathname,filestring_MC,filestring_SB,endmin,minstep,particle_class,iwc=0,m_mean=1e10,var="Nd",unitvar="1/m3"):
+def read_and_plot_onerun(ax,pathname,filestring_MC,filestring_SB,endmin,minstep,particle_class,iwc=0,m_mean=1e10,nrp=8388608,var="Nd",unitvar="1/m3"):
     '''
     reads the McSnow (distribution...) and SB output (twomom.dat) of one run and plots them
         ax: axis to which the distributions should be plotted
@@ -92,6 +92,7 @@ def read_and_plot_onerun(ax,pathname,filestring_MC,filestring_SB,endmin,minstep,
           and m-D relations
             a_ms,b_ms fomr m(D)=a_ms*D**b_ms
         m_mean: mean mass (is passed for labelling only)
+        nrp: number concentration
         var: which variable should be plotted; unitvar: unit of that variable
     '''
 
@@ -103,17 +104,17 @@ def read_and_plot_onerun(ax,pathname,filestring_MC,filestring_SB,endmin,minstep,
     rc('mathtext',**{'default':'regular'})
     import matplotlib.pylab as pylab
     params = {'legend.fontsize': 6,
-              'legend.handlelength': 2,
-              'figure.figsize': (15, 5),
-             'axes.labelsize': 'x-large',
-             'axes.titlesize':'x-large',
-             'xtick.labelsize':'x-large',
-             'ytick.labelsize':'x-large'}
+            'legend.handlelength': 2,
+            'figure.figsize': (15, 5),
+            'axes.labelsize': 'x-large',
+            'axes.titlesize':'x-large',
+            'xtick.labelsize':'x-large',
+            'ytick.labelsize':'x-large'}
 
     #read the McSnow distribution file
     n_tsteps = endmin/minstep #number of timesteps in file
     MC_hei2mass = __postprocess_McSnow.read_MCdistribution(filestring_MC,n_tsteps)
-   
+
     #convert Nd and Md from [kg/m3/ln(m)] to [kg/m3]
     MC_hei2mass["diam"] = 2.*MC_hei2mass["radius"]
     del_radius = np.diff(MC_hei2mass["radius"])
@@ -124,10 +125,10 @@ def read_and_plot_onerun(ax,pathname,filestring_MC,filestring_SB,endmin,minstep,
             MC_hei2mass[key + "_conv"] = MC_hei2mass[key][:,:-1]/del_radius*np.diff(np.log(2.*MC_hei2mass["radius"])) #/2 because of diam as x-axis
     #read 2mom-scheme bulk variables
     twomom_d = __postprocess_McSnow.read_twomom_d(filestring_SB,1) #second argument is the number of heights (should be 1)
-    
+
     #plot distribution of different timesteps
     for i_time,time in enumerate(np.arange(0,endmin,minstep)):
-        if time%20==0: #show only every ... minutes
+        if time%30==0: #show only every ... minutes
             #get SB distributions
             twomom_d["Nd_snow"],twomom_d["Md_snow"] = __postprocess_SB.calc_distribution_from_moments_custom(twomom_d,custom_snow ,MC_hei2mass["diam"],i_time=i_time,i_height=0)
             #plot McSnow distribution
@@ -179,20 +180,23 @@ if __name__ == "__main__":
     import sys
 
     run_mode = int(sys.argv[1]) #0-> recompile and run 1-> run 2-> read only
-    
+
     #define model run specifics
-    endmin  = 61 #end of model run in minutes #ATTENTION:only even numbers 10,20,.. allowed; endmin is not included in output
+    endmin  = 121 #end of model run in minutes #ATTENTION:only even numbers 10,20,.. allowed; endmin is not included in output
     minstep = 1 #output step of model in minutes
 
     #define the parameter
     mu_arr = [5.0,1.0] #[0.,1.,2.,3.,4.,5.]
-    m_mean_init_arr = [5e-11,5e-11,5e-11] #[1.19e-11,7e-11,1.19e-10]
-    nrp_arr=[8388608,8388608*0.6,8388608*0.2] #in combination with m_mean_init (no own loop)
+    m_mean_init_arr = [5e-11,5e-10] #[1.19e-11,7e-11,1.19e-10]
+    nrp_arr=[1e6,1e5] #in combination with m_mean_init (no own loop)
     gam=1.; 
     ########plotting 
     #define the figure grid
     plot_grid= [len(mu_arr),len(m_mean_init_arr)]
-    
+
+    #which monomer type geometry
+    monotype="column" #"plate","column","dendrite","mixcolumndend"
+
     #define figure for different variables
     variables=["Nd","Md"];unitvar=["1/m3","kg/m3"]
     #for var in variables:
@@ -201,7 +205,7 @@ if __name__ == "__main__":
     #exec("fig"+var+"=fig")
     #exec("axes"+var+"=axes")
 
-    
+
     #run and plot with different settings 
     for i_mu,mu in enumerate(mu_arr):
         for i_m_mean,m_mean in enumerate(m_mean_init_arr):
@@ -209,16 +213,18 @@ if __name__ == "__main__":
             #if i_m_mean>0 or i_mu>0:
             #    continue
             nrp=nrp_arr[i_m_mean]
-            custom_snow = init_particles_custom_fd(mu=mu,gam=gam,a_ms=0.08,b_ms=2.22)
-            custom_snow = __postprocess_SB.convert_ND_to_Nmsingleclass(custom_snow) 
-            
+            #custom_snow = init_particles_custom_fd(mu=mu,gam=gam,a_ms=0.08,b_ms=2.22)
+            #custom_snow = __postprocess_SB.convert_ND_to_Nmsingleclass(custom_snow) 
+            #ATTENTION: the coefficients are only set for the processing within this file! in the code they are manipulated/selected by modify_MC/SB_src.sh
+            custom_snow = vtermstudy_coeffs.return_class(monotype=monotype,mu=mu,gam=gam) 
+            custom_snow.mixrat_var="qs"; custom_snow.numcon_var="qns";
             #execute the run script
             if run_mode==0:
-                pathname = McSnow_boxruns.run_boxi(endmin=endmin,minstep=minstep,nu=custom_snow.nu_SB,mu=custom_snow.mu_SB,iwc=m_mean*nrp,nrp=nrp,recompile=True,onlyname=False)
+                pathname = McSnow_boxruns.run_boxi(monomer_type=monotype,endmin=endmin,minstep=minstep,nu=custom_snow.nu_SB,mu=custom_snow.mu_SB,iwc=m_mean*nrp,nrp=nrp,recompile=True,onlyname=False)
             elif run_mode==1:
-                pathname = McSnow_boxruns.run_boxi(endmin=endmin,minstep=minstep,nu=custom_snow.nu_SB,mu=custom_snow.mu_SB,iwc=m_mean*8388608,nrp=nrp,recompile=False,onlyname=False)
+                pathname = McSnow_boxruns.run_boxi(monomer_type=monotype,endmin=endmin,minstep=minstep,nu=custom_snow.nu_SB,mu=custom_snow.mu_SB,iwc=m_mean*nrp,nrp=nrp,recompile=False,onlyname=False)
             elif run_mode==2:
-                pathname = McSnow_boxruns.run_boxi(endmin=endmin,minstep=minstep,nu=custom_snow.nu_SB,mu=custom_snow.mu_SB,iwc=m_mean*nrp,nrp=nrp,recompile=False,onlyname=True)
+                pathname = McSnow_boxruns.run_boxi(monomer_type=monotype,endmin=endmin,minstep=minstep,nu=custom_snow.nu_SB,mu=custom_snow.mu_SB,iwc=m_mean*nrp,nrp=nrp,recompile=False,onlyname=True)
              
             #define the path of the output files
             filestring_MC=pathname + "/distribution_0000_5000.dat" 
@@ -227,7 +233,8 @@ if __name__ == "__main__":
             for var,unitvar in zip(["Nd","Md"],["1/m3","kg/m3"]):
                 #plot this run
                 exec("axnow=axes"+ var + "[i_mu,i_m_mean]")
-                read_and_plot_onerun(axnow,pathname,filestring_MC,filestring_SB,endmin,minstep,particle_class=custom_snow,m_mean=m_mean,iwc=m_mean*nrp,var=var,unitvar=unitvar)
+                #debug()
+                read_and_plot_onerun(axnow,pathname,filestring_MC,filestring_SB,endmin,minstep,particle_class=custom_snow,m_mean=m_mean,nrp=nrp,iwc=m_mean*nrp,var=var,unitvar=unitvar)
     #for fignow,varname in zip([figNd],variables):
     for fignow,varname in zip([figNd,figMd],variables):
         plt.figure(fignow.number)
@@ -239,7 +246,7 @@ if __name__ == "__main__":
         #plt.sca(ax2)        
         #plt.legend(loc="lower right")
         dir_save="/home/mkarrer/Dokumente/plots/boxi/"
-        out_filestring="agg_nu_variation" + varname
+        out_filestring="agg_nu_variation" + varname + "_" + monotype
         plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
         print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
         subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])

@@ -44,59 +44,61 @@ def stylize_axes(ax, title, xlabel, ylabel, xticks, yticks, xticklabels, ytickla
     #ax.set_yticklabels(yticklabels)
     #'''
 #select monomer type
-monotype="plate"
+for monotype in ["plate"]: # ,"dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]:
 
-#define the figure grid
-fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(4,9)) #for bigger labels decrease figsize
+    #define the figure grid
+    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(4,9)) #for bigger labels decrease figsize
 
-###call the functions which plot the subplots
+    ###call the functions which plot the subplots
 
-#do all the processing and plotting externally
-ax[0] = processing_Jussis_aggregate_model_plots4paper_vDfits.read_and_plot(fig,[ax[0]],[monotype],powerlawAtlas="powerlaw",hydro_model
-    ="vterm_bohm")[0]
-ax[1] = processing_Jussis_aggregate_model_plots4paper_vDfits.read_and_plot(fig,[ax[1]],[monotype],powerlawAtlas="Atlas",hydro_model
-    ="vterm_bohm")[0]
-ax[2] = processing_Jussis_aggregate_model_plots4paper_vDfits.read_and_plot(fig,[ax[2]],[monotype],powerlawAtlas="schemes",hydro_model
-    ="vterm_bohm")[0]
-
-#from IPython.core.debugger import Tracer ; Tracer()()
-
-
-titles = ['', '', '', '']
-'''
-xlims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
-ylims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
-bar_ylims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
-'''
-xlabels = ['$D_{max} [m]$', '$D_{max} [m]$', '$D_{max} [m]$', '']
-ylabels = ['$v_{term}$ [m/s]', '$v_{term}$ [m/s]', '$v_{term}$ [m/s]', '']
-letters=['a) power law', 'b) Atlas-type', 'c) microphysics schemes','d)','e)','f)']
-xticks = range(1,6)
-xticklabels = range(1,6)
+    #do all the processing and plotting externally
+    
+    ax[0] = processing_Jussis_aggregate_model_plots4paper_vDfits.read_and_plot(fig,[ax[0]],[monotype],powerlawAtlas="powerlaw",hydro_model
+        ="vterm_bohm")[0]
+    
+    ax[1] = processing_Jussis_aggregate_model_plots4paper_vDfits.read_and_plot(fig,[ax[1]],[monotype],powerlawAtlas="Atlas",hydro_model
+        ="vterm_bohm")[0]
+    
+    ax[2] = processing_Jussis_aggregate_model_plots4paper_vDfits.read_and_plot(fig,[ax[2]],[monotype],powerlawAtlas="schemes",hydro_model
+        ="vterm_bohm")[0]
+    #from IPython.core.debugger import Tracer ; Tracer()()
 
 
-number_of_used_plots= 0
-for i, axes in enumerate(ax.flat):
-    if xlabels[i]=='':
-        fig.delaxes(axes)
-        continue
-    # Customize y ticks on a per-axes basis
-    yticks = np.linspace(axes.get_ylim()[0], axes.get_ylim()[1], 5)
-    yticklabels = yticks
-    stylize_axes(axes, titles[i], xlabels[i], ylabels[i], xticks, yticks, xticklabels, yticklabels)
-    axes.text(0.02, 0.98,letters[i],fontsize=10, fontweight='bold',
-     horizontalalignment='left',
-     verticalalignment='top',
-     transform = axes.transAxes)
+    titles = ['', '', '', '']
+    '''
+    xlims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
+    ylims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
+    bar_ylims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
+    '''
+    xlabels = ['$D_{max} [m]$', '$D_{max} [m]$', '$D_{max} [m]$', '']
+    ylabels = ['$v_{term}$ [m/s]', '$v_{term}$ [m/s]', '$v_{term}$ [m/s]', '']
+    letters=['a) power law', 'b) Atlas-type', 'c) microphysics schemes','d)','e)','f)']
+    xticks = range(1,6)
+    xticklabels = range(1,6)
 
-###########
-###save the plot (and open it)
-###########
-plt.tight_layout()
-dir_save = '/home/mkarrer/Dokumente/plots/4paper/'
-out_filestring = "vDfits" + monotype
 
-plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
-plt.savefig(dir_save + out_filestring + '.png', dpi=100)
-print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
-subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
+    number_of_used_plots= 0
+    for i, axes in enumerate(ax.flat):
+        if xlabels[i]=='':
+            fig.delaxes(axes)
+            continue
+        # Customize y ticks on a per-axes basis
+        yticks = np.linspace(axes.get_ylim()[0], axes.get_ylim()[1], 5)
+        yticklabels = yticks
+        stylize_axes(axes, titles[i], xlabels[i], ylabels[i], xticks, yticks, xticklabels, yticklabels)
+        axes.text(0.02, 0.98,letters[i],fontsize=10, fontweight='bold',
+         horizontalalignment='left',
+         verticalalignment='top',
+         transform = axes.transAxes)
+
+    ###########
+    ###save the plot (and open it)
+    ###########
+    plt.tight_layout()
+    dir_save = '/home/mkarrer/Dokumente/plots/4paper/'
+    out_filestring = "vDfits" + monotype
+
+    plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
+    plt.savefig(dir_save + out_filestring + '.png', dpi=100)
+    print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
+    subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import subprocess
 from matplotlib import rc
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug=Tracer()
 
 import processing_Jussis_aggregate_model_plots4paper_monodep_binary
 #merge the plots of the m-D/A-D plots  #inspired by: https://jonchar.net/notebooks/matplotlib-styling/
@@ -46,58 +46,72 @@ def stylize_axes(ax, title, xlabel, ylabel, xticks, yticks, xticklabels, ytickla
     #ax.set_yticklabels(yticklabels)
 
 
+plate_and_needle=True
+
+
 #select monotype
 for monotype in ["plate","dendrite","column","needle","rosette"]:
-
-    #define the figure grid
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,6))
-    #vterm_model="bohm"
-    vterm_model="KC05"
+    if plate_and_needle and monotype!="plate":
+        continue
+    if plate_and_needle:
+        #define the figure grid
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(16,6))
+    else:
+        #define the figure grid
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(8,6))
+        
+    vterm_model="bohm"
+    #vterm_model="KC05"
     #do all the processing and plotting externally
-    fig,axes,im,tick_locs,N_mono_list = processing_Jussis_aggregate_model_plots4paper_monodep_binary.read_and_plot(fig,[ax],[monotype],plot_vars=["vterm_"+vterm_model])
-
-    axes[0].set_ylabel("$v_{term}$ [m/s]")
+    if plate_and_needle:
+        fig,axes[0],im,tick_locs,N_mono_list = processing_Jussis_aggregate_model_plots4paper_monodep_binary.read_and_plot(fig,[axes[0]],["plate"],plot_vars=["vterm_"+vterm_model])
+        fig,axes[1],im,tick_locs,N_mono_list = processing_Jussis_aggregate_model_plots4paper_monodep_binary.read_and_plot(fig,[axes[1]],["needle"],plot_vars=["vterm_"+vterm_model])
+    else:
+        fig,axes,im,tick_locs,N_mono_list = processing_Jussis_aggregate_model_plots4paper_monodep_binary.read_and_plot(fig,[axes],[monotype],plot_vars=["vterm_"+vterm_model])
+    #some labelling
     titles = [' ', ' ', ' ', ' ']
-
-    axes[0].legend(loc="upper left")
-    xlims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
-    ylims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
-    bar_ylims = ((-1, 5),(-1, 5),(-1, 5),(-1, 5))
-
     xlabels = ['x1', 'x2', 'x3', 'x4']
     ylabels = ['y1', 'y2', '', '']
-    letters=['', 'b)', 'c)','d)','e)','f)']
+    if plate_and_needle:
+        letters=['a) plate', 'b) needle', 'c)','d)','e)','f)']
+    else:
+        letters=['', 'b)', 'c)','d)','e)','f)']
     xticks = range(1,6) #dummy arguments
     xticklabels = range(1,6) #dummy arguments
-    '''
-    #from IPython.core.debugger import Tracer ; Tracer()()
-    #add one colorbar at right
-    fig.subplots_adjust(right=0.9)
-    cbar_ax = fig.add_axes([0.91, 0.2, 0.015, 0.6])
-    cbar = fig.colorbar(im, cax=cbar_ax)
-    cbar.set_label("$N_{mono}$")
-    #shift ticks to the middle of the color
-    cbar.set_ticks(tick_locs)
-    cbar.set_ticklabels(N_mono_list[::3])
-    '''
-    for i, axis in enumerate(axes): #ax.flat):
+    
+    for i, ax in enumerate(axes): #ax.flat):
+        
+        if plate_and_needle:
+            ax=ax[0] #somehow this is still an array of size 1 
+        ax.set_xlim([1e-4,4e-2])
+        if i==0:
+            if plate_and_needle:
+                ax.legend(loc="upper left", bbox_to_anchor=(0.0,0.9))
+            else:
+                ax.legend(loc="upper left")
+        else:
+            ax.get_legend().remove()
         if xlabels[i]=='':
-            fig.delaxes(axis)
+            fig.delaxes(ax)
             continue
+        ax.set_ylabel("$v_{term}$ [m/s]")
         # Customize y ticks on a per-axes basis
-        yticks = np.linspace(axis.get_ylim()[0], axis.get_ylim()[1], 5)
+        yticks = np.linspace(ax.get_ylim()[0], ax.get_ylim()[1], 5)
         yticklabels = yticks
-        stylize_axes(axis, titles[i], xlabels[i], ylabels[i], xticks, yticks, xticklabels, yticklabels)
-        axis.text(0.02, 0.98,letters[i],fontsize=14, fontweight='bold',
+        stylize_axes(ax, titles[i], xlabels[i], ylabels[i], xticks, yticks, xticklabels, yticklabels)
+        ax.text(0.02, 0.98,letters[i],fontsize=14, fontweight='bold',
             horizontalalignment='left',
             verticalalignment='top',
-            transform = axis.transAxes)
+            transform = ax.transAxes,
+            zorder=10)
 
     ###########
     ###save the plot (and open it)
     ###########
     #plt.tight_layout()
     dir_save = '/home/mkarrer/Dokumente/plots/4paper/'
+    if plate_and_needle:
+        monotype="plateandneedle"
     if vterm_model!="bohm":
         out_filestring = "vD" + monotype
     else:

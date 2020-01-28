@@ -73,7 +73,8 @@ fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8,8)) #for bigger labels dec
 #    ="vterm_bohm",forw_mod=False)[0]
 #read data
 data_dic = compare_geom.read_data()
-data_dic["particle_type"]=["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"]
+data_dic["fit_dic"]["particle_type"]=["plate","dendrite","column","needle","mixcoldend1","mixcolumndend"]
+#debug()
 axes[0][0] = compare_geom.comp_prop(data_dic,axes[0][0],prop="mass_Nmono1",get_reldiff=False,show_lit=False)
 axes[1][0] = compare_geom.comp_prop(data_dic,axes[1][0],prop="mass",get_reldiff=False,show_lit=False)
 
@@ -133,7 +134,7 @@ for i, ax in enumerate(axes.flat):
         by_label = OrderedDict(zip(labels_flat, handles_flat))
         # add a legend for the whole figure
         fig.legend(by_label.values(),by_label.keys(),bbox_to_anchor=(0.5,0), loc="lower center", 
-                                bbox_transform=fig.transFigure, ncol=4)
+                                bbox_transform=fig.transFigure, ncol=3)
      
 ###########
 ###save the plot (and open it)

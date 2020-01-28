@@ -119,7 +119,7 @@ def init_particles():
                             xmin       =  1.00e-12, #& !..x_min..minimale Teilchenmasse D=200e-6m
                             mixrat_var = 'qi',
                             numcon_var = 'qni')
-    snow      = particle(nu_SB	=  nu_snow,
+    snow      = particle(nu_SB	=  0.0,
                             mu_SB = 0.5,
                             a_geo  =  5.13,
                             b_geo  =  0.5,

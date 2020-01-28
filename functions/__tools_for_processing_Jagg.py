@@ -6,7 +6,7 @@ from numpy import pi, r_
 import matplotlib.pyplot as plt
 from scipy import optimize
 import sys
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug=Tracer()
 
 def init_particle_dict():
     '''
@@ -36,6 +36,8 @@ def init_particle_dict():
     particle_dic["Dmax_xy_aligned"] = [] #maximum dimension projected to ..-.. plane
     particle_dic["Dmax_xz_aligned"] = [] #maximum dimension projected to ..-.. plane
     particle_dic["Dmax_yz_aligned"] = [] #maximum dimension projected to ..-.. plane  
+    particle_dic["rad_gyr"] = [] #radius of gyration
+    particle_dic["D_circum_proj_area"] = [] #radius encircling the projected area
     
     return particle_dic
 
@@ -163,8 +165,10 @@ def calc_mD_AD_coeffs(mono_type,skip_mono=False):
         c_theor=0.00798099
         d_theor=1.53934525
     elif mono_type=="spheroid":
-        print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
-        sys.exit()
+        a_theor=np.pi/6.*rho_i
+        b_theor=3.
+        c_theor=np.pi/2.
+        d_theor=2.
     else:
         print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
         sys.exit()
@@ -209,12 +213,17 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
             test_subsample = "*1E"
         else:
             test_subsample = ""
+        i_file=0
         for filename in glob.glob(prop_file_folder + sensrun_folder +  particle_type + test_subsample + '*properties.txt'): #loop over all property files (with different mean sizes)
+            i_file+=1
             #read size parameter from filename in order to be able to disregard some size parameter
             m=re.search(prop_file_folder + sensrun_folder + particle_type + '_(.+?)_properties.txt', filename) #search for patter
             size_param_now = float(m.group(1))
-            if size_param_now<-999: #ignore all sizeparameter above ... or below ... range:[50,50..,51.,..,1000]
-                continue
+            #if size_param_now<-999: #ignore all sizeparameter above ... or below ... range:[50,50..,51.,..,1000]
+            #print size_param_now
+            #if size_param_now<400 or size_param_now>600: #take only very narrow sizeparameter
+            #    continue
+        
             #verbose reading of files
             print "reading: " + filename
             with open(filename,"rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
@@ -223,7 +232,7 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                 #define the monomer numbers to read in
                 take_all_Nmono_bool = True
                 if grid_res==1e-6: #particles < 10mum are modelled only for small monomer numbers
-                    N_mono_list_tmp = np.array(range(1,10))
+                    N_mono_list_tmp = np.array(range(2,10))
                 elif grid_res==5e-6: #particles < 10mum are modelled only for small monomer numbers
                     if 1e-6 in grid_res_array:
                         N_mono_list_tmp = np.array(range(10,101,10))
@@ -238,13 +247,19 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                         else:
                             N_mono_list_tmp = np.array(np.append(np.array(range(1,11,1)),np.append(np.array(range(10,101,10)),np.array(range(100,1001,100)))))
                             #N_mono_list_tmp = np.array([1])
-                else: #some tests with higher resolution
-                    N_mono_list_tmp = np.array(np.append(range(1,11,1),np.array(range(10,101,10))))
+                else: #some tests with higher/lower resolution
+                    N_mono_list_tmp = np.array(np.append(np.append(range(1,11,1),np.array(range(10,101,10))),range(200,1001,100)))
                 
                 for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
-                    if row_content[0] in N_mono_list_tmp: #i_row==0 or i_row==4 or i_row==9:
+                    ################
+                    ##limit N_mono##
+                    ################
+                    #if row_content[0]>20 and (row_content[0] in N_mono_list_tmp): #i_row==0 or i_row==4 or i_row==9: #limit N_mono 
+                    if (row_content[0] in N_mono_list_tmp): #i_row==0 or i_row==4 or i_row==9:
                         if (row_content[3]<D_small_notuse): #check size limit
                             continue
+                        #if (row_content[3]>1e-2): #check size limit
+                        #    continue
                         particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
                         particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],row_content[0]) #python indices start with 0
                         particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
@@ -258,14 +273,14 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                         particle_dic["area_partal20std"] = np.append(particle_dic["area_partal20std"],row_content[7])
                         particle_dic["area_partal40std"] = np.append(particle_dic["area_partal40std"],row_content[2])
                         particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8])
-                        #try:
-                        #    particle_dic["area_aligned_side"] = np.append(particle_dic["area_aligned_side"],row_content[9])
-                        #except:
-                        #    pass
-                        #try:
-                        #    particle_dic["area_partal40_side"] = np.append(particle_dic["area_partal40_side"],row_content[10])
-                        #except:
-                        #    pass
+                        try:
+                            particle_dic["area_aligned_side"] = np.append(particle_dic["area_aligned_side"],row_content[9])
+                        except:
+                            pass
+                        try:
+                            particle_dic["area_partal40_side"] = np.append(particle_dic["area_partal40_side"],row_content[10])
+                        except:
+                            pass
                         #try to read some lines, that might not always be there
                         #try:
                         #    particle_dic["area_side_aligned"] = np.append(particle_dic["N_initial"],row_content[10])
@@ -280,32 +295,40 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                         #except:
                         #    pass
                         try:
-                            particle_dic["Dmax_xy"] = np.append(particle_dic["Dmax_xy"],row_content[9])
+                            particle_dic["Dmax_xy"] = np.append(particle_dic["Dmax_xy"],row_content[11])
                         except:
                             pass
                         try:
-                            particle_dic["Dmax_xz"] = np.append(particle_dic["Dmax_xz"],row_content[10])
+                            particle_dic["Dmax_xz"] = np.append(particle_dic["Dmax_xz"],row_content[12])
                         except:
                             pass
                         try:
-                            particle_dic["Dmax_yz"] = np.append(particle_dic["Dmax_yz"],row_content[11])
+                            particle_dic["Dmax_yz"] = np.append(particle_dic["Dmax_yz"],row_content[13])
                         except:
                             pass
                         try:
-                            particle_dic["Dmax_xy_aligned"] = np.append(particle_dic["Dmax_xy_aligned"],row_content[11])
+                            particle_dic["Dmax_xy_aligned"] = np.append(particle_dic["Dmax_xy_aligned"],row_content[14])
                         except:
                             pass
                         try:
-                            particle_dic["Dmax_xz_aligned"] = np.append(particle_dic["Dmax_xz_aligned"],row_content[12])
+                            particle_dic["Dmax_xz_aligned"] = np.append(particle_dic["Dmax_xz_aligned"],row_content[15])
                         except:
                             pass
                         try:
-                            particle_dic["Dmax_yz_aligned"] = np.append(particle_dic["Dmax_yz_aligned"],row_content[13])
+                            particle_dic["Dmax_yz_aligned"] = np.append(particle_dic["Dmax_yz_aligned"],row_content[16])
+                        except:
+                            pass
+                        try:
+                            particle_dic["rad_gyr"] = np.append(particle_dic["rad_gyr"],row_content[17])
                         except:
                             pass
 
+                        try:
+                            particle_dic["D_circum_proj_area"] = np.append(particle_dic["D_circum_proj_area"],row_content[18])
+                        except:
+                            pass
             N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
-        if len(particle_dic["diam"])==0:
+        if False: #len(particle_dic["diam"])==0:
             print "no particles found"
             sys.exit()                    
     return particle_dic,N_mono_list

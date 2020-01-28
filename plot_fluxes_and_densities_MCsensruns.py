@@ -2,7 +2,7 @@
 plots the fluxes and the absolute values of the number density and the mass density
 '''
 
-#from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+from IPython.core.debugger import Tracer ; debug=Tracer() #insert this line somewhere to debug
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -211,8 +211,8 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
         
             axmean = __plotting_functions.plot_MC_profiles(axmean,hei2massdens,i_timestep,var_flag=var_flag,forced_linestyle=linestyleorder[i_sensrun+i_sensMC+i_sensMCfallspeed],forced_markerMC=['','','',''][i_sensrun+i_sensMC+i_sensMCfallspeed],top_height=model_top_height,plot_totalice=plot_totalice)
             
-            #from IPython.core.debugger import Tracer ; Tracer()()
             if separated_by_fallspeedsens:
+                debug()
                 if i_sensMCfallspeed==0:
                     reference_precip = hei2massdens["Fm"][0]*3600. #save precip rate from reference run (always the first) to calculate relative deviations
                     rel_diff=""

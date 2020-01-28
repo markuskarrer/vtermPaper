@@ -46,7 +46,7 @@ def stylize_axes(ax, title, xlabel, ylabel, xticks, yticks, xticklabels, ytickla
 
 
 #select monotype
-for monotype in ["plate","dendrite","column","needle","rosette"]: #,"mixcoldend1","mixcolumndend"]:
+for monotype in ["needle"]: #"needle","plate","dendrite","column","needle","rosette"]: #,"mixcoldend1","mixcolumndend"]:
 
     #define the figure grid
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8,6))

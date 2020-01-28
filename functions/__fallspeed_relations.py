@@ -9,6 +9,11 @@ import __postprocess_SB
 
 '''
 this code calculates different fallspeed models (f.e. taken from McSnow)
+e.g. calc_vterm("bohm",mass,diam,area) 
+mass: numpy-array containing masses
+diam: numpy-array containing maximum dimension
+area: numpy-array containing projected area 
+ALL IN SI-UNITS
 '''
 #wrapper around different fall speed models
 
@@ -18,6 +23,8 @@ def calc_vterm(velocity_model,mass,diam,area,as_ratio=1.0,turb_corr="all"):
         vterm = vterm_hw10(mass,diam,area,rho=1.287,eta=1.717696e-5)
     elif velocity_model=='KC05':
         vterm = vterm_kc05(mass,diam,area,rho=1.287,eta=1.717696e-5) 
+    elif velocity_model=='bohm89':
+        vterm = vterm_bohm89(mass,diam,area,rho=1.287,eta=1.717696e-5)
     elif velocity_model=='bohm':
         vterm = vterm_bohm(mass,diam,area,np.ones_like(mass),rho=1.287,eta=1.717696e-5)
     elif velocity_model=='bohmar':
@@ -304,6 +311,21 @@ def vterm_bohm(mtot,diam,area,as_ratio,rho=1.287,eta=1.717696e-5):
     #! I (22)
     vterm_bohm = N_Re*eta/diam/rho
     return vterm_bohm
+
+
+def vterm_bohm89(mass,diam, area, rho=1.287, eta=1.717696e-5):
+    grav = 9.81
+    rho_ice = 917.0
+    q = area / (np.pi/4.0 * diam**2)
+
+    X = 8.0*mass*grav*rho/(np.pi*(eta**2)*q**0.25)
+
+    Re = 8.5*((1.0+0.1519*X**0.5)**0.5-1.0)**2
+    vterm_bohm = Re*eta/diam/rho
+
+    return vterm_bohm
+
+
 '''
 #copied here from the P3 look-up table creator create_p3_lookupTable_1.f90
 ! assume 600 hPa, 253 K for p and T for fallspeed calcs (for reference air density) #TODO: do we have to take this into account??

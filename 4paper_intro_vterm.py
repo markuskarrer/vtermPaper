@@ -57,6 +57,22 @@ fit_dic  = compare_fallspeed_parameterizations.get_model_params()
 ax[0] = compare_geom.comp_vterm_intro(data_dic,ax[0])
 ax[1] = compare_fallspeed_parameterizations.plot_model_vterms(ax[1],fit_dic)
 
+'''
+#show not all lines
+show_lines = dict()
+show_lines["SB_mD"] = True #show the m-D relation of the SB scheme
+#from previous model settings
+show_lines["SB_powerlaw"] = True #show also the old fit of Axels power-law
+show_lines["SB_Atlas"] = False #show also the old fit of Axels Atlas-type
+#from other models
+show_lines["P3"] = False
+show_lines["MC"] = False
+show_lines["Morr2mom"] =False 
+show_lines["GSFC"] = False #single Moment Godard scheme
+show_lines["THOM"] = False #two-moment Thompson scheme
+
+ax[1] = compare_fallspeed_parameterizations.plot_model_vterms(ax[1],fit_dic,show_lines=show_lines) #show only SB
+'''
 
 titles = ['', '', '', '']
 '''

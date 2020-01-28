@@ -72,7 +72,7 @@ def get_model_params():
     return fit_dic
 
 
-def plot_model_vterms(ax,fit_dic,show_all_lines=True,scale='xlogylin',show_lines=None,linewidth=1.2):
+def plot_model_vterms(ax,fit_dic,scale='xlogylin',show_lines=None,linewidth=1.2):
     #plot the fall speed in the current plot
     
     if show_lines==None:
@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
     for i_ax,scale in enumerate(["xlinylin","xlogylin","xlogylog"]):
 
-        axes[i_ax] = plot_model_vterms(axes[i_ax],fit_dic,show_all_lines=True,scale='xlogylin',show_lines=show_lines)
+        axes[i_ax] = plot_model_vterms(axes[i_ax],fit_dic,scale='xlogylin',show_lines=show_lines)
         
         #add grid
         axes[i_ax].grid(which="both")

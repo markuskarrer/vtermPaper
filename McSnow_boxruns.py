@@ -44,7 +44,7 @@ def run_boxi(recompile=True,monomer_type="plate",nu=0.0,mu=1./3,endmin=60,minste
 
     os.chdir(MC_dir + "run/")
     #get the output string from the box_model
-    process= subprocess.Popen(("bash box-i_markus onlyname " + str(endmin) + " " + str(minstep) + " "+ nu_str +" "+ mu_str + " " + str(iwc) + " " + str(nrp)).split(),stdout=subprocess.PIPE) 
+    process= subprocess.Popen(("bash box-i_markus onlyname " + str(endmin) + " " + str(minstep) + " "+ nu_str +" "+ mu_str + " " + str(iwc) + " " + str(int(nrp))).split(),stdout=subprocess.PIPE) 
     out, err = process.communicate()
     pathname = out[:-1]
     if onlyname: #exit here if only the path is requested
@@ -52,7 +52,7 @@ def run_boxi(recompile=True,monomer_type="plate",nu=0.0,mu=1./3,endmin=60,minste
         sys.exit(0)
     
     #run the box model
-    subprocess.call("bash box-i_markus run " + str(endmin) + " " + str(minstep) +" "+  nu_str +" "+ mu_str + " " + str(iwc),shell=True) 
+    subprocess.call("bash box-i_markus run " + str(endmin) + " " + str(minstep) +" "+  nu_str +" "+ mu_str + " " + str(iwc) + " " + str(int(nrp)),shell=True) 
 
     return pathname 
 

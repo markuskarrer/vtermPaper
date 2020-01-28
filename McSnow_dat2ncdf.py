@@ -22,10 +22,10 @@ tstep_end = int(os.environ["tstep_end"]) #string with 4 numbers and 'min'
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"] #"more readable" string of the experiment specifications
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
-MC_dir = os.environ["MC"]
+MC_expdir = os.environ["MCexp"]
 
 #directory of experiments
-directory = MC_dir + "/experiments/"
+directory = MC_expdir + "/experiments/"
 
 #read timestep from string
 dtc = int(re.search(r'dtc(.*?)_nrp', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
@@ -81,14 +81,16 @@ if not twomom_bool:
 nz = int(re.search(r'nz(.*?)_', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
 
 #read the twomom_d.dat file to the dictionary twomom
-filestring_twomom_d = MC_dir + '/experiments/' + experiment + '/twomom_d.dat' 
-twomom = __postprocess_McSnow.read_twomom_d(experiment,filestring_twomom_d,nz) #returns the twomom variables in a dictionary
+filestring_twomom_d = MC_expdir + '/experiments/' + experiment + '/twomom_d.dat' 
+twomom = __postprocess_McSnow.read_twomom_d(filestring_twomom_d,nz) #returns the twomom variables in a dictionary
 
 #create height axis from dz (layer thickness) array
 heights = np.cumsum(twomom['dz'][0,::-1])[::-1] #fix index 0 is allowed unless level thickness change with height
 
 #create netCDF4 file
 dataset = Dataset(directory + experiment + '/twomom_d.ncdf', 'w',  format='NETCDF4_CLASSIC')
+print directory + experiment + '/twomom_d.ncdf'
+
 #Global attributes
 dataset.description = 'Output of SB twomoment-scheme (embedded in McSnow) converted to netCDF4'
 dataset.history = 'Created ' + time.ctime(time.time())

@@ -7,6 +7,27 @@ from IPython.core.debugger import Tracer ; debug=Tracer()
 
 # define functions to postprocess McSnow
 
+def read_mass2frncdf(experiment,filestring):
+    '''
+    read SP-properties from the mass2fr....ncdf file into the SP-dictionary
+    INPUT experiment: descriptor (also folder name) of the experiment
+    '''
+    from netCDF4 import Dataset
+    #load file
+    SP_file = Dataset(experiment+ '/' + filestring,mode='r')
+    #create dictionary for all superparticle variables
+    SP = dict()
+
+    #if necessary change name of variables
+    varlist = SP_file.variables
+    #read PAMTRA variables to pamData dictionary
+    for var in varlist:#read files and write it with different names in Data
+        SP[var] = np.squeeze(SP_file.variables[var])
+
+
+    return SP
+
+    
 def read_mass2frdat(experiment,filestring):
     '''
     read SP-properties from the mass2fr.dat file into the SP-dictionary
@@ -14,6 +35,8 @@ def read_mass2frdat(experiment,filestring):
     '''
     
     #load file from .dat
+    #debug()
+    #SP_fullinfo = np.loadtxt(experiment + '/'+ filestring)
     SP_fullinfo = np.loadtxt(filestring)
     
     #create dictionary
@@ -161,7 +184,7 @@ def read_twomom_d(filestring,nz):
     varnames_twomom = ["dz",        "rho",    "pres",          "qv",              "qc","qnc",                   "qr","qnr", "qi","qni", "qs","qns", "qg","qng", "qh","qnh" ,"ninact", "t",      "w" ,"fr","fnr","fi","fni","fs","fns","fg","fng","fh","fnh"]
     #           (Schichtdichte, Gesamtdichte, Druck, Wasserdampfmassendichte, Wolkenwasser massen und anzahldichte, regen, Eis,       Schnee, Graupel ,    Hagel ,            IN, Temperatur, Vertikale Geschwindigkeit w, fluxes of moments)
     if not twomom_fullinfo.shape[1]/len(varnames_twomom)==nz:
-        print "error in postprocess_McSNow.read_twomom_d: compare number of variables in varnames_twomom(", len(varnames_twomom) ,") with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90(", twomom_fullinfo.shape[1] ,"); the ratio must be a multiple of nz "
+        print "error in postprocess_McSnow.read_twomom_d: compare number of variables in varnames_twomom(", len(varnames_twomom) ,") with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90(", twomom_fullinfo.shape[1] ,"); the ratio must be a multiple of nz "
         sys.exit(1)
     
     #fill twomom-dictionary with different variables

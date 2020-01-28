@@ -480,13 +480,12 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
         #get a title for the modelled aggregates
         ax.plot(np.nan,np.nan,linestyle='',label="this study:") #add a title in the legend
     for i_particle_type,particle_type in enumerate(data_dic["fit_dic"]["particle_type"]):
-        #debug()
         if not prop[5:11]=="Nmono1":#aggregates
-            colors=    ["g","g" ,"g","g","g" ,"black","black"]
+            colors=    ["g","g" ,"g","g","black","black"]
             if particle_type=="mixcolumndend":
-                particle_type_label="mix2 (col. dend.)"
+                particle_type_label="Mix2"
             elif particle_type=="mixcoldend1":
-                particle_type_label="mix1 (col. dend.)"
+                particle_type_label="Mix1"
             else:
                 particle_type_label=particle_type
             #print particle_type_label; raw_input()
@@ -495,19 +494,20 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
             if particle_type in ("mixcolumndend","mixcoldend1"):
                 break
             particle_type_label=particle_type
-        #         plate,dendrite,column,needle,rosette,mix1,mix2
-        linestyles=["-","--",      ":",  "-.",    ":"  ,"-","-"]
-        markers=   ["", ""  ,      "" ,   ""  ,    "o" ,"o","x"]
+        #         plate,dendrite,column,needle,mix1,mix2
+        linestyles=["-","--",      ":",  "-.",    "-","-"]
+        markers=   ["", ""  ,      "" ,   ""  ,   "o","x"]
         #print particle_type_label,linestyles[i_particle_type],markers[i_particle_type]; raw_input()
         #debug()
-        ax.loglog(data_dic["diam"],data_dic["fit_dic"][prop +"_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=2,markevery=50,color=colors[i_particle_type],label=particle_type_label,linewidth=1.0)
+        ax.loglog(data_dic["diam"],data_dic["fit_dic"][prop +"_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=5,markevery=50,color=colors[i_particle_type],label=particle_type_label,linewidth=1.0,fillstyle='none')
     if show_lit:
         #get a title for the observations in the legend
+        ax.plot(np.nan,np.nan, linestyle='',color='none',label="  ") #one emtpy one
         ax.plot(np.nan,np.nan,linestyle='',label="observations:") #add a title in the legend
         #Mitchell (1996)
         for i_particle_type,particle_type in enumerate(data_dic["M96"]["particle_type"]):
             diam_flagged = np.where(((data_dic["diam"]>(data_dic["M96"]["mass_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["M96"]["mass_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-            ax.loglog(diam_flagged,data_dic["M96"][prop + "_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="r",label="M96 " + particle_type,linewidth=1.0)
+            ax.loglog(diam_flagged,data_dic["M96"][prop + "_" + particle_type],linestyle=["-.",":","-",":",":"][i_particle_type],color="r",label="M96 " + particle_type,linewidth=1.0)
             if get_reldiff:
                             np.set_printoptions(precision=1)
                             ##get the relative deviations
@@ -524,7 +524,7 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
             #LH74
             for i_particle_type,particle_type in enumerate(data_dic["LH74"]["particle_type"]):
                 diam_flagged = np.where(((data_dic["diam"]>(data_dic["LH74"][prop +"_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["LH74"][prop +"_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-                ax.loglog(diam_flagged,data_dic["LH74"][prop +"_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="orange",label="LH74 " + particle_type,linewidth=1.0)
+                ax.loglog(diam_flagged,data_dic["LH74"][prop +"_" + particle_type],linestyle=["--","-.",":",":",":"][i_particle_type],color="orange",label="LH74 " + particle_type,linewidth=1.0)
                 if get_reldiff:
                     np.set_printoptions(precision=1)
                     ##get the relative deviations
@@ -551,12 +551,11 @@ def comp_AD(data_dic,ax):
             particle_type_label="mix1 (col. dend.)"
         else:
             particle_type_label=particle_type
-        ax.loglog(data_dic["diam"],data_dic["fit_dic"]["area_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=2,markevery=50,color=colors[i_particle_type],label=particle_type_label,linewidth=1.0)
-    
+        ax.loglog(data_dic["diam"],data_dic["fit_dic"]["area_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=2,markevery=50,color=colors[i_particle_type],label=particle_type_label,fillstyle='none',linewidth=1.0)
     #Mitchell (1996)
     for i_particle_type,particle_type in enumerate(data_dic["M96"]["particle_type"]):
         diam_flagged = np.where(((data_dic["diam"]>(data_dic["M96"]["mass_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["M96"]["mass_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-        ax.loglog(diam_flagged,data_dic["M96"]["area_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="r",label="M96 " + particle_type,linewidth=1.0)
+        ax.loglog(diam_flagged,data_dic["M96"]["area_" + particle_type],linestyle=["-.",":","-",":",":"][i_particle_type],color="r",label="M96 " + particle_type,linewidth=1.0)
      
     return ax
 def comp_vterm_discussion(data_dic,ax):
@@ -571,15 +570,30 @@ def comp_vterm_discussion(data_dic,ax):
                 colors=["g","limegreen","g"] #temporary as long as we dont have all in side projection
                 linestyles=["-","--","-."]
             else:
-                colors=    ["g","g" ,"g","g","g" ,"black","black"]
+                colors=    ["g" ,"g","g","g" ,"black","black"]
                 linestyles=["-","--",":","-.",":","-",      "-"]
                 markers=   ["", ""  ,"" ,""  ,"o","o",      "x"]
-            ax.semilogx(data_dic["diam"],data_dic["fit_dic"]["vterm_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=2,markevery=50,color=colors[i_particle_type]) #,label="agg_model " + particle_type)
-        #data_dic["LH74"]
+            ax.semilogx(data_dic["diam"],data_dic["fit_dic"]["vterm_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=5,markevery=50,color=colors[i_particle_type],fillstyle='none') #,label="agg_model " + particle_type)
         for i_particle_type,particle_type in enumerate(data_dic["LH74"]["particle_type"]):
             diam_flagged = np.where(((data_dic["diam"]>(data_dic["LH74"]["vterm_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["LH74"]["vterm_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
             ax.plot(diam_flagged,data_dic["LH74"]["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="orange",label="LH74 " + particle_type)
-        
+        #"M96"
+        #calculate array of geometric properties
+        for key in data_dic["M96"]["particle_type"]:
+            print key,data_dic["M96"]["particle_type"],data_dic["M96"].keys() #data_dic["M96"].keys()    
+            diam_flagged = np.where(((data_dic["diam"]>(data_dic["M96"]["mass_coeff_" + key][2])) & (data_dic["diam"]<(data_dic["M96"]["mass_coeff_" + key][3]))),data_dic["diam"],np.nan)
+        for prop in ["mass","area"]:
+            data_dic["M96"][prop + '_' + key]= data_dic["M96"][prop + "_coeff_" + key][0]*diam_flagged**data_dic["M96"][prop + "_coeff_" + key][1]
+                        
+        #calculate v-D
+        for key in data_dic["M96"]["particle_type"]:
+            data_dic["M96"]["vterm_" + key] = __fallspeed_relations.calc_vterm("bohm",data_dic["M96"]["mass_" + key],data_dic["diam"],data_dic["M96"]["area_" + key])
+        #data_dic["M96"]
+        for i_particle_type,particle_type in enumerate(data_dic["M96"]["particle_type"]):
+            diam_flagged = np.where(((data_dic["diam"]>(data_dic["M96"]["mass_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["M96"]["mass_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
+            ax.plot(diam_flagged,data_dic["M96"]["vterm_" + particle_type],linestyle=["-.",":","-",":",":"][i_particle_type],color="r",label="__None") #,label="M96" + particle_type + "_bohm")
+
+
         #plot v-D quantiles from CARE data
         #ax.plot(data_dic["vD_CARE_dic"]["Dmax"]*1e-3,data_dic["vD_CARE_dic"]["v_larger0"],linestyle="-",color="brown",label="_SNRPIP CARE")
         #ax.fill_between(data_dic["vD_CARE_dic"]["Dmax"]*1e-3,data_dic["vD_CARE_dic"]["v_25perc_larger0"],data_dic["vD_CARE_dic"]["v_75perc_larger0"],color="brown",alpha=0.1)

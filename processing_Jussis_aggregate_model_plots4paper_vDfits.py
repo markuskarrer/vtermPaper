@@ -16,7 +16,7 @@ import __tools_for_processing_Jagg
 import __plotting_functions
 import __setup_mDAD_frommodels
 import generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg 
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug = Tracer()
 from matplotlib import rc
 
 import compare_fallspeed_parameterizations
@@ -47,7 +47,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
     #powerlawAtlas="schemes" #"Atlas","powerlaw" "schemes" #this is defined in __main__
     if powerlawAtlas=="powerlaw":
         show_lines["powerlaw_fits"] = True
-        show_lines["highest_diam_for_fit"] = 0.01 #-999 for all -2 for increasing v range only
+        #show_lines["highest_diam_for_fit"] = 0.01 #-999 for all -2 for increasing v range only
         show_lines["Atlas_fit"] = False #show the Atlas-type fit for cloud ice & snow
         #from previous model settings
         show_lines["SB_powerlaw"] = False #show also the old fit of Axels power-law    
@@ -55,7 +55,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
 
     elif powerlawAtlas=="Atlas":
         show_lines["powerlaw_fits"] = False
-        show_lines["highest_diam_for_fit"] = -999 #-999 for all -2 for increasing v range only
+        #show_lines["highest_diam_for_fit"] = -999 #-999 for all -2 for increasing v range only
         show_lines["Atlas_fit"] = True #show the Atlas-type fit for cloud ice & snow
         #from previous model settings
         show_lines["SB_powerlaw"] = False #show also the old fit of Axels power-law
@@ -63,7 +63,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
 
     elif powerlawAtlas=="schemes":
         show_lines["powerlaw_fits"] = False
-        show_lines["highest_diam_for_fit"] = -999 #-999 for all -2 for increasing v range only
+        #show_lines["highest_diam_for_fit"] = -999 #-999 for all -2 for increasing v range only
         show_lines["Atlas_fit"] = False #show the Atlas-type fit for cloud ice & snow
         #from previous model settings
         show_lines["SB_powerlaw"] = False #show also the old fit of Axels power-law
@@ -108,7 +108,6 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
                 if any(particle_dic[key]): #an empty dictionary will return false
                     particle_dic[key] = particle_dic[key][particle_indices_array] #shuffle the arrays
 
-            #from IPython.core.debugger import Tracer ; Tracer()()
             #get m-D from the assumptions in the aggregate model (this is used at various places)
             a,b,c,d = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)
 
@@ -118,121 +117,121 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
             #calculate the terminal velocitys of the simulated particles individually for each available velocity model
             for velocity_model in ["HW10","KC05","bohm"]: #,"mitch_heym"]:
                     particle_dic["vterm_" + velocity_model] = __fallspeed_relations.calc_vterm(velocity_model,particle_dic["mass"],particle_dic["diam"],particle_dic["area"])
-            
-            #####################
-            ######START: fitting
-            #####################
-            #initialize an array which contains all fit results
-            fitresult_arr_dir_powerlaw_string = np.zeros((5,N_mono_list.shape[0],2)) #fit results (saved as floats) #dimensions: 0-> [mass,array]; 1-> monomer number; 2-> parameters (a,b) in fit
-
             fit_dic = dict() #initialize fit dictionary
-            #set up array of diameters for displaying the fits
-            low_diam_log_detailed= -4; high_diam_log_detailed_plotrange=-1.3979400086720375
-            if show_lines["highest_diam_for_fit"]==-999:
-                high_diam_log_detailed=-1.3979400086720375 #np.log10(3e-2)=-1.5228787452803376 #np.log10(4e-2)=-1.3979400086720375
-            else:
-                #from IPython.core.debugger import Tracer ; Tracer()()
-                high_diam_log_detailed=np.log10(show_lines["highest_diam_for_fit"])
+            for Atlas_or_pow_Dmaxrange in ["pow","Atlas"]: #Atlas and power law have different Dmax range 
+                #####################
+                ######START: fitting
+                #####################
+                #initialize an array which contains all fit results
+                fitresult_arr_dir_powerlaw_string = np.zeros((5,N_mono_list.shape[0],2)) #fit results (saved as floats) #dimensions: 0-> [mass,array]; 1-> monomer number; 2-> parameters (a,b) in fit
 
-            diam = np.logspace(low_diam_log_detailed,high_diam_log_detailed,500) #set up array of diameters (only the range to which the plot is adjusted)
-            diam_full = np.logspace(low_diam_log_detailed,high_diam_log_detailed_plotrange,500) #set up array of diameters 
+                #set up array of diameters for displaying the fits
+                low_diam_log_detailed= -4; high_diam_log_detailed_plotrange=-1.3979400086720375
+                if Atlas_or_pow_Dmaxrange=="Atlas": #show_lines["highest_diam_for_fit"]==-999:
+                    high_diam_log_detailed=np.log10(4e-2) #np.log10(4e-2)=-1.3979400086720375
+                elif Atlas_or_pow_Dmaxrange=="pow":
+                    high_diam_log_detailed=np.log10(0.01) #show_lines["highest_diam_for_fit"])
 
-            diam_log_detailed = np.log10(diam)
-            diam_center = (diam[:-1]+diam[1:])/2 #center of the diameter bins
-            diam_log = np.log10(diam_center)
-            diam_log_center = 10**((np.log10(diam[:-1])+np.log10(diam[1:]))/2) #logarithmic center of the diameter bins
-            #define at which monomer numbers the fit should be evaluated
-            Nmono_fit_eval = np.array([1,2,5,10,100,1000]) 
-            Nmono_log = np.log10(Nmono_fit_eval)
+                diam = np.logspace(low_diam_log_detailed,high_diam_log_detailed,500) #set up array of diameters (only the range to which the plot is adjusted)
+                diam_full = np.logspace(low_diam_log_detailed,high_diam_log_detailed_plotrange,500) #set up array of diameters 
 
-            
-            #pass already the diameter to the fit-array
-            fit_dic["diam"] = diam
-            fit_dic["diam_full"] = diam_full
-            fit_dic["diam_wide"] = np.logspace(-5,-1,1000) #for plotting equivalent diameter we need a wider diameter range
+                diam_log_detailed = np.log10(diam)
+                diam_center = (diam[:-1]+diam[1:])/2 #center of the diameter bins
+                diam_log = np.log10(diam_center)
+                diam_log_center = 10**((np.log10(diam[:-1])+np.log10(diam[1:]))/2) #logarithmic center of the diameter bins
+                #define at which monomer numbers the fit should be evaluated
+                Nmono_fit_eval = np.array([1,2,5,10,100,1000]) 
+                Nmono_log = np.log10(Nmono_fit_eval)
+
                 
-            ###
-            #START: monomer number dependent fitting 
-            ###
-
-            #fit the m-D and A-D properties
-            print "binary m-D and A-D fitting"
-            for i_prop,(prop,prop_unit) in enumerate(zip(["mass","area"],["kg","m2"])): #,"HWJussi","KCJussi"]):
-            
-                
+                #pass already the diameter to the fit-array
+                fit_dic["diam"] = diam
+                fit_dic["diam_full"] = diam_full
+                fit_dic["diam_wide"] = np.logspace(-5,-1,1000) #for plotting equivalent diameter we need a wider diameter range
+                    
                 ###
-                #START: get fits for all aggregates
+                #START: monomer number dependent fitting 
                 ###
-                
-                ##
-                # make a fit for all aggregates in N_mono_list
-                ##
-                #fit to m-D and A-D coefficients for all particles with N_monomer>1
-                [fit_dic[prop + "_coeff_Nmono_allagg"],covar] = __tools_for_processing_Jagg.fit_data(particle_dic["diam"],particle_dic[prop],func='powerlaw',weight="None")
-                
-                if take_mono_prop_theor: #overwrite fit for monomers with theoretical value
-                    if prop=="mass":
-                        fit_dic['mass_coeff_Nmono_1'] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[0:2]
-                    if prop=="area":
-                        fit_dic['area_coeff_Nmono_1'] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[2:4]
-                    fit_dic[prop + "_Nmono_1"] = fit_dic[prop + "_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_1"][1] #recalculate arrays of masses and areas 
-                #calculate the values corresponding to the spanned diameter from the fit-coefficients
-                fit_dic[prop + "_Nmono_allagg"] = fit_dic[prop + "_coeff_Nmono_allagg"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_allagg"][1] #calculate arrays of masses and areas based on the m-D fits
-                
-                ###
-                #END: get fits for all aggregates
-                ###
-                
-            ###
-            #START: calculate power-law and Atlas-fit based on the exact v-D line
-            ###
-            
-            #first calculate the exact v-D
-            
 
-
-            
-            #loop over different terminal velocity models in which different possible fits (power-law, Atlas type) are calculated
-            for i_prop,prop in enumerate(["vterm_bohm","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
-                print "fitting and plotting: ",prop
+                #fit the m-D and A-D properties
+                print "binary m-D and A-D fitting"
+                for i_prop,(prop,prop_unit) in enumerate(zip(["mass","area"],["kg","m2"])): #,"HWJussi","KCJussi"]):
+                
+                    
+                    ###
+                    #START: get fits for all aggregates
+                    ###
+                    
+                    ##
+                    # make a fit for all aggregates in N_mono_list
+                    ##
+                    #fit to m-D and A-D coefficients for all particles with N_monomer>1
+                    [fit_dic[prop + "_coeff_Nmono_allagg"],covar] = __tools_for_processing_Jagg.fit_data(particle_dic["diam"],particle_dic[prop],func='powerlaw',weight="None")
+                    
+                    if take_mono_prop_theor: #overwrite fit for monomers with theoretical value
+                        if prop=="mass":
+                            fit_dic['mass_coeff_Nmono_1'] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[0:2]
+                        if prop=="area":
+                            fit_dic['area_coeff_Nmono_1'] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[2:4]
+                        fit_dic[prop + "_Nmono_1"] = fit_dic[prop + "_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_1"][1] #recalculate arrays of masses and areas 
+                    #calculate the values corresponding to the spanned diameter from the fit-coefficients
+                    fit_dic[prop + "_Nmono_allagg"] = fit_dic[prop + "_coeff_Nmono_allagg"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_allagg"][1] #calculate arrays of masses and areas based on the m-D fits
+                    
+                    ###
+                    #END: get fits for all aggregates
+                    ###
+                    
+                ###
+                #START: calculate power-law and Atlas-fit based on the exact v-D line
+                ###
+                
                 #first calculate the exact v-D
-                for i_mono,(str_monomer_agg,corr_cat) in enumerate(zip(["1","allagg"],["cloud ice","snow"])):
-                    fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg] = __fallspeed_relations.calc_vterm(prop[6:],fit_dic["mass_Nmono_" + str_monomer_agg],fit_dic["diam"],fit_dic["area_Nmono_" + str_monomer_agg])
-
-                #fit an Atlas type to the "mean v-D" relations (derived from the A-D and m-D fits)
-                for i,(str_monomer_agg,corr_cat) in enumerate(zip(["1","allagg"],["$N_{mono}$=1","$N_{mono}$>1"])): 
-                    
-                    ##Atlas-type
-                    [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
-                    #from IPython.core.debugger import Tracer ; Tracer()()
-
-
-                    [fitresult_Deq,covar_Deq] = __tools_for_processing_Jagg.fit_data(((6.*fit_dic["mass_coeff_Nmono_" + str_monomer_agg][0]*fit_dic["diam"]**fit_dic["mass_coeff_Nmono_" + str_monomer_agg][1]/(np.pi*rhow))**(1./3.)),fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
-                    
-                    fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg] = fitresult #copy the Atlas-fit (as a function of D_max) coefficients in the fit_dic dictionary
-                    fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"] = fitresult_Deq #copy the Atlas-fit (as a function of D_eq) coefficients in the fit_dic dictionary
-
-                    #recalculate v(D)= A-B*exp(-gam*D) from fit (Dmax)
-                    fit_dic[prop + "_Nmono_" + str_monomer_agg] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][0]-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][1]*np.exp(-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][2]*fit_dic["diam_full"]) #calculate arrays of masses and areas based on the m-D fits
-                    #recalculate v(D)= A-B*exp(-gam*D) from fit (Dmax)
-                    fit_dic[prop + "_Nmono_" + str_monomer_agg + "_Deq"] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"][0]-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"][1]*np.exp(-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"][2]*fit_dic["diam_wide"]) #calculate arrays of masses and areas based on the m-D fits
-                    
-                    #power-law
-                    [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="powerlaw") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
-
-                    fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"] = fitresult #copy the power-law coefficients in the fit_dic dictionary
-
-                    #recalculate powerlaw from fit
-                    fit_dic[prop + "_Nmono_" + str_monomer_agg + "_powerlaw"] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][0]*fit_dic["diam_full"]**fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][1] #calculate arrays of masses and areas based on the m-D fits
                 
+
+
+                
+                #loop over different terminal velocity models in which different possible fits (power-law, Atlas type) are calculated
+                for i_prop,prop in enumerate(["vterm_bohm","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
+                    print "fitting and plotting: ",prop
+                    #first calculate the exact v-D
+                    for i_mono,(str_monomer_agg,corr_cat) in enumerate(zip(["1","allagg"],["cloud ice","snow"])):
+                        fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg] = __fallspeed_relations.calc_vterm(prop[6:],fit_dic["mass_Nmono_" + str_monomer_agg],fit_dic["diam"],fit_dic["area_Nmono_" + str_monomer_agg])
+
+                    #fit an Atlas type to the "mean v-D" relations (derived from the A-D and m-D fits)
+                    for i,(str_monomer_agg,corr_cat) in enumerate(zip(["1","allagg"],["$N_{mono}$=1","$N_{mono}$>1"])): 
                         
-            ###
-            #END: calculate power-law and Atlas-fit based on the exact v-D line
-            ###
-                
-            #####################
-            ######END: fitting
-            #####################
+                        if Atlas_or_pow_Dmaxrange=="Atlas":
+                            ##Atlas-type
+                            [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
+
+
+                            [fitresult_Deq,covar_Deq] = __tools_for_processing_Jagg.fit_data(((6.*fit_dic["mass_coeff_Nmono_" + str_monomer_agg][0]*fit_dic["diam"]**fit_dic["mass_coeff_Nmono_" + str_monomer_agg][1]/(np.pi*rhow))**(1./3.)),fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="Atlas") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
+                            
+                            fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg] = fitresult #copy the Atlas-fit (as a function of D_max) coefficients in the fit_dic dictionary
+                            fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"] = fitresult_Deq #copy the Atlas-fit (as a function of D_eq) coefficients in the fit_dic dictionary
+
+                            #recalculate v(D)= A-B*exp(-gam*D) from fit (Dmax)
+                            fit_dic[prop + "_Nmono_" + str_monomer_agg] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][0]-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][1]*np.exp(-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg][2]*fit_dic["diam_full"]) #calculate arrays of masses and areas based on the m-D fits
+                            #recalculate v(D)= A-B*exp(-gam*D) from fit (Dmax)
+                            fit_dic[prop + "_Nmono_" + str_monomer_agg + "_Deq"] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"][0]-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"][1]*np.exp(-fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_Deq"][2]*fit_dic["diam_wide"]) #calculate arrays of masses and areas based on the m-D fits
+                        elif Atlas_or_pow_Dmaxrange=="pow":
+                            #power-law
+                            [fitresult,covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam"],fit_dic[prop +  "_fitted_via_mD_AD_Nmono" + str_monomer_agg],func="powerlaw") #, weight=fit_dic["dens" + "_Nmono_" + str_monomer_agg])
+
+                            fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"] = fitresult #copy the power-law coefficients in the fit_dic dictionary
+
+                            #recalculate powerlaw from fit
+                            fit_dic[prop + "_Nmono_" + str_monomer_agg + "_powerlaw"] = fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][0]*fit_dic["diam_full"]**fit_dic[prop + "_coeff_Nmono_" + str_monomer_agg + "_powerlaw"][1] #calculate arrays of masses and areas based on the m-D fits
+                        
+                        #print str_monomer_agg;debug() 
+                            
+                ###
+                #END: calculate power-law and Atlas-fit based on the exact v-D line
+                ###
+                    
+                #####################
+                ######END: fitting
+                #####################
             
             #####################
             ######START: plotting
@@ -321,6 +320,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
 
                 if show_lines["powerlaw_fits"]:
                     #power-law
+                    #print "monomer powerlaw plot"; debug() 
                     powerlaw_monomers, = axes[i_ax].semilogx(fit_dic["diam_full"], fit_dic[prop + "_Nmono_1_powerlaw"],marker='None',c="b",linestyle="-.",label="$N_{mono}$=1 fit",linewidth=linewidth)
                     
 
@@ -395,7 +395,6 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
             subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
             
             for i_prop,prop in enumerate(["vterm_bohm"]): #,"vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
-
                 ###
                 #calculate the relations which can be put into the SB-scheme and display it here
                 ###
@@ -504,7 +503,6 @@ if __name__ == '__main__':
 
     #optimize the appearance of the plot (figure size, fonts)
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,legend_fontsize='medium')
-    axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model
-    ="all")
+    axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model="all")
     
    
