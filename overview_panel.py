@@ -268,7 +268,7 @@ print len(plot_vars),num_pam_SB_plots, i+6
 ax = plt.subplot2grid((len(plot_vars)+num_pam_SB_plots, 1), (i+6, 0))
 ax2 = ax.twiny()
 
-i_timestep=(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
+i_timestep=-1 #(tstep/60)-1 #there is no output for t=0min after that there are output steps in 30 minute steps (this could vary)
 ax = __plotting_functions.plot_twomom_moments(ax,ax2,twomom,i_timestep)
 
 #save figure

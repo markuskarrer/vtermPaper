@@ -44,7 +44,7 @@ def stylize_axes(ax, title, xlabel, ylabel, xticks, yticks, xticklabels, ytickla
     #ax.set_yticklabels(yticklabels)
     #'''
 #select monomer type
-for monotype in ["plate"]: # ,"dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]:
+for monotype in ["mixcolumndend"]: # ,"dendrite","column","needle","rosette","mixcoldend1","mixcolumndend"]:
 
     #define the figure grid
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(4,9)) #for bigger labels decrease figsize

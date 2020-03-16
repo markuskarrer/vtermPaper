@@ -35,7 +35,6 @@ def read_mass2frdat(experiment,filestring):
     '''
     
     #load file from .dat
-    #debug()
     #SP_fullinfo = np.loadtxt(experiment + '/'+ filestring)
     SP_fullinfo = np.loadtxt(filestring)
     
@@ -45,7 +44,6 @@ def read_mass2frdat(experiment,filestring):
     varnames =             ["m_tot","Frim","height","d_rime","vt","xi",    "rhor","a_rime","mr_crit","diam",    "proj_A",   "mm",            "m_i",   "m_wat"]
     #                       total   rime             ??    fall  multi-    rime     ?     crit mass  diameter  projected   monomer          mass of   mass of 
     #                       mass    fraction         ??    speed plicity  density   ?  compl. infilling          area     multiplicity       ice       water
-    #from IPython.core.debugger import Tracer ; Tracer()()
     if SP_fullinfo.shape[0]==0 or len(SP_fullinfo.shape)==1:
         #print "error: check if", filestring, "is empty or just one SP is there (in postprocess_McSNow read_mass2frdat() )"
         #print "if you want to continue anyway (f.e. for runs with only the SB-scheme) just press enter"
@@ -71,7 +69,6 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     '''
     if timestep_end==0:
         timestep_end=timestep #set end timestep to start if not defined
-    
     #load file from .dat
     heightprofiles_fullinfo = np.loadtxt(filestring)
     #create dictionary
@@ -118,7 +115,6 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
             hei2massdens[key] = np.zeros_like(heightprofiles_fullinfo[i_start:i_end,i])
         else:
             if key=="z": #z is structured differently
-                #from IPython.core.debugger import Tracer ; Tracer()()
                 tmp_var_reshaped =  heightprofiles_fullinfo[i_start:i_end,i].reshape((timestep_end-timestep+1,N_heights)) #extract array with (n_heights,n_timesteps_to_average=timestep_end-timestep)
                 hei2massdens[key] = np.mean(tmp_var_reshaped,axis=0) #average over all timesteps
             else:
@@ -162,7 +158,6 @@ def average_SPlists(SP_nonaveraged):
         SP_averaged['xi'] = SP_averaged['xi']/num_timesteps #non-integer multiplicity is allowed
     #elif roundbool and (not 'xi' in SP_averaged.keys):
     #    pass #this is a workaround for just SB runs
-    #from IPython.core.debugger import Tracer ; Tracer()()    
 
 
     return SP_averaged
@@ -293,7 +288,6 @@ def read_MCdistribution(filestring,n_tsteps):
             distribution_dic["radius"] = distributions_fullinfo[0:200,0]
      
         #print key,distribution_dic[key][:,-1]
-    #debug()
     return distribution_dic
 
 def separate_by_height_and_diam(SP,nbins=100,nheights=51,model_top=500,diamrange=[-9,0],calconly="None"):
@@ -462,7 +456,6 @@ def kernel_estimate(D_SP_list,Dgrid,sigmai,weight="None",space='loge'): #taken a
                 N_D[i_rad] += weight[i_SP]*expdiff/weight_total #ATTENTION: add sp%xi to this summation as in mo_output
             #print r,rad,expdiff
 
-    #from IPython.core.debugger import Tracer ; Tracer()()
             
     return N_D
 

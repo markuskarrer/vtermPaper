@@ -28,7 +28,7 @@ tstep_end = int(os.environ["tstep_end"]) #string with 4 numbers and 'min'
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
-MC_dir = os.environ["MC"]
+MC_dir = os.environ["MCexp"]
 adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
 skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs)
 skipSB = (os.environ["skipSB"]=="True") #ATTENTION: check the matching of the heights between SB and MC again

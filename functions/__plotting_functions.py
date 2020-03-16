@@ -7,7 +7,7 @@ import matplotlib.colors as colors
 #import other self-defined functions
 import __postprocess_McSnow
 import __general_utilities
-#from IPython.core.debugger import Tracer ; Tracer()()
+from IPython.core.debugger import Tracer ; debug=Tracer()
 
 
 # define some general functions which are useful for nice formatting of the plots
@@ -310,7 +310,7 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
     
     return ax
 
-def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_lim=[0,10000]):
+def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_lim=[0,5000]):
     '''
     plot spectra from pamtra output as a waterfall plot
     INPUT: pamData: dictionary with PAMTRA variables #it does not have to be Pamtra (but the same nomenclatura of the keys)
@@ -356,10 +356,6 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
             Radar_Velocity_now = Radar_Velocity[index_radar_height,:] 
         else: 
             Radar_Velocity_now = Radar_Velocity
-        #from scipy.stats import skew
-        #print plot_height,'skew',skew(Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown])
-        #if skew(Radar_Spectrum[index_radar_height])>1:
-        #    print plot_height,Radar_Spectrum[index_radar_height][Radar_Spectrum[index_radar_height]>min_shown]
 
         #save the base line for the spectrogram of each height
         baseline = heights_dz #ATTENTION: here plotted is now not exactly the height from the radar data file#plot_height #height[i_height]
@@ -372,22 +368,17 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
         [Radar_Velocity_masked_and_interpolated,Radar_Spectrum_masked_and_interpolated] = __general_utilities.mask_and_interpolate(Radar_Velocity_now,Radar_Spectrum[index_radar_height],mask_value=min_shown,mask_smaller=True) #do not show small values
 
         #plot the spectrum
-        #print heights_dz,Radar_Velocity_masked_and_interpolated; raw_input("wait")
         ax.plot(Radar_Velocity_masked_and_interpolated,baseline + (Radar_Spectrum_masked_and_interpolated-min_shown)*mult_dBz,color=color,linestyle=linestyle)
         #plot the limits of the heights and label them with the corresponding dBz value
         ax.axhline(y=baseline,color='k',linestyle='--',linewidth=0.5)
     dBz_scale_xpos = 0.05
     ax.text(dBz_scale_xpos,baseline+0.05*(topline-baseline),str(min_shown) + " dBz")
-    #from IPython.core.debugger import Tracer ; Tracer()()
-    #from IPython.core.debugger import Tracer ; Tracer()()+0.18
     ax.text(dBz_scale_xpos,topline-0.15*(topline-baseline),str(dz_heights/mult_dBz+min_shown) + " dBz")
     
     ax.annotate(s='', xy=(dBz_scale_xpos,baseline), xytext=(dBz_scale_xpos,topline), arrowprops=dict(arrowstyle='<->'))
     #set range
     ax.set_xlim([vel_lim[0],vel_lim[1]]) #range of Ze
     ax.set_ylim([z_lim[0],z_lim[1]])
-    #ax.set_ylim([height[height.shape[0]/n_heights],height[-1]+height[height.shape[0]/n_heights]-height[0]])
-    #from IPython.core.debugger import Tracer ; Tracer()()
     #plot labels and create colorbar
     ax.set_xlabel("Doppler velocity / m s-1")
     ax.set_ylabel("layer top height / m")
@@ -494,7 +485,7 @@ def plot_twomom_moments(ax,ax2,twomom,i_timestep,add_Dmean=True):
     
     return ax
 
-def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_linestyle='None',forced_markerMC=''):
+def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_linestyle='None',forced_markerMC='',nocatdist=False):
     '''
     plot number and mass fluxes of SB and McSnow over height
     INPUT:  ax: first x-axis
@@ -504,6 +495,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
             i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
             mass_num_flag: boolean which determines if the mass or the number flux should be plotted
             forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); 
+            nocatdist: dont distinguish between categories
 
     '''
     import matplotlib.ticker
@@ -535,6 +527,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
                 if any(twomom['fn' + cat][i_timestep,:]>0):
                     axisqn += ax2.semilogx(twomom['fn' + cat][i_timestep,:],twomom['heights'],color=colors[i],linestyle=forced_linestyle)
         for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
+            if nocatdist and cat!="": continue #continue if we dont want a classification 
             if any(hei2massdens["Fn" + cat][:])>0:
                 if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
                     axisqn += ax2.semilogx(hei2massdens["Fn" + cat][:-1:McSnow_plot_only_every],hei2massdens['z'][:-1:McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--')
@@ -555,6 +548,7 @@ def plot_fluxes(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_lin
                 if any(twomom['fn' + cat][i_timestep,:]>0):
                     axisq += ax2.semilogx(twomom['f' + cat][i_timestep,:],twomom['heights'],color=colors[i],linestyle=forced_linestyle)
         for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up            
+            if nocatdist and cat!="": continue #continue if we dont want a classification 
             if any(hei2massdens["Fm" + cat][:])>0:
                 if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
                     axisq += ax.semilogx(hei2massdens["Fm" + cat][:-1:McSnow_plot_only_every],hei2massdens['z'][:-1:McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--')
@@ -725,7 +719,7 @@ def plot_MC_profiles(ax,hei2massdens,i_timestep,var_flag=0,forced_linestyle='-',
     
     return ax
 
-def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_linestyle='None',forced_markerMC=''):
+def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_linestyle='None',forced_markerMC='',nocatdist=False):
     '''
     plot number and mass concentration of SB and McSnow over height
     INPUT:  ax: first x-axis
@@ -735,6 +729,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
             i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
             mass_num_flag: boolean which determines if the mass or the number flux should be plotted
             forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); 
+            nocatdist: dont distinguish between categories
     '''
     import matplotlib.ticker
     #prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -764,6 +759,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
                     ax2.semilogx(twomom['qn' + cat][i_timestep,:]-twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
                     ax2.semilogx(twomom['qn' + cat][i_timestep,:]+twomom['qn' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
         for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up
+            if nocatdist and cat!="": continue #continue if we dont want a classification 
             if ("Nd" + cat) in hei2massdens.keys() and any(hei2massdens["Nd" + cat][:])>0:
                 if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
                     #from IPython.core.debugger import Tracer ; Tracer()()
@@ -788,6 +784,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
                     ax2.semilogx(twomom['q' + cat][i_timestep,:]+twomom['q' + cat + '_std'][i_timestep,:],twomom['heights'],color=colors[i],linestyle='--',label='_dontshowinlegend')
                     #print "q" + cat,twomom['q' + cat]
         for j,cat in enumerate(MC_specs): #choose "" as an entry to get all summed up            
+            if nocatdist and cat!="": continue #continue if we dont want a classification 
             if ("Md" + cat) in hei2massdens.keys() and any(hei2massdens["Md" + cat][:])>0:
                 if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
                     axisq += ax.semilogx(hei2massdens["Md" + cat][::McSnow_plot_only_every],hei2massdens['z'][::McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--')
@@ -852,7 +849,7 @@ def plot_moments(ax,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=2,forced_li
     
     return ax
 
-def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep,forced_linestyle='None',forced_markerMC=''):
+def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep,forced_linestyle='None',forced_markerMC='',nocatdist=False):
     '''
     plot normalized mixing ratio/ mean particle mass (ratio of mass density and number density) of SB and McSnow over height
     INPUT:  ax: first x-axis
@@ -861,6 +858,7 @@ def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep,forced_linestyle='None',f
             hei2massdens: dictionary with McSnow variables
             i_timestep: timestep used (the dicts contain all timesteps of the simulation output; i_timestep is defined by governing scripts)
             forced_linestyle: force a specific linestyle (otherwise the linestyle is selected automatically by either the dictname (twomom or hei2massdens) or the key_name (std); ATTENTION: forced linestyle comes with no labels
+            nocatdist: dont distinguish between categories
     '''
     import matplotlib.ticker
     #prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -898,6 +896,7 @@ def plot_normmix(ax,ax2,twomom,hei2massdens,i_timestep,forced_linestyle='None',f
                 axisnq += ax2.semilogx(twomom['nq' + cat][i_timestep,:],twomom['heights'],color=colors[i],label='__None',linestyle=forced_linestyle)
                 
     for j,cat in enumerate(MC_specs):  #["_mm1","_unr","_grp","_liq","_rimed",""]): #choose "" as an entry to get all summed up #TODO: include other categories when analyzing rimed cases 
+        if nocatdist and cat!="": continue #continue if we dont want a classification 
         if ("nq" + cat) in hei2massdens.keys() and any(hei2massdens["nq" + cat][:]>0):
             if forced_markerMC=='': #only add a label in case of no marker, which is the first MCSnow sensrun
                 axisnq += ax2.semilogx(hei2massdens["nq" + cat][::McSnow_plot_only_every],hei2massdens['z'][::McSnow_plot_only_every],color=colors[j],label=labellistMC[j],linestyle='--')

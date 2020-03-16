@@ -18,7 +18,10 @@ import __postprocess_McSnow
 #read variables passed by shell script
 tstep = int(os.environ["tstep"]) #string with 4 numbers and 'min'
 tstep_end = int(os.environ["tstep_end"]) #string with 4 numbers and 'min'
-
+if "tstep_step" in os.environ.keys():
+    tstep_step = int(os.environ["tstep_step"]) 
+else:
+    tstep_step=10
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"] #"more readable" string of the experiment specifications
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
@@ -33,7 +36,7 @@ dtc = int(re.search(r'dtc(.*?)_nrp', experiment).group(1)) #this line gets the v
 #perform temporal averaging
 t_after_full = 0 #time after the timestep with the full output in seconds
 #while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
-for i_tstep,tstep_now in enumerate(range(tstep,tstep_end,10)):
+for i_tstep,tstep_now in enumerate(range(tstep,tstep_end,tstep_step)):
     filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep_now).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
     print 'reading: ' + filestring_mass2fr
     if i_tstep==0:

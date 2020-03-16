@@ -503,6 +503,7 @@ if __name__ == '__main__':
 
     #optimize the appearance of the plot (figure size, fonts)
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,legend_fontsize='medium')
-    axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model="all")
+    #axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model="all")
+    axes = read_and_plot(fig,axes,["mixcolumndend"],powerlawAtlas="Atlas",hydro_model="all")
     
    

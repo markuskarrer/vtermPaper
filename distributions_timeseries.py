@@ -24,11 +24,14 @@ from functions import __postprocess_SB
 plot_spectra = False #plot also the radar spectra?
 
 #read variables passed by shell script
-tstep1 = int(os.environ["tstep1"]) #start of the averaging period
-tstep2 = int(os.environ["tstep2"]) #string with 4 numbers and 'min'
-tstep_int = int(os.environ["tstep_int"]) #interval of timesteps
-tstep_aver = int(os.environ["tstep_aver"]) #average timesteps for one distribution
-
+if "tstep1" in os.environ.keys(): 
+    tstep1 = int(os.environ["tstep1"]) #start of the averaging period
+    tstep2 = int(os.environ["tstep2"]) #string with 4 numbers and 'min'
+    tstep_int = int(os.environ["tstep_int"]) #interval of timesteps
+    tstep_aver = int(os.environ["tstep_aver"]) #average timesteps for one distribution
+else:
+    tstep1 = int(os.environ["tstep"])
+    tstep2 = int(os.environ["tstep_end"])
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output

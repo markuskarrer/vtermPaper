@@ -2,7 +2,7 @@
 create an overview panel with properties of McSnow and PAMTRA output
 '''
 
-#from IPython.core.debugger import Tracer ; Tracer()() #insert this line somewhere to debug
+from IPython.core.debugger import Tracer ; debug=Tracer() #insert this line somewhere to debug
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,10 +24,13 @@ tstep = int(os.environ["tstep"])
 experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
 testcase = os.environ["testcase"]
 av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
-MC_dir = os.environ["MC"]
+MC_dir = os.environ["MCexp"]
 adapt_version = int(os.environ["adapt_version"]) #reading the files of the appropriate adaption version
 skipMC = (os.environ["skipMC"]=="True") #allows to run the scripts also if no McSnow data is there (only 1D-SB runs) #ATTENTION: not completely implemented yet
-separated_by_categories = (os.environ["separated_by_categories"]=="True") #plot a line for individual categories also
+if "separated_by_categories" in os.environ.keys():
+    separated_by_categories = (os.environ["separated_by_categories"]=="True") #plot a line for individual categories also
+else:
+    separated_by_categories = False 
 if "separated_by_sensruns" in os.environ.keys():
     separated_by_sensruns = (os.environ["separated_by_sensruns"]=="True") #plot a line for different sensitivity runs
     separated_by_sensruns_onestring= os.environ["model_setup_specifier_onestring"]
@@ -50,7 +53,7 @@ if "semiidealized" in os.environ:
     height_bounds = __postprocess_McSnow.read_init_vals(MC_dir) #read the heights from the init_vals.txt file
 
 else: #no height limits if it is not run by the McSnow_Pamtra_ICONinit script
-    height_bounds = [5000,0] #set some default heigh-bounds
+    height_bounds = [3850,0] #set some default heigh-bounds
     
 #plot McSnow pamtra output
 if not skipMC:
@@ -75,9 +78,9 @@ if not skipMC:
         try:
             axwaterfall = plt.subplot2grid((num_plots, 1), (4, 0), rowspan=4)
             #plot spectrogram
-            axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=9.6,color='b',linestyle='--')
-            axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=35.5,color='r',linestyle='--')
-            axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=95.0,color='g',linestyle='--')
+            axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=9.6,color='b',linestyle='--',z_lim=height_bounds[::-1])
+            axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=35.5,color='r',linestyle='--',z_lim=height_bounds[::-1])
+            axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=95.0,color='g',linestyle='--',z_lim=height_bounds[::-1])
         except:
             print "no spectral data found in:", pam_filestring, ". Is radar_mode set to simple or moments?"
         #plot reflectivities
@@ -198,9 +201,9 @@ try:
         if not "axwaterfall" in globals():
             axwaterfall = plt.subplot2grid((num_plots, 1), (4, 0), rowspan=4)
         #plot spectrogram
-        axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=9.6,color='b')
-        axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=35.5,color='r')
-        axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=95.0,color='g')
+        axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=9.6,color='b',z_lim=height_bounds)
+        axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=35.5,color='r',z_lim=height_bounds)
+        axwaterfall = __plotting_functions.plot_waterfall(axwaterfall,pamData,freq=95.0,color='g',z_lim=height_bounds)
         #add legend
         axwaterfall.plot(np.nan,np.nan,color='b',linestyle='-',label='9.6GHz')
         axwaterfall.plot(np.nan,np.nan,color='r',linestyle='-',label='35.5GHz')
@@ -239,7 +242,7 @@ subprocess.Popen(['evince','/home/mkarrer/Dokumente/plots/overview_panel/' + exp
 plt.clf() #clear figure
 
 
-
+'''
 for i_scheme,scheme in enumerate(["SB","MC"]):
     if scheme=="SB":
         #define file to read
@@ -273,3 +276,4 @@ plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_f
 plt.savefig('/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.png', dpi=400)
 print 'The pdf is at: ' + '/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf'
 subprocess.Popen(['evince','/home/mkarrer/Dokumente/plots/overview_panel/' + experiment + out_filestring + '.pdf'])
+'''

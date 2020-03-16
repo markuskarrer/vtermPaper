@@ -104,7 +104,6 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
         if "stick3__" in experiment:
             experiment="__".join(experiment.split("stick3__")) #remove the string
 
-            #debug()
         #read hei2massdens to get average /summed up values per height
         filestring_hei2massdens = directory + experiment + "/hei2massdens.dat"
         timestep = tstep/10 #TODO: do not hardcode the .. minute output interval here
@@ -148,7 +147,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
         else: #in case there is no need for a second axis, just pass the first ax twice
             ax2 = axnum
             
-        axnum = __plotting_functions.plot_moments(axnum,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+        axnum = __plotting_functions.plot_moments(axnum,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC],nocatdist=True)
 
         #mass density
         mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
@@ -158,7 +157,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
         else: #in case there is no need for a second axis, just pass the first ax twice
             ax2 = axmass
             
-        axmass = __plotting_functions.plot_moments(axmass,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+        axmass = __plotting_functions.plot_moments(axmass,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC],nocatdist=True)
 
         ##
         #plot normalized mixing ration (q/qn) labelling normq...
@@ -167,7 +166,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
 
         ax2 = axmean
         
-        axmean = __plotting_functions.plot_normmix(axmean,ax2,twomom,hei2massdens,i_timestep,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+        axmean = __plotting_functions.plot_normmix(axmean,ax2,twomom,hei2massdens,i_timestep,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC],nocatdist=True)
 
 
         ############
@@ -181,7 +180,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
         else: #in case there is no need for a second axis, just pass the first ax twice
             ax2 = axnumflux
             
-        axnumflux = __plotting_functions.plot_fluxes(axnumflux,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+        axnumflux = __plotting_functions.plot_fluxes(axnumflux,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC],nocatdist=True)
 
         #mass flux
         mass_num_flag = 1 #0-> plot only number flux; 1-> plot only mass flux; 2-> plot both 
@@ -191,7 +190,7 @@ for i_sensrun, sensrun_now in enumerate(sensrun_list): #loop over different SB s
         else: #in case there is no need for a second axis, just pass the first ax twice
             ax2 = axmassflux
             
-        axmassflux = __plotting_functions.plot_fluxes(axmassflux,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC])
+        axmassflux = __plotting_functions.plot_fluxes(axmassflux,ax2,twomom,hei2massdens,i_timestep,mass_num_flag=mass_num_flag,forced_linestyle=['-','--','-.',':'][i_sensrun],forced_markerMC=['','x','o','d'][i_sensMC],nocatdist=True)
 
 if len(sensrun_list)>1:#add labels for the different sensruns
     for i_sensrun,sens_run in enumerate(sensrun_list):
