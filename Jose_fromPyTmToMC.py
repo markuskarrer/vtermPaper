@@ -157,7 +157,7 @@ def main(display_params=False):
             plt.loglog(diam,particleSettings[particle]["am"]*diam**particleSettings[particle]["bm"])
             plt.xlabel("diam [m]")
             plt.ylabel("mass [kg]")
-            plt.show()
+            #plt.show()
             print '\n'
             particleSettings[particle]["A"] = particleSettings[particle]["aA"]*particleSettings[particle]["D"]**particleSettings[particle]["bA"]
             particleSettings[particle]["m"] = particleSettings[particle]["am"]*particleSettings[particle]["D"]**particleSettings[particle]["bm"]
