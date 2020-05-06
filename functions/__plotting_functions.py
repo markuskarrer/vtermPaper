@@ -194,7 +194,7 @@ def plot_pamtra_Ze(ax,pamData,linestyle='-',marker=' ',nolabel=False,forcedcolor
         else:
             ax.plot(pamData["Ze"][:,i],pamData["height"],color=color,linestyle=linestyle,marker=marker,markerfacecolor='None',markevery=5)
     #set range
-    ax.set_xlim([-40,55]) #range of Ze
+    ax.set_xlim([-30,30]) #range of Ze
     ax.set_ylim([0,pamData["height"][-1]])
     ax.set_yticks(np.arange(0,ax.get_ylim()[1]+1,1000))
     ax.set_xlabel("reflectivity / dBz")
@@ -310,7 +310,7 @@ def plot_pamtra_spectrogram(ax,pamData,freq=35.5,cmap='viridis_r'):
     
     return ax
 
-def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_lim=[0,5000]):
+def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_lim=[0,5000],dz_heights=500.):
     '''
     plot spectra from pamtra output as a waterfall plot
     INPUT: pamData: dictionary with PAMTRA variables #it does not have to be Pamtra (but the same nomenclatura of the keys)
@@ -318,6 +318,7 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
     color, linestyle: arguments of the plot() functions
     vel_lim: limits to the velocity
     z_lim: limits to the height-axis
+    dz_heights: height difference between the plotted spectra
     '''
 
     #choose spectrum of right frequency
@@ -327,9 +328,9 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
         print "choose between: ",pamData["frequency"]," or change frequencies in run_pamtra during runtime"
         sys.exit(0)
     #define number of heights in the waterfall plot
-    dz_heights = 500. #interval of heights at which the spectra are plotted #n_heights = 10
+    #dz_heights = 500. #interval of heights at which the spectra are plotted #n_heights = 10 #NOW AN INPUT PARAMETER
     #get axis and spectrogram data from pamData
-    min_shown = -25. #minimum value shown in the diagram
+    min_shown = -60. #minimum value shown in the diagram
     max_shown = 30. #minimum value shown in the diagram
     Radar_Spectrum = np.squeeze(pamData["Radar_Spectrum"][:,freqindex,:]) #dimensions [height, nfft]
    
@@ -346,10 +347,10 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
     #from IPython.core.debugger import Tracer ; Tracer()()
     
     height = np.squeeze(pamData["height"])
-    heightmax = 10000. #max(height)
+    heightmax = z_lim[0] #max(height)
     if height.ndim>1: #the observational data have the heightvector for each velocity bin saved
         height = height[:,0]   #the heights should be the same for each velocity bin, so we take just 0 here
-    for index_plot_heights,heights_dz in enumerate(range(int(heightmax),int(dz_heights),-int(dz_heights))):
+    for index_plot_heights,heights_dz in enumerate(range(int(heightmax),0,-int(dz_heights))):
         plot_height, index_radar_height = __general_utilities.find_nearest(height, heights_dz)
 
         if Radar_Velocity.ndim>1: #this is the case if the Radar_Velocity bins are changing with height
@@ -365,20 +366,21 @@ def plot_waterfall(ax,pamData,freq=35.5,color='b',linestyle='-',vel_lim=[0,3],z_
         #define a scaling facor for dBz into the height y-axis
         mult_dBz = dz_heights/(max_shown-min_shown) #max((np.max(Radar_Spectrum[i_height])-min_shown),0.1) #2*n_heights #multiplicator for dBz on the y (height) axis to make it visible and not too large
         #mask out everything below mask_value and interpolate additional values to mask_value
-        [Radar_Velocity_masked_and_interpolated,Radar_Spectrum_masked_and_interpolated] = __general_utilities.mask_and_interpolate(Radar_Velocity_now,Radar_Spectrum[index_radar_height],mask_value=min_shown,mask_smaller=True) #do not show small values
+        [Radar_Velocity_masked_and_interpolated,Radar_Spectrum_masked_and_interpolated] = __general_utilities.mask_and_interpolate(Radar_Velocity_now,Radar_Spectrum[index_radar_height],mask_value=min_shown,mask_smaller=False) #do not show small values
 
         #plot the spectrum
         ax.plot(Radar_Velocity_masked_and_interpolated,baseline + (Radar_Spectrum_masked_and_interpolated-min_shown)*mult_dBz,color=color,linestyle=linestyle)
+        #ax.plot(Radar_Velocity_now,baseline + (Radar_Spectrum-min_shown)*mult_dBz,color=color,linestyle=linestyle)
         #plot the limits of the heights and label them with the corresponding dBz value
         ax.axhline(y=baseline,color='k',linestyle='--',linewidth=0.5)
-    dBz_scale_xpos = 0.05
+    dBz_scale_xpos = 0.06
     ax.text(dBz_scale_xpos,baseline+0.05*(topline-baseline),str(min_shown) + " dBz")
     ax.text(dBz_scale_xpos,topline-0.15*(topline-baseline),str(dz_heights/mult_dBz+min_shown) + " dBz")
     
     ax.annotate(s='', xy=(dBz_scale_xpos,baseline), xytext=(dBz_scale_xpos,topline), arrowprops=dict(arrowstyle='<->'))
     #set range
     ax.set_xlim([vel_lim[0],vel_lim[1]]) #range of Ze
-    ax.set_ylim([z_lim[0],z_lim[1]])
+    ax.set_ylim([z_lim[0],z_lim[1]+dz_heights])
     #plot labels and create colorbar
     ax.set_xlabel("Doppler velocity / m s-1")
     ax.set_ylabel("layer top height / m")

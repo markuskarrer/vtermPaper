@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import subprocess
 from matplotlib import rc
 from collections import OrderedDict
 #own functions
 import compare_geom
-import compare_fallspeed_parameterizations
 import processing_Jussis_aggregate_model_plots4paper_aggvDfits
 
 from IPython.core.debugger import Tracer ; debug = Tracer()

@@ -136,7 +136,6 @@ filestring_atmo = directory + experiment + "/atmo.dat"
 atmo = __postprocess_McSnow.read_atmo(experiment,filestring_atmo)
 #calculate rhi (relative humidity over ice)
 atmo["rhi"] = __general_utilities.calc_rhi(atmo)
-#from IPython.core.debugger import Tracer ; Tracer()()
 
 #plot athmospheric variables
 ax = __plotting_functions.plot_atmo(ax,ax2,atmo)

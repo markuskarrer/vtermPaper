@@ -30,7 +30,7 @@ show_Nmono_fits = True #show fit lines for some selected monomer numbers
 v_small_notuse = 0.0  #ATTENTION: particle smaller than .5ms-1 are not used #ATTENTION: applied to B?hm only
 
 
-def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt",write_fit_params=False,plot_vars=None,called_by_main=False,use_Deq=False):
+def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt",write_fit_params=False,plot_vars=None,called_by_main=False,use_Deq=False):
     '''
     this performs all the processing and plotting
     
@@ -38,12 +38,15 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
     fig: figure handle
     axes: axes handles
     particle type: monomer type whcih is processed and plotted
-    txtfile: here the coefficients are written to
+    MAE: dictionary to save mean absolute error results
+    txtfile: here the coefficients are writteAn to
     write_fit_params: should coefficients be written
     plot_vars: which variables should be processes and plotted (fm comes always with mass; fA comes always with area)? (if "None" all are plotted)
     called_by_main: if this script has been executed directly save the figures here
     use_Deq: use mass equivalent mass instead of Dmax
     '''
+    if MAE==None:
+        MAE= dict()
     #flatten axes in case we have more than one column
     try:
         axes = axes.flat
@@ -56,6 +59,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
     with open(txtfile,"w") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
 
         for i_particle_type,particle_type in enumerate(particle_types):    
+         
     
             if called_by_main:
                 ##general settings for the plotting
@@ -210,18 +214,20 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                     else: #TODO: include different fitting methods
                             print "func: ", ab_func, " not (carefully) implemented in process_Jussis_aggregate_model_mod_powerlaw (and its modules)"; sys.exit()
 
-
                 if prop=="mass":
                     mass_fit = 10**(mass_fitted)*a*diam_center**b
                     mass_fit_detailed = 10**(mass_fitted_detailed)*a*diam**b#for plotting the velocity more bins are nicer
+                    
                 if prop=="area":
                     area_fit = 10**(area_fitted)*c*diam_center**d
                     area_fit_detailed = 10**(area_fitted_detailed)*c*diam**d#for plotting the velocity more bins are nicer
 
+                
                 ###
                 #END: get the fitted properties from the fit coefficients
                 ###
-                
+
+
                 ###
                 #START: get fits for all aggregates
                 ###
@@ -241,6 +247,29 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 
                 ###
                 #END: get fits for all aggregates
+                ###
+
+                ###
+                #START: calculate the mean absolute error                
+                ###
+                #evaluate the m(D,Nmono) fit for the whole particle_dic to get the "predicted" property
+                fit_eval_on_particle_dic = __tools_for_processing_Jagg.powerlaw_rational1_fixp0_fixr0([[np.log10(particle_dic["diam"])],[np.log10(particle_dic["N_monomer"])]],fit_dic[prop +"_coeff_mod_powerlaw"][0],fit_dic[prop +"_coeff_mod_powerlaw"][1],fit_dic[prop +"_coeff_mod_powerlaw"][2],fit_dic[prop +"_coeff_mod_powerlaw"][3])[0] #this is the logscaled property (mass/area) divided by the monomer property
+                particle_dic[prop + "_predicted_monodep"] = 10**(fit_eval_on_particle_dic)
+                if prop=="mass":
+                    particle_dic[prop + "_predicted_binary"] = fit_dic[prop + "_coeff_Nmono_allagg"][0]*particle_dic["diam"]**fit_dic[prop + "_coeff_Nmono_allagg"][1]/(a*particle_dic["diam"]**b)
+                    actual = particle_dic[prop][particle_dic["N_monomer"]>1]/(a*particle_dic["diam"][particle_dic["N_monomer"]>1]**b)
+                elif prop=="area":
+                    particle_dic[prop + "_predicted_binary"] = fit_dic[prop + "_coeff_Nmono_allagg"][0]*particle_dic["diam"]**fit_dic[prop + "_coeff_Nmono_allagg"][1]/(c*particle_dic["diam"]**d)
+                    actual = particle_dic[prop][particle_dic["N_monomer"]>1]/(c*particle_dic["diam"][particle_dic["N_monomer"]>1]**d)
+
+                predicted_monodep = particle_dic[prop + "_predicted_monodep"][particle_dic["N_monomer"]>1]
+                predicted_binary = particle_dic[prop + "_predicted_binary"][particle_dic["N_monomer"]>1]
+                MAE[particle_type +prop + "_monodep"] = np.mean(np.abs(actual-predicted_monodep))
+                MAE[particle_type +prop + "_binary"] = np.mean(np.abs(actual-predicted_binary))
+                #print prop,MAE; debug()
+
+                ###
+                #END: calculate the mean absolute error                
                 ###
 
             if write_fit_params:
@@ -296,6 +325,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
             #do the same plots for mass and area     
             for i_prop,(prop,prop_unit,prop_short) in enumerate(zip(["mass","area","Aratio"],["kg","m2","1"],["m","A","Ar"])):
                 #skip variables which are not requested by plot_vars
+                #if plot_vars!=None and not (prop in plot_vars) or prop=="Aratio": 
                 if plot_vars!=None and not (prop in plot_vars): 
                     continue
                 
@@ -419,8 +449,8 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 #match_Nmono = (particle_dic["N_monomer"]<=1000)
                 if prop=="mass":
                     #im = axes[i_ax].scatter(np.log10(particle_dic["diam"]),np.log10(particle_dic[prop]/(a*particle_dic["diam"]**b)),s=1,c=particle_dic["N_monomer"],rasterized=True,norm=normN,cmap=cmapN) #old with log10(..) as label
-
                     im = axes[i_ax].scatter(particle_dic["diam"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic[prop][particle_dic["vterm_bohm"]>v_small_notuse]/(a*particle_dic["diam"][particle_dic["vterm_bohm"]>v_small_notuse]**b),s=1,c=particle_dic["N_monomer"][particle_dic["vterm_bohm"]>v_small_notuse],rasterized=True,norm=normN,cmap=cmapN) 
+                    #im = axes[i_ax].scatter(particle_dic["diam"][particle_dic["vterm_bohm"]>v_small_notuse],particle_dic[prop + "_predicted_binary"][particle_dic["vterm_bohm"]>v_small_notuse],s=1,c=particle_dic["N_monomer"][particle_dic["vterm_bohm"]>v_small_notuse],rasterized=True,norm=normN,cmap=cmapN) #to test the MAE implementation
 
                 elif prop=="area":
                     #im = axes[i_ax].scatter(np.log10(particle_dic["diam"]),np.log10(particle_dic[prop]/(c*particle_dic["diam"]**d)),s=1,c=particle_dic["N_monomer"],rasterized=True,norm=normN,cmap=cmapN) #old with log10(..) as label
@@ -579,7 +609,7 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
                 plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
                 plt.savefig(dir_save + out_filestring + '.png', dpi=100)
                 print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
-                subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
+                #subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
                 
                 # Save just the portion _inside_ the .. axis's boundaries
                 save_axis=2
@@ -611,18 +641,23 @@ def read_and_plot(fig,axes,particle_types,txtfile="/home/mkarrer/Dokumente/plots
             else:
                 if i_particle_type==len(particle_types)-1:
                     return fig,axes,im,tick_locs,N_mono_list #im is for the colorbar
+    return MAE
 
 if __name__ == '__main__':
     
    
-    particle_types=["plate","dendrite","column","needle","mixcoldend1","mixcolumndend"]
+    particle_types=["plate","needle","dendrite","column","mixcoldend1","mixcolumndend"]
 
     txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt"
     #optimize the appearance of the plot (figure size, fonts)
     fig=0 #will be overwritten in read_and_plot
     axes=0 #will be overwritten in read_and_plot
     
-    #MAIN PART
-    read_and_plot(fig,axes,particle_types,txtfile=txtfile,write_fit_params=True,called_by_main=True)
+    MAE = dict() #dictionary for some mean absolute error measures
 
-           
+    #MAIN PART
+    MAE = read_and_plot(fig,axes,particle_types,MAE=MAE,txtfile=txtfile,write_fit_params=True,called_by_main=True)
+    print "MAE (mean absolute error)"
+    print "mass_monodep mass_binary area_monodep area_binary"
+    for particle_type in particle_types: 
+        print particle_type," & {:8.3f} & {:8.3f} & {:8.3f} & {:8.3f} ".format(MAE[particle_type + "mass" + "_monodep"],MAE[particle_type + "mass" + "_binary"],MAE[particle_type + "area" + "_monodep"],MAE[particle_type + "area" + "_binary"])

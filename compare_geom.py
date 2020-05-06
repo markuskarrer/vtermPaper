@@ -178,20 +178,20 @@ def read_data(read_all=True):
     #####
     #Kajikawa 1973 individual crystals 
     #####
-    data_dic["K73"] = dict()
+    data_dic["K72"] = dict()
 
-    data_dic["K73"]["particle_type"] = ["plate","dendrite","thickplate"]
-    data_dic["K73"]["particle_type_label"] = ["plate","dendrite","thick plate"]
+    data_dic["K72"]["particle_type"] = ["plate","dendrite","thickplate"]
+    data_dic["K72"]["particle_type_label"] = ["plate","dendrite","thick plate"]
 
-    data_dic["K73"]["diam"]          = np.arange(0.1,1.9,0.05) #np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]) #[mm]
-    data_dic["K73"]["diam"] = data_dic["K73"]["diam"]/1000 #[m]
-    data_dic["K73"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
-    data_dic["K73"]["vterm_plate"]      = np.array([np.nan,8,  10,13, 15, 17.5, 20, 22.5, 25,28,30.5,33,35,37.5,40,43,46,48.5,51,53.5,56,58,60,62.5,65,67.5,70,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
-    data_dic["K73"]["vterm_dendrite"]      = np.array([np.nan,np.nan,  np.nan,np.nan, np.nan,np.nan,np.nan, 11.5 ,12.5,13,14,14.9,15.5,16.2,17,17.5,18,18.5,19,19.6,20,20.6,21,21.3,21.5,21.8,22,22.3,22.5,22.8,23,23.3,23.5,23.8,24,24.2]) #[cm/s]
+    data_dic["K72"]["diam"]          = np.arange(0.1,1.9,0.05) #np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]) #[mm]
+    data_dic["K72"]["diam"] = data_dic["K72"]["diam"]/1000 #[m]
+    data_dic["K72"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+    data_dic["K72"]["vterm_plate"]      = np.array([np.nan,8,  10,13, 15, 17.5, 20, 22.5, 25,28,30.5,33,35,37.5,40,43,46,48.5,51,53.5,56,58,60,62.5,65,67.5,70,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+    data_dic["K72"]["vterm_dendrite"]      = np.array([np.nan,np.nan,  np.nan,np.nan, np.nan,np.nan,np.nan, 11.5 ,12.5,13,14,14.9,15.5,16.2,17,17.5,18,18.5,19,19.6,20,20.6,21,21.3,21.5,21.8,22,22.3,22.5,22.8,23,23.3,23.5,23.8,24,24.2]) #[cm/s]
 
     
-    for prop in data_dic["K73"]["particle_type"]:
-        data_dic["K73"]["vterm_"+ prop] = data_dic["K73"]["vterm_"+ prop]/100 #[m/s]
+    for prop in data_dic["K72"]["particle_type"]:
+        data_dic["K72"]["vterm_"+ prop] = data_dic["K72"]["vterm_"+ prop]/100 #[m/s]
 
     ####
     ##Barthazy & Schefold
@@ -480,7 +480,7 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
         #get a title for the modelled aggregates
         ax.plot(np.nan,np.nan,linestyle='',label="this study:") #add a title in the legend
     for i_particle_type,particle_type in enumerate(data_dic["fit_dic"]["particle_type"]):
-        if not prop[5:11]=="Nmono1":#aggregates
+        if not "Nmono1" in prop: #aggregates
             colors=    ["g","g" ,"g","g","black","black"]
             if particle_type=="mixcolumndend":
                 particle_type_label="Mix2"
@@ -498,7 +498,16 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
         linestyles=["-","--",      ":",  "-.",    "-","-"]
         markers=   ["", ""  ,      "" ,   ""  ,   "o","x"]
         #print particle_type_label,linestyles[i_particle_type],markers[i_particle_type]; raw_input()
-        #debug()
+        if "density" in prop:
+            print prop + particle_type
+            if "spheredensity" in prop:
+                if not "Nmono1" in prop: #aggregates
+                    data_dic["fit_dic"][prop + "_" + particle_type] = data_dic["fit_dic"]["mass_" + particle_type]/(np.pi/6.*data_dic["diam"]**3)
+                else:
+                    data_dic["fit_dic"][prop + "_" + particle_type] = data_dic["fit_dic"]["mass_Nmono1_" + particle_type]/(np.pi/6.*data_dic["diam"]**3)
+            #elif "oblatespheroiddensity" in prop:
+            #data_dic["fit_dic"][prop + "_" + particle_type] = data_dic["fit_dic"]["mass_" + particle_type]/(np.pi/6.*data_dic["diam"]**3*)
+
         ax.loglog(data_dic["diam"],data_dic["fit_dic"][prop +"_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=5,markevery=50,color=colors[i_particle_type],label=particle_type_label,linewidth=1.0,fillstyle='none')
     if show_lit:
         #get a title for the observations in the legend
@@ -537,6 +546,8 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
                         print "rel. diff [%] [min,max]", np.nanmin((data_dic["fit_dic"][prop +"_" + particle_type]-prop_now_lit)/prop_now_lit*100), np.nanmax((data_dic["fit_dic"][prop +"_" + particle_type]-prop_now_lit)/prop_now_lit*100) 
                     raw_input("press a key to continue")
     return ax
+
+
 
 #define some plots, which need to be callable by from outside
 def comp_AD(data_dic,ax):
@@ -604,9 +615,9 @@ def comp_vterm_discussion(data_dic,ax):
         
         print "\n total number of particles:",sum(data_dic["vD_CAREwindfilt_dic"]["numpart_b2p1"]) ,"(b>2.1) \n",sum(data_dic["vD_CAREwindfilt_dic"]["numpart_b2p2"]) ,"(b>2.2)\n"
 
-        #data_dic["K73"]
-        for i_particle_type,particle_type in enumerate(data_dic["K73"]["particle_type"]):
-            ax.semilogx(data_dic["K73"]["diam"],data_dic["K73"]["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],color="b",label="K73 " + data_dic["K73"]["particle_type_label"][i_particle_type])
+        #data_dic["K72"]
+        for i_particle_type,particle_type in enumerate(data_dic["K72"]["particle_type"]):
+            ax.semilogx(data_dic["K72"]["diam"],data_dic["K72"]["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],color="b",label="K72 " + data_dic["K72"]["particle_type_label"][i_particle_type])
 
         ax.set_xlim([1e-4,4e-2])
         
@@ -628,9 +639,9 @@ def comp_vterm_intro(data_dic,ax,linewidth=1.2):
     ax.fill_between(data_dic["vD_CAREwindfilt_dic"]["Dmax"]*1e-3,data_dic["vD_CAREwindfilt_dic"]["v_25perc_b2p2"],data_dic["vD_CAREwindfilt_dic"]["v_75perc_b2p2"],color="brown",alpha=0.1)
 
     
-    #data_dic["K73"]
-    for i_particle_type,particle_type in enumerate(data_dic["K73"]["particle_type"]):
-        ax.semilogx(data_dic["K73"]["diam"],data_dic["K73"]["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],linewidth=linewidth,color="b",label="K73 " + data_dic["K73"]["particle_type_label"][i_particle_type])
+    #data_dic["K72"]
+    for i_particle_type,particle_type in enumerate(data_dic["K72"]["particle_type"]):
+        ax.semilogx(data_dic["K72"]["diam"],data_dic["K72"]["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],linewidth=linewidth,color="b",label="K72 " + data_dic["K72"]["particle_type_label"][i_particle_type])
 
     ax.set_xlim([1e-4,4e-2])
 
@@ -784,9 +795,9 @@ if __name__ == '__main__':
                 #    diam_flagged = np.where(((data_dic["diam"]>(data_dic["K89"]["mass_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["K89"]["mass_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
                 #    axes[i_ax].loglog(diam_flagged,data_dic["K89"]["vterm_" + particle_type],linestyle=["-","--","-.",":",":"][i_particle_type],color="limegreen",label="K89"+ particle_type)
 
-                #data_dic["K73"]
-                for i_particle_type,particle_type in enumerate(data_dic["K73"]["particle_type"]):
-                    axes[i_ax].loglog(data_dic["K73"]["diam"],data_dic["K73"]["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],color="aqua",label="K73" + particle_type)   
+                #data_dic["K72"]
+                for i_particle_type,particle_type in enumerate(data_dic["K72"]["particle_type"]):
+                    axes[i_ax].loglog(data_dic["K72"]["diam"],data_dic["K72"]["vterm_" + particle_type],linestyle=["-","--",":",":",":"][i_particle_type],color="aqua",label="K72" + particle_type)   
 
                 #data_dic["Nett19"]
                 for i_particle_type,particle_type in enumerate(data_dic["Nett19"]["particle_type"]):

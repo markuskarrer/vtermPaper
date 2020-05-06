@@ -46,8 +46,12 @@ for i, (temp_C,temp_K) in enumerate(zip(temp_array_C,temp_array_K)):
         e_pruppklett98_MC[i] = 1.0
     elif  temp_C >= -20 :
         e_pruppklett98_MC[i] = 0.4
-    else:
+    elif  temp_C >= -30 :
         e_pruppklett98_MC[i] = 0.25
+    elif  temp_C >= -40 :
+        e_pruppklett98_MC[i] = 0.1
+    else:
+        e_pruppklett98_MC[i] = 0.02
     #Connolly #mo_colleffi.f90 PURE FUNCTION stick_effi_tempOnly(T) se
     if temp_C >= 0 :
         e_connolly12_MC[i] = 0.14

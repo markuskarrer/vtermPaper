@@ -133,6 +133,9 @@ for i_sensMC, sensrun_now_MC in  enumerate(McSnow_geom_list):#[McSnow_geom_list[
                     McSnow_geom_list_str = str(McSnow_geom_list[0])
 
             if separated_by_fallspeedsens:#i_mode=1
+                if sensrun_now_MC_fallspeed=="powerlawlimit": #"fallspeed model" is the old powerlaw
+                    experiment_splitted = experiment.split('_vt',1) #this results e.g. in [_rm10_rt0_', '3_at2_
+                    experiment = "_".join([experiment_splitted[0],'vt7',experiment_splitted[1][2:]]) #[1:] cuts the old velocity index plus the following '_'                
                 if sensrun_now_MC_fallspeed=="powerlawSBdefault": #"fallspeed model" is the old powerlaw
                     experiment_splitted = experiment.split('_vt',1) #this results e.g. in [_rm10_rt0_', '3_at2_
                     experiment = "_".join([experiment_splitted[0],'vt5',experiment_splitted[1][2:]]) #[1:] cuts the old velocity index plus the following '_'                

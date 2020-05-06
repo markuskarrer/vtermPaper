@@ -632,28 +632,28 @@ def read_and_plot(axes,hydro_model
                 #####
                 #Kajikawa 1973 individual crystals 
                 #####
-                data_dic["K73"] = dict()
+                data_dic["K72"] = dict()
 
-                data_dic["K73"]["particle_type"] = ["plate","dendrite"] #,"thickplate"]
-                data_dic["K73"]["particle_type_label"] = ["plate","dendrite"] #,"thick plate"]
+                data_dic["K72"]["particle_type"] = ["plate","dendrite"] #,"thickplate"]
+                data_dic["K72"]["particle_type_label"] = ["plate","dendrite"] #,"thick plate"]
 
-                data_dic["K73"]["diam"]          = np.arange(0.1,1.9,0.05) #np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]) #[mm]
-                data_dic["K73"]["diam"] = data_dic["K73"]["diam"]/1000 #[m]
-                data_dic["K73"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
-                data_dic["K73"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
-                #data_dic["K73"]["vterm_plate"]      = np.array([np.nan,8,  10,13, 15, 17.5, 20, 22.5, 25,28,30.5,33,35,37.5,40,43,46,48.5,51,53.5,56,58,60,62.5,65,67.5,70,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
-                data_dic["K73"]["diam_platelin"]      = np.array([0.15,1.4])/1000.
-                data_dic["K73"]["vterm_plate"]      = np.array([8.,70.])
-                data_dic["K73"]["vterm_dendrite"]      = np.array([np.nan,np.nan,  np.nan,np.nan, np.nan,np.nan,np.nan, 11.5 ,12.5,13,14,14.9,15.5,16.2,17,17.5,18,18.5,19,19.6,20,20.6,21,21.3,21.5,21.8,22,22.3,22.5,22.8,23,23.3,23.5,23.8,24,24.2]) #[cm/s]
+                data_dic["K72"]["diam"]          = np.arange(0.1,1.9,0.05) #np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]) #[mm]
+                data_dic["K72"]["diam"] = data_dic["K72"]["diam"]/1000 #[m]
+                data_dic["K72"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+                data_dic["K72"]["vterm_thickplate"] = np.array([10,15, 20,25, 31, 37 , 44,50, 57,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+                #data_dic["K72"]["vterm_plate"]      = np.array([np.nan,8,  10,13, 15, 17.5, 20, 22.5, 25,28,30.5,33,35,37.5,40,43,46,48.5,51,53.5,56,58,60,62.5,65,67.5,70,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan]) #[cm/s]
+                data_dic["K72"]["diam_platelin"]      = np.array([0.15,1.4])/1000.
+                data_dic["K72"]["vterm_plate"]      = np.array([8.,70.])
+                data_dic["K72"]["vterm_dendrite"]      = np.array([np.nan,np.nan,  np.nan,np.nan, np.nan,np.nan,np.nan, 11.5 ,12.5,13,14,14.9,15.5,16.2,17,17.5,18,18.5,19,19.6,20,20.6,21,21.3,21.5,21.8,22,22.3,22.5,22.8,23,23.3,23.5,23.8,24,24.2]) #[cm/s]
 
     
-                for prop in data_dic["K73"]["particle_type"]:
-                    data_dic["K73"]["vterm_"+ prop] = data_dic["K73"]["vterm_"+ prop]/100. #[m/s]
-                #data_dic["K73"]
+                for prop in data_dic["K72"]["particle_type"]:
+                    data_dic["K72"]["vterm_"+ prop] = data_dic["K72"]["vterm_"+ prop]/100. #[m/s]
+                #data_dic["K72"]
                 #for i_particle_type,particle_type in enumerate(["dendrite"]):
-                #    axes[i_ax].semilogx(data_dic["K73"]["diam"],data_dic["K73"]["vterm_" + particle_type],linestyle=["--",":",":",":"][i_particle_type],color="b",label="K73 " + data_dic["K73"]["particle_type_label"][i_particle_type])
-                axes[i_ax].semilogx(data_dic["K73"]["diam"],data_dic["K73"]["vterm_dendrite"],linestyle="--",color="b",label="K73 dendrite")
-                axes[i_ax].semilogx(data_dic["K73"]["diam_platelin"],data_dic["K73"]["vterm_plate"],linestyle="-",color="b",label="K73 plate")
+                #    axes[i_ax].semilogx(data_dic["K72"]["diam"],data_dic["K72"]["vterm_" + particle_type],linestyle=["--",":",":",":"][i_particle_type],color="b",label="K72 " + data_dic["K72"]["particle_type_label"][i_particle_type])
+                axes[i_ax].semilogx(data_dic["K72"]["diam"],data_dic["K72"]["vterm_dendrite"],linestyle="--",color="b",label="K72 dendrite")
+                axes[i_ax].semilogx(data_dic["K72"]["diam_platelin"],data_dic["K72"]["vterm_plate"],linestyle="-",color="b",label="K72 plate")
 
             #make labels
             axes[i_ax].set_xlabel("$D_{max}$ [m]")
@@ -691,10 +691,6 @@ def read_and_plot(axes,hydro_model
 
 
     return axes
-
-
-
-
 
 
 if __name__ == '__main__':

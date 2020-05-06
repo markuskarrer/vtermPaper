@@ -184,7 +184,8 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                                                 grid_res_array = [1e-6,5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
                                                 particle_type = "plate", #define the habit
                                                 test_with_small_sample = False, #read only 1/10 of the data in for faster plotting
-                                                use_only_monomers = False #get only Nmono=1 particle properties back
+                                                use_only_monomers = False, #get only Nmono=1 particle properties back
+                                                forKamil = False
                                                 ):
     '''
     read the particle property files and save them in the "particle_dic" dictionary
@@ -195,6 +196,7 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
             grid_res_array: array with grid resolution
             use_only_monomers :get only Nmono=1 particle properties back
     
+            forKamil: some different format for Kamils closure paper
     OUTPUT: particle_dic: dictionary containing the properties of the individual simulated particles
     '''
     import os
@@ -254,8 +256,12 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                             #N_mono_list_tmp = np.array([1])
                 else: #some tests with higher/lower resolution
                     N_mono_list_tmp = np.array(np.append(np.append(range(1,11,1),np.array(range(10,101,10))),range(200,1001,100)))
-                
                 for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
+                    if forKamil and len(row_content)<6:
+                        #debug()
+                        pass
+                        #if row_content[2]>1e-4:
+                        #    print row_content[2]; continue
                     ################
                     ##limit N_mono##
                     ################
@@ -277,13 +283,28 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
 
                         particle_dic["diam"] = np.append(particle_dic["diam"],row_content[3]) #np.sqrt(row_content[4]/np.pi)) #ATTENTION: test take area equivalent diameter
 
-                        particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
+                        if forKamil:
+                            particle_dic["area"] = np.append(particle_dic["area"],row_content[2]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
+                        else:
 
-                        particle_dic["as_ratio"] = np.append(particle_dic["as_ratio"],row_content[5]) 
-                        particle_dic["area_partal10std"] = np.append(particle_dic["area_partal10std"],row_content[6]) 
-                        particle_dic["area_partal20std"] = np.append(particle_dic["area_partal20std"],row_content[7])
+                            particle_dic["area"] = np.append(particle_dic["area"],row_content[4]) #,row_content[2]) -[2] for tumbling [4] for disabled tumbling
+                        try:
+                            particle_dic["as_ratio"] = np.append(particle_dic["as_ratio"],row_content[5]) 
+                        except:
+                            pass
+                        try:
+                            particle_dic["area_partal10std"] = np.append(particle_dic["area_partal10std"],row_content[6]) 
+                        except:
+                            pass
+                        try:
+                            particle_dic["area_partal20std"] = np.append(particle_dic["area_partal20std"],row_content[7])
+                        except:
+                            pass
                         particle_dic["area_partal40std"] = np.append(particle_dic["area_partal40std"],row_content[2])
-                        particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8])
+                        try:
+                            particle_dic["area_partal60std"] = np.append(particle_dic["area_partal60std"],row_content[8])
+                        except:
+                            pass
                         try:
                             particle_dic["area_aligned_side_yz"] = np.append(particle_dic["area_aligned_side_yz"],row_content[9])
                         except:
@@ -397,6 +418,7 @@ def fit_data(xdata,ydata,func='powerlaw',method='leastsq',weight='None',habit='N
 
         #guess fit results first
         pinit = [np.log10(0.01), 1.5]
+
     elif func=='mod_powerlaw':
         # Power-law fitting is best done by first converting
         # to a linear equation and then fitting to a straight line.

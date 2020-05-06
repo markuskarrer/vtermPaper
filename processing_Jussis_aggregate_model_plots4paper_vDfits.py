@@ -9,13 +9,11 @@ import subprocess
 import random
 import csv
 #import other self-defined functions
-import __postprocess_McSnow
 import __postprocess_SB
 import __fallspeed_relations
 import __tools_for_processing_Jagg
 import __plotting_functions
 import __setup_mDAD_frommodels
-import generate_2Dhist_of_N_D_Nmono_from_MC_and_Jagg 
 from IPython.core.debugger import Tracer ; debug = Tracer()
 from matplotlib import rc
 
@@ -27,7 +25,7 @@ and fits different functions to each property (m-D(monomer dependent and binary)
 '''
 
 def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
-    ="all"):
+    ="all",forKamil=False):
     '''
     read and plot the aggregate data along different fits to these data and some microphysics schemes assumptions
     ARGUMENTS:
@@ -35,9 +33,9 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
     axes: axes handles
     particle type: monomer type whcih is processed and plotted
     powerlawAtlas: which fits should be overplotted [powerlaw,Atlas,schemes]
+    forKamil: some different format for Kamils closure paper
     '''
-
-    tumbling=False 
+    tumbling=False
     take_mono_prop_theor = True #so far only True is implemented
 
     rhow=1000. #density of water
@@ -82,14 +80,23 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
         fit_param_writer.writerow(["particle_type","am","bm","aA","bA","vterm_Atlas_Deq_A","vterm_Atlas_Deq_B","vterm_Atlas_Deq_C","vterm_pow_Dmax_a","verm_pow_Dmax_b"])
         #particle_types = ["plate"] #["plate","dendrite","mixdendneedle","needle","column","mixcolumndend"] #"mixofdentneed""needle","column","plate","dendrite"] #["needle","column","plate","dendrite","bullet","rosette"] # ,"bullet"rosette
         for particle_type in particle_types:
-
+            if forKamil:
+                if particle_type=="mixcolumndend":
+                    prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_mixcolumndend/"
+                else:
+                    prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates/fromHPC/"
+                grid_res_array = [10e-6]
+            else:
+                prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/"
+                grid_res_array = [5e-6,10e-6]
             #read the properties of the individual particles from the files
-            particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/",
+            particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(prop_file_folder = prop_file_folder,
                                                                                     D_small_notuse=1e-4, #ATTENTION: particle smaller than D_small_notuse are not considered (e.g. because of resolution issues)
                                                                                     N_small_notuse=1, #ATTENTION:  monomer numbers smaller than N_small_notuse are not considered
-                                                                                    grid_res_array = [5e-6,10e-6], #[1e-6,5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
+                                                                                    grid_res_array = grid_res_array, #[1e-6,5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
                                                                                     particle_type = particle_type, #define the habit
-                                                                                    test_with_small_sample = False
+                                                                                    test_with_small_sample = False,
+forKamil=forKamil
                                                                                     )
             #show the dictionary (e.g. to check that it's not empty because the path was wrong)
             print particle_dic
@@ -105,8 +112,12 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
             particle_indices_array = range(0,N_particles)
             random.shuffle(particle_indices_array) #shuffle the indice array (random order)
             for key in particle_dic.keys():
-                if any(particle_dic[key]): #an empty dictionary will return false
+                if not forKamil and any(particle_dic[key]): #an empty dictionary will return false
                     particle_dic[key] = particle_dic[key][particle_indices_array] #shuffle the arrays
+                elif key  in ["N_monomer","diam","mass","area"]:
+                    particle_dic[key] = particle_dic[key][particle_indices_array] #shuffle the arrays
+                else:
+                    pass
 
             #get m-D from the assumptions in the aggregate model (this is used at various places)
             a,b,c,d = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)
@@ -166,7 +177,9 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
                     # make a fit for all aggregates in N_mono_list
                     ##
                     #fit to m-D and A-D coefficients for all particles with N_monomer>1
+                    Deq=((6.*particle_dic["mass"])/(np.pi*rhow))**(1./3.)
                     [fit_dic[prop + "_coeff_Nmono_allagg"],covar] = __tools_for_processing_Jagg.fit_data(particle_dic["diam"],particle_dic[prop],func='powerlaw',weight="None")
+                    [fit_dic[prop + "_coeff_Nmono_allagg_Deq"],covar] = __tools_for_processing_Jagg.fit_data(Deq,particle_dic[prop],func='powerlaw',weight="None")
                     
                     if take_mono_prop_theor: #overwrite fit for monomers with theoretical value
                         if prop=="mass":
@@ -175,7 +188,10 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
                             fit_dic['area_coeff_Nmono_1'] = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)[2:4]
                         fit_dic[prop + "_Nmono_1"] = fit_dic[prop + "_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_1"][1] #recalculate arrays of masses and areas 
                     #calculate the values corresponding to the spanned diameter from the fit-coefficients
+                    fit_dic["diam_eq"] = (6.*fit_dic["mass_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic["mass_coeff_Nmono_1"][1]/(np.pi*rhow))**(1./3)#mass equivalent fit diameter for the fit_dic
+                    [fit_dic[prop + "_coeff_Nmono_1_Deq"],covar] = __tools_for_processing_Jagg.fit_data(fit_dic["diam_eq"],fit_dic[prop + "_coeff_Nmono_1"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_1"][1],func='powerlaw',weight="None")
                     fit_dic[prop + "_Nmono_allagg"] = fit_dic[prop + "_coeff_Nmono_allagg"][0]*fit_dic["diam"]**fit_dic[prop + "_coeff_Nmono_allagg"][1] #calculate arrays of masses and areas based on the m-D fits
+                    #fit_dic[prop + "_Nmono_allagg_Deq"] = fit_dic[prop + "_coeff_Nmono_allagg_Deq"][0]*fit_dic["diam_eq"]**fit_dic[prop + "_coeff_Nmono_allagg_Deq"][1] #calculate arrays of masses and areas based on the m-D fits
                     
                     ###
                     #END: get fits for all aggregates
@@ -392,9 +408,9 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
             plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
             plt.savefig(dir_save + out_filestring + '.png', dpi=100)
             print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
-            subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
+            #subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
             
-            for i_prop,prop in enumerate(["vterm_bohm"]): #,"vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
+            for i_prop,prop in enumerate(["vterm_bohm","vterm_HW10","vterm_KC05"]): #,"vterm_mitch_heym"]): #,"HWJussi","KCJussi"]):
                 ###
                 #calculate the relations which can be put into the SB-scheme and display it here
                 ###
@@ -402,9 +418,10 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
                 print "#coefficients for SB derived from the here investigated particles (hydro_model:" + prop + ")"
                 print "####################"
                 #cloud ice
-                print "ice: m(D):a= ",fit_dic["mass_coeff_Nmono_1"][0]," b= ",fit_dic["mass_coeff_Nmono_1"][1] ," v(D):a= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][1]
+                print "ice: m(D):a= ",fit_dic["mass_coeff_Nmono_1"][0]," b= ",fit_dic["mass_coeff_Nmono_1"][1] ," v(D):a= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_1_powerlaw"][1]," m(D_eq):a= ",fit_dic["mass_coeff_Nmono_1_Deq"][0]," b= ",fit_dic["mass_coeff_Nmono_1_Deq"][1]
                 print "ice: Atlas-type (D_max): ",fit_dic[prop + "_coeff_Nmono_1"]
-                print "ice: A(D):a= ",fit_dic["area_coeff_Nmono_1"][0]," b= ",fit_dic["area_coeff_Nmono_1"][1]
+                print "ice: A(D):a= ",fit_dic["area_coeff_Nmono_1"][0]," b= ",fit_dic["area_coeff_Nmono_1"][1]," A(D_eq):a= ",fit_dic["area_coeff_Nmono_1_Deq"][0]," b= ",fit_dic["area_coeff_Nmono_1_Deq"][1]
+
                 
                 #calculate the D(m) and v(m) coefficients
                 fit_dic["mass_coeff_Nmono_1_N(m)"] = __postprocess_SB.convert_ND_to_Nm_from_coeff(fit_dic["mass_coeff_Nmono_1"][0],fit_dic["mass_coeff_Nmono_1"][1],fit_dic[prop + "_coeff_Nmono_1_powerlaw"][0],fit_dic[prop + "_coeff_Nmono_1_powerlaw"][1])
@@ -412,14 +429,21 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
                 print "ice: Atlas-type (D_eq): ",fit_dic[prop + "_coeff_Nmono_1_Deq"]
 
                 #snow
-                print "snow: m(D):a= ", fit_dic["mass_coeff_Nmono_allagg"][0]," b= ",fit_dic["mass_coeff_Nmono_allagg"][1], " v(D):a= ",fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][1]
+                print "snow: m(D):a= ", fit_dic["mass_coeff_Nmono_allagg"][0]," b= ",fit_dic["mass_coeff_Nmono_allagg"][1], " v(D):a= ",fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][0]," b= ",fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][1],"m(Deq):",fit_dic["mass_coeff_Nmono_allagg_Deq"][0]," b= ",fit_dic["mass_coeff_Nmono_allagg_Deq"][1]
+
                 print "snow: Atlas-type (D_max): ",fit_dic[prop + "_coeff_Nmono_allagg"]
-                print "snow: A(D):a= ",fit_dic["area_coeff_Nmono_allagg"][0]," b= ",fit_dic["area_coeff_Nmono_allagg"][1]
+                print "snow: A(D):a= ",fit_dic["area_coeff_Nmono_allagg"][0]," b= ",fit_dic["area_coeff_Nmono_allagg"][1], "A(Deq):",fit_dic["area_coeff_Nmono_allagg_Deq"][0]," b= ",fit_dic["area_coeff_Nmono_allagg_Deq"][1]
 
                 #calculate the D(m) and v(m) coefficients
                 fit_dic["mass_coeff_Nmono_allagg_N(m)"] = __postprocess_SB.convert_ND_to_Nm_from_coeff(fit_dic["mass_coeff_Nmono_allagg"][0],fit_dic["mass_coeff_Nmono_allagg"][1],fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][0],fit_dic[prop + "_coeff_Nmono_allagg_powerlaw"][1])
                 print "snow: D(m):a= ", fit_dic["mass_coeff_Nmono_allagg_N(m)"][0]," b= ",fit_dic["mass_coeff_Nmono_allagg_N(m)"][1], " v(m):a= ",fit_dic["mass_coeff_Nmono_allagg_N(m)"][2]," b= ",fit_dic["mass_coeff_Nmono_allagg_N(m)"][3]
                 print "snow: Atlas-type (D_eq): ",fit_dic[prop + "_coeff_Nmono_allagg_Deq"]
+                if forKamil and prop==hydro_model:
+                    axes[0].text(3e-3,2.1,prop + ": Atlas-type (D_eq): \n" + #change i in axes[i] if an other fallspeed model is used
+                    "alpha: " + str(fit_dic[prop + "_coeff_Nmono_allagg_Deq"][0]) + "\n" +
+                    "beta: " + str(fit_dic[prop + "_coeff_Nmono_allagg_Deq"][1]) + "\n" +
+                    "gamma: " + str(fit_dic[prop + "_coeff_Nmono_allagg_Deq"][2]) + "\n",
+                    fontsize=5)
                 ##write fit-parameter to txt-file
                 #convert arrays first to strings
                 if prop=="vterm_bohm":
@@ -493,7 +517,7 @@ def read_and_plot(fig,axes,particle_types,powerlawAtlas="Atlas",hydro_model
 
                         fig.savefig('/home/mkarrer/Dokumente/plots/tmp.pdf',bbox_inches=extent.expanded(1.6, 1.45),dpi=400) #(1.6, 1.4) are width and height expanded around center
 
-                        subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)
+                        #subprocess.call('cp ' + '/home/mkarrer/Dokumente/plots/tmp.pdf /home/mkarrer/Dokumente/plots/4paper/' + out_filestring + '_' + ax_description + '.pdf',shell=True)
     return axes
                         
 if __name__ == '__main__':
@@ -504,6 +528,7 @@ if __name__ == '__main__':
     #optimize the appearance of the plot (figure size, fonts)
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,legend_fontsize='medium')
     #axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model="all")
-    axes = read_and_plot(fig,axes,["mixcolumndend"],powerlawAtlas="Atlas",hydro_model="all")
+    #axes = read_and_plot(fig,axes,["mixcolumndend"],powerlawAtlas="Atlas",hydro_model="all")
+    axes = read_and_plot(fig,axes,["dendrite"],powerlawAtlas="Atlas",hydro_model="all")
     
    
