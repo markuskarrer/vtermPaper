@@ -30,7 +30,7 @@ show_Nmono_fits = True #show fit lines for some selected monomer numbers
 v_small_notuse = 0.0  #ATTENTION: particle smaller than .5ms-1 are not used #ATTENTION: applied to B?hm only
 
 
-def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt",write_fit_params=False,plot_vars=None,called_by_main=False,use_Deq=False):
+def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokumente/plots/fit_results.txt",write_fit_params=False,plot_vars=None,called_by_main=False,use_Deq=False,forKamil=False,skip_plotting=False):
     '''
     this performs all the processing and plotting
     
@@ -44,6 +44,8 @@ def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokume
     plot_vars: which variables should be processes and plotted (fm comes always with mass; fA comes always with area)? (if "None" all are plotted)
     called_by_main: if this script has been executed directly save the figures here
     use_Deq: use mass equivalent mass instead of Dmax
+    forKamil: some different format for Kamils closure paper
+    skip_plotting: dont plot but only calculate the coefficients
     '''
     if MAE==None:
         MAE= dict()
@@ -58,9 +60,7 @@ def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokume
         show_Nmono_fits=True        
     with open(txtfile,"w") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
 
-        for i_particle_type,particle_type in enumerate(particle_types):    
-         
-    
+        for i_particle_type,particle_type in enumerate(particle_types):
             if called_by_main:
                 ##general settings for the plotting
                 number_of_plots = 9 #8
@@ -71,19 +71,35 @@ def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokume
             if write_fit_params:
                 fit_param_writer = csv.writer(txtfile, delimiter='&', quoting=csv.QUOTE_NONE, lineterminator=os.linesep, escapechar=" ") #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
                 fit_param_writer.writerow(["particle_type","am1","am2","bm1","bm2","aA1","aA2","bA1","bA2","am_allagg","bm_allagg","aA_allagg","bA_allagg"])
-            
+            rimed=False 
+            if forKamil:
+                if ("simultaneous" in particle_type) or ("subsequent" in particle_type) or ("rimeonly" in particle_type): #rimed particles
+                    prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_ssrga/Jussis_aggregates_rimed/"
+                    rimed=True
+                else:
+                    prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_ssrga/" + "Jussis_aggregates_" + particle_type + "/"
+
+                grid_res_array = [10e-6]
+            else:
+                prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/"
+                grid_res_array = [5e-6,10e-6]
             #read the properties of the individual particles from the files
-            particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(
-            prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/",
+            if rimed:
+                particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files_rimed(   prop_file_folder, particle_type)
+            
+            else:
+                particle_dic,N_mono_list = __tools_for_processing_Jagg.read_particle_prop_files(
+            prop_file_folder = prop_file_folder,#"/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation/",
             #prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation_local/samesizeparam/",
             #prop_file_folder = "/data/optimice/aggregate_model/Jussis_aggregates_bugfixedrotation_local/diffsizeparam/",
                                                                                     D_small_notuse=1e-4, #ATTENTION: particle smaller than D_small_notuse are not considered (e.g. because of resolution issues)
                                                                                     N_small_notuse=1, #ATTENTION: THIS HAS NO EFFECT!!  monomer numbers smaller than N_small_notuse are not considered
-                                                                                    grid_res_array = [5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
+                                                                                    grid_res_array = grid_res_array, #[5e-6,10e-6], #array of grid resolutions (defines the files which are read in)
                                                                                     #grid_res_array = [40e-6], #array of grid resolutions (defines the files which are read in)
 
                                                                                     particle_type = particle_type, #define the habit
-                                                                                    test_with_small_sample = False
+                                                                                    test_with_small_sample = False,
+                                                                                    forKamil = forKamil
                                                                                     )
             #show the dictionary (e.g. to check that it's not empty because the path was wrong)
             print particle_dic;
@@ -95,7 +111,7 @@ def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokume
             particle_indices_array = range(0,N_particles)
             random.shuffle(particle_indices_array) #shuffle the indice array (random order)
             for key in particle_dic.keys():
-                if len(particle_dic[key])>0: 
+                if len(particle_dic[key])>0 and not forKamil: 
                     particle_dic[key] = particle_dic[key][particle_indices_array] #shuffle the arrays
             #get m-D from the assumptions in the aggregate model (this is used at various places)
             a,b,c,d = __tools_for_processing_Jagg.calc_mD_AD_coeffs(particle_type)
@@ -290,11 +306,12 @@ def read_and_plot(fig,axes,particle_types,MAE=None,txtfile="/home/mkarrer/Dokume
             #####################
             ######END: fitting
             #####################
-            
+             
             #####################
             ######START: plotting figure1
             #####################
-            
+            if skip_plotting:
+                continue
 
             i_ax=-1
             linewidth=1.0

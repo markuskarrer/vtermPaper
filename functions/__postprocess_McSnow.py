@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 
-from IPython.core.debugger import Tracer ; debug=Tracer()
+from IPython.core.debugger import set_trace
 
 
 # define functions to postprocess McSnow
@@ -51,8 +51,8 @@ def read_mass2frdat(experiment,filestring):
         pass
     else:
         if not SP_fullinfo[0,:].shape[0]==len(varnames):
-            print "error: compare number of variables in varnames (", len(varnames), ") with variables in MCsnows write_icefraction() (", not SP_fullinfo[0,:].shape[0], ") from mo_output.f90"
-            sys.exit(1)
+            print("error: compare number of variables in varnames (", len(varnames), ") with variables in MCsnows write_icefraction() (", not SP_fullinfo[0,:].shape[0], ") from mo_output.f90")
+            set_trace()
         #fill SP-dictionary with different variables
         for i,key in enumerate(varnames):
             SP[key] = SP_fullinfo[:,i]
@@ -75,11 +75,12 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     hei2massdens = dict()
     #names of variables in hei2massdens
     varnames = ["z", "Ns",
-                "Nd",           "Md",          "Fn",           "Fm",            "Fmono", 
-                "Nd_mm1",   "Md_mm1",           "Fn_mm1",   "Fm_mm1",       "Fmono_mm1", 
-                "Nd_unr",   "Md_unr",           "Fn_unr",   "Fm_unr",       "Fmono_unr", 
-                "Nd_grp",   "Md_grp",           "Fn_grp",   "Fm_grp",       "Fmono_grp", 
-                "Nd_liq",   "Md_liq",           "Fn_liq",   "Fm_liq",       "Fmono_liq"]
+                "Nd",           "Md",       "Zd",       "Dd",          "Fn",           "Fm",     "Fz",            "Fmono", 
+                "Nd_mm1",           "Md_mm1",       "Zd_mm1",       "Dd_mm1",          "Fn_mm1",           "Fm_mm1",     "Fz_mm1",            "Fmono_mm1", 
+                "Nd_unr",           "Md_unr",       "Zd_unr",       "Dd_unr",          "Fn_unr",           "Fm_unr",     "Fz_unr",            "Fmono_unr", 
+                "Nd_grp",           "Md_grp",       "Zd_grp",       "Dd_grp",          "Fn_grp",           "Fm_grp",     "Fz_grp",            "Fmono_grp", 
+                "Nd_rimed",           "Md_rimed",       "Zd_rimed",       "Dd_rimed",          "Fn_rimed",           "Fm_rimed",     "Fz_rimed",            "Fmono_rimed", 
+                "Nd_liq",           "Md_liq",       "Zd_liq",       "Dd_liq",          "Fn_liq",           "Fm_liq",     "Fz_liq",            "Fmono_liq"]
     #        height  number of SP 
     #         number density    mass density    number flux   mass flux     monomer flux
     #   same values as above but only for: pristine
@@ -88,7 +89,8 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     #                                      liquid
 
     if not heightprofiles_fullinfo[0,:].shape[0]==len(varnames):
-        print "error: compare number of variables in varnames (",len(varnames),") with variables in MCsnows write_hprofiles() (", heightprofiles_fullinfo[0,:].shape[0],")from mo_output.f90"
+        print("error: compare number of variables in varnames (",len(varnames),") with variables in MCsnows write_hprofiles() (", heightprofiles_fullinfo[0,:].shape[0],")from mo_output.f90")
+        set_trace()
         sys.exit(1)
     #fill SP-dictionary with different variables
     #read z-array first to crop hei2massdens array to the relevant timesteps
@@ -97,11 +99,9 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
     try:
         N_heights = index_start_of_timesteps[1] - index_start_of_timesteps[0]
     except:
-        print "error in __postprocess_McSnow.read_hei2massdens: is the file: " + filestring + " not complete?"
+        print("error in __postprocess_McSnow.read_hei2massdens: is the file: " + filestring + " not complete?")
         
-
     i_start = index_start_of_timesteps[timestep]; 
-
     #going to the beginning of next timestep and then one line back fails if the last timestep is read in -> treat this case seperately
     if (index_start_of_timesteps.shape[0]-1)==timestep_end: #means: last timestep
         i_end = heightprofiles_fullinfo.shape[0]
@@ -121,16 +121,81 @@ def read_hei2massdens(filestring,timestep=0,timestep_end=0,empty_flag=False):
                 tmp_var_reshaped =  heightprofiles_fullinfo[i_start:i_end,i].reshape((timestep_end-timestep+1,N_heights)) #extract array with (n_heights,n_timesteps_to_average=timestep_end-timestep)
                 hei2massdens[key] = np.mean(tmp_var_reshaped,axis=0) #average over all timesteps
 
-    #calculate unrimed properties as residuum
-    for prop in ["Nd","Md","Fn","Fm","Fmono"]: #loop over all properties
-        prop_tmp = hei2massdens[prop][:] #save total
-        for categ in ["mm1","unr","grp","liq"]:
-            prop_tmp = prop_tmp - hei2massdens[prop + '_' + categ][:] #subtract quantity of each category
-        hei2massdens[prop + "_rimed"] = prop_tmp[:] #save residuum for _rimed of this property
-    for prop in ["Nd","Md","Fn","Fm","Fmono"]: #loop over all properties
-        hei2massdens[prop + "_rimed"] = np.where(hei2massdens["Md_rimed"]>2e-6,hei2massdens[prop + "_rimed"],0) #remove noisy height-levels
 
     return hei2massdens
+
+def read_distribution(filestring,timestep=0,timestep_end=0,empty_flag=False):
+    '''
+    read size distribution from the distribution_<h1>_<h2>.dat file into the SP-dictionary
+    INPUT   experiment: descriptor (also folder name) of the experiment
+            timestep: integer defining which output step to choose
+            timestep_end: integer defining which output step to choose as the end of average (we just take all available)
+            empty_flag: return arrays with zeros (but the same shape); this can be done to not plot McSnow data
+    '''
+
+    import glob
+
+    if timestep_end==0:
+        timestep_end=timestep #set end timestep to start if not defined
+
+    #create dictionary
+    distribution_dic = dict()
+    files   = glob.glob(filestring + "????_????.dat")    
+    distribution_dic["heights"] = np.ones(len(files))*np.nan
+    for i_file,rfile in enumerate(files):
+        hLow    = rfile[-13:-9]
+        hHigh   = rfile[-8:-4]
+
+        hmean   = (float(hLow)+float(hHigh))/2.
+        distribution_dic["heights"][i_file] = hmean
+
+        #load file from .dat
+        distribution_data = np.loadtxt(rfile)
+        #names of variables in hei2massdens
+        varnames = ["rad",            "Nd",           "Md",     "Fn",           "Fm",     "Fmono",
+                                 "Nd_mm1",       "Md_mm1", "Fn_mm1",       "Fm_mm1", "Fmono_mm1",
+                                 "Nd_unr",       "Md_unr", "Fn_unr",       "Fm_unr", "Fmono_unr",
+                                 "Nd_grp",       "Md_grp", "Fn_grp",       "Fm_grp", "Fmono_grp",
+                                 "Nd_liq",       "Md_liq", "Fn_liq",       "Fm_liq", "Fmono_liq"]
+    #        radius       number density    mass density    number flux   mass flux     monomer flux
+
+        if not distribution_data[0,:].shape[0]==len(varnames):
+            print("error: compare number of variables in varnames (",len(varnames),") with variables in MCsnows write_distributions_core() (", distribution_data[0,:].shape[0],")from mo_output.f90")
+            set_trace()
+            sys.exit(1)
+        #fill SP-dictionary with different variables
+        #read z-array first to crop hei2massdens array to the relevant timesteps
+        z_for_crop = distribution_data[:,0]
+        index_start_of_timesteps = np.where(z_for_crop==1e-6)[0] #this is an array with indices which indicate at which line a new timestep starts
+        try:
+            N_diam = index_start_of_timesteps[1] - index_start_of_timesteps[0]
+        except:
+            print("error in __postprocess_McSnow.read_hei2massdens: is the file: " + rfile + " not complete?")
+        
+        i_start = index_start_of_timesteps[timestep]; 
+        #going to the beginning of next timestep and then one line back fails if the last timestep is read in -> treat this case seperately
+        if (index_start_of_timesteps.shape[0]-1)==timestep_end: #means: last timestep
+            i_end = distribution_data.shape[0]
+        else: #not last timestep
+            if timestep_end==0: #means: no average interval selected
+                i_end = index_start_of_timesteps[timestep+1]-1
+            else:
+                i_end = index_start_of_timesteps[timestep_end+1]
+
+        for i,key in enumerate(varnames):
+            if i_file==0:
+                distribution_dic[key]    = np.zeros((len(files),N_diam))
+            if empty_flag:
+                distribution_dic[key][i_file,:] = np.zeros_like(heightprofiles_fullinfo[i_start:i_end,i])
+            else:
+                    tmp_var_reshaped = distribution_data[i_start:i_end,i].reshape((timestep_end-timestep+1,N_diam)) #extract array with (n_heights,n_timesteps_to_average=timestep_end-timestep)
+                    distribution_dic[key][i_file,:] = np.mean(tmp_var_reshaped,axis=0) #average over all timesteps
+                    if key=="rad":
+                        del_radius  = np.diff(distribution_dic["rad"][0])
+                    else:
+                        distribution_dic[key][i_file,:-1] = distribution_dic[key][i_file,:-1]/del_radius*np.diff(np.log(2.*distribution_dic["rad"][0,:])) #convert from f(ln(r)) to N(r)
+
+    return distribution_dic
 
 def average_SPlists(SP_nonaveraged):
     '''
@@ -152,8 +217,8 @@ def average_SPlists(SP_nonaveraged):
         total_xi_before_round = np.sum(SP_averaged['xi'])
         SP_averaged['xi'] = np.rint(SP_averaged['xi']/num_timesteps) #round to integer
         total_xi_after_round =  np.sum(SP_averaged['xi'])*num_timesteps
-        print 'error made by rounding after merging of timestep:'
-        print 'total_xi_before: ',total_xi_before_round ,'total_xi_after-total_xi_before: ',total_xi_after_round-total_xi_before_round,' ratio: ',(total_xi_after_round-total_xi_before_round)/total_xi_before_round
+        print('error made by rounding after merging of timestep:')
+        print('total_xi_before: ',total_xi_before_round ,'total_xi_after-total_xi_before: ',total_xi_after_round-total_xi_before_round,' ratio: ',(total_xi_after_round-total_xi_before_round)/total_xi_before_round)
     else: # and 'xi' in SP_averaged.keys:
         SP_averaged['xi'] = SP_averaged['xi']/num_timesteps #non-integer multiplicity is allowed
     #elif roundbool and (not 'xi' in SP_averaged.keys):
@@ -179,7 +244,7 @@ def read_twomom_d(filestring,nz):
     varnames_twomom = ["dz",        "rho",    "pres",          "qv",              "qc","qnc",                   "qr","qnr", "qi","qni", "qs","qns", "qg","qng", "qh","qnh" ,"ninact", "t",      "w" ,"fr","fnr","fi","fni","fs","fns","fg","fng","fh","fnh"]
     #           (Schichtdichte, Gesamtdichte, Druck, Wasserdampfmassendichte, Wolkenwasser massen und anzahldichte, regen, Eis,       Schnee, Graupel ,    Hagel ,            IN, Temperatur, Vertikale Geschwindigkeit w, fluxes of moments)
     if not twomom_fullinfo.shape[1]/len(varnames_twomom)==nz:
-        print "error in postprocess_McSnow.read_twomom_d: compare number of variables in varnames_twomom(", len(varnames_twomom) ,") with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90(", twomom_fullinfo.shape[1] ,"); the ratio must be a multiple of nz "
+        print("error in postprocess_McSnow.read_twomom_d: compare number of variables in varnames_twomom(", len(varnames_twomom) ,") with variables in MCsnows t_2mom_indices in mo_2mom_mcrph_driver.f90(", twomom_fullinfo.shape[1] ,"); the ratio must be a multiple of nz ")
         sys.exit(1)
     
     #fill twomom-dictionary with different variables
@@ -212,7 +277,7 @@ def read_atmo(experiment,filestring_atmo):
     varnames_atmo = ["z", "rho", "T", "p", "eta", "ssat", "rh", "psatw", "psati", "lwc"]
     
     if not atmo_fullinfo[0,:].shape[0]==len(varnames_atmo):
-        print "error: compare number of variables in varnames_atmo with variables in MCsnows plot_atmo() from mo_check.f90"
+        print("error: compare number of variables in varnames_atmo with variables in MCsnows plot_atmo() from mo_check.f90")
         sys.exit(1)
     for i,key in enumerate(varnames_atmo):
         atmo[key] = atmo_fullinfo[:,i]
@@ -254,7 +319,7 @@ def interpolate_2height(dictio,target_heightvec,curr_heightvec):
         try:
             dictio[key] = np.interp(target_heightvec,curr_heightvec,dictio[key][::reverse])
         except:
-            print 'variable: (' + key + ') could not be interpolated to heightvec'
+            print('variable: (' + key + ') could not be interpolated to heightvec')
     
         
     return dictio
@@ -385,7 +450,7 @@ def return_parameter_mD_AD_rel(experiment):
     if True:
         unr_bet = 2.1 ; unr_alf = 0.0028*10.**(2.*unr_bet-3.) #from McSnows mo_mass2diam.f90 #m-D
         unr_gam = 1.88 ; unr_sig = 0.2285*10**(2.*unr_gam-4.) #A-D
-        print "\n\n\n\n MAKE parameter in McSnow consistent with SB setup ( in __postprocess_McSnow)"
+        print("\n\n\n\n MAKE parameter in McSnow consistent with SB setup ( in __postprocess_McSnow)")
     else:
         if ADmD_spec_string=='':
             unr_bet = 2.1 ; unr_alf = 0.0028*10.**(2.*unr_bet-3.) #from McSnows mo_mass2diam.f90 #m-D
@@ -402,7 +467,7 @@ def return_parameter_mD_AD_rel(experiment):
     
     sph_gam = 2.0
     sph_sig = np.pi/4.
-    print "ADmD_spec_string",ADmD_spec_string
+    print("ADmD_spec_string",ADmD_spec_string)
     Dth = (rhoi * np.pi/6 * 1./unr_alf)**(1./(unr_bet-3))
     mth = np.pi/6. * rhoi * Dth**3 #from McSnows mo_mass2diam.f90
     return mth,unr_alf,unr_bet,rhoi,rhol,Dth,unr_sig,unr_gam,sph_sig,sph_gam

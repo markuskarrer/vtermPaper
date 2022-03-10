@@ -288,7 +288,8 @@ if len(McSnow_geom_list)>1:#add labels for the different sensruns
         for ax in [axnumflux_ice]:
             labellist=["monodep/CTRL",McSnow_geom_list[1],McSnow_geom_list[2]]
             ax.plot(np.nan,np.nan,color='k',linestyle=linestyleorder[i_sensMC+i_sensMCfallspeed+i_habit],label=labellist[i_sensMC+i_sensMCfallspeed+i_habit])
-            ax.legend(loc="lower right")
+            #ax.legend(loc="lower right")
+            ax.legend(loc="center left")
             ax.set_title("$N_{mono}$=1")
         for ax in [axnumflux_snow]:
             ax.set_title("$N_{mono}$>1")

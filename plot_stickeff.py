@@ -23,6 +23,7 @@ temp_array_K = temp_array_C+273.15
 e_lin83_snowself_particleparticle = np.zeros(temp_array_C.shape)
 e_cotton86_iceself = np.zeros(temp_array_C.shape)
 e_pruppklett98_MC = np.zeros(temp_array_C.shape)
+e_pruppklett98_MC_mod = np.zeros(temp_array_C.shape)
 e_connolly12_MC = np.zeros(temp_array_C.shape)
 e_connolly12_0p5_MC = np.zeros(temp_array_C.shape)
 
@@ -52,6 +53,23 @@ for i, (temp_C,temp_K) in enumerate(zip(temp_array_C,temp_array_K)):
         e_pruppklett98_MC[i] = 0.1
     else:
         e_pruppklett98_MC[i] = 0.02
+
+    if temp_C >= -2 :
+        e_pruppklett98_MC_mod[i] = 1.0
+    elif  temp_C >= -6 :
+        e_pruppklett98_MC_mod[i] = 0.19*(temp_C+6)+0.24
+    elif  temp_C >= -10 :
+        e_pruppklett98_MC_mod[i] = 0.24
+    elif  temp_C >= -12.5 :
+        e_pruppklett98_MC_mod[i] = -0.304*(temp_C+12.5)+1.0
+    elif  temp_C >= -17:
+        e_pruppklett98_MC_mod[i] = 1.0
+    elif  temp_C >= -20 :
+        e_pruppklett98_MC_mod[i] =  0.286666*(temp_C+20)+0.14
+    elif  temp_C >= -40 :
+        e_pruppklett98_MC_mod[i] = 0.005*(temp_C+40)+0.04
+    else:
+        e_pruppklett98_MC_mod[i] =  0.04
     #Connolly #mo_colleffi.f90 PURE FUNCTION stick_effi_tempOnly(T) se
     if temp_C >= 0 :
         e_connolly12_MC[i] = 0.14
@@ -80,12 +98,14 @@ pylab.rcParams.update(params)
 #get number of plot automatically
 figsize_height = 6.0/2.0 #*(number_of_plots)
 fig = plt.figure(figsize=(8.0,figsize_height))
-plt.plot(temp_array_C,e_lin83_snowself_particleparticle,label="Lin83_SBsnowself_SBpartpart")
-plt.plot(temp_array_C,e_cotton86_iceself,label="Cotton86_SBiceself")
-plt.plot(temp_array_C,e_pruppklett98_MC,label="PruppKlett98_MC",linestyle="--")
-plt.plot(temp_array_C,e_connolly12_MC,label="Connolly12_MC",linestyle="--")
-plt.plot(temp_array_C,e_connolly12_0p5_MC,label="0.5*Connolly12_MC",linestyle="--")
-plt.ylim([0,1])
+plt.plot(temp_array_C,e_lin83_snowself_particleparticle,label="Lin83_SBsnowself_SBpartpart",color="r")
+
+#plt.plot(temp_array_C,e_cotton86_iceself,label="Cotton86_SBiceself",color="brown")
+#plt.plot(temp_array_C,e_pruppklett98_MC,label="PruppKlett98_MC",linestyle="-",color="g")
+plt.plot(temp_array_C,e_pruppklett98_MC_mod,label="PruppKlett98_MC_mod",linestyle="--",color="darkgreen")
+#plt.plot(temp_array_C,e_connolly12_MC,label="Connolly12_MC",linestyle="--",color="navy")
+#plt.plot(temp_array_C,e_connolly12_0p5_MC,label="0.5*Connolly12_MC",linestyle="--",color="deepskyblue")
+plt.ylim([0,1.01])
 plt.xlabel("temperature / ($^\circ$C)")
 plt.ylabel("sticking efficiency")
 plt.legend()
@@ -94,8 +114,8 @@ plt.tight_layout()
 dir_save = '/home/mkarrer/Dokumente/plots/'
 if not os.path.exists(dir_save): #create direktory if it does not exists
     os.makedirs(dir_save)
-out_filestring = "stickeff"
+out_filestring = "stickeff_few"
 plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
 plt.savefig(dir_save + out_filestring + '.png', dpi=400)
 print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
-subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
+#subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])

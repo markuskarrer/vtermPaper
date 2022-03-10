@@ -22,7 +22,8 @@ def gen_shortest_strings_without_duplicate(count_len=4):
         n_entries=14776336
         count_str = ['___']*n_entries
     elif 14776336<number_ofSP:
-        print "check number of SP (exceeding anticipated number in this adaption; in __general_utilities.gen_shortest_strings_without_duplicate)"
+        print("check number of SP (exceeding anticipated number in this adaption; in __general_utilities.gen_shortest_strings_without_duplicate)")
+
         sys.exit(0)
 
     #generate list of strings with itertools
@@ -122,7 +123,7 @@ def psati(atmo): #PURE ELEMENTAL FUNCTION psat_water( T ) result ( psatw ) in mo
     INPUT: atmo: dictionary which must contain numpy arrays including the key T
     '''
     constants = get_SB_constants(constlist=["T_3","A_i","B_i","e_3"])
-    print 'used constants for conversions of atmospheric variables', constants
+    print('used constants for conversions of atmospheric variables', constants)
     return constants["e_3"] * np.exp(constants["A_i"] * (atmo["T"]-constants["T_3"]) / (atmo["T"]-constants["B_i"]))
 
 #taken from McSNow
@@ -162,7 +163,7 @@ def q2abs(spec_var,qv,t,p,q_all_hydro="NaN"):#function q2abs(spec_var,t,p,qv,q_a
 
     if q_all_hydro=="NaN":
         q_all_hydro = 0 #neglect 
-        print "WARNING: neglect hydrometeor weight in conversion from specific to absolute quantities, because not given as input (in __general_utilities.q2abs() )"
+        print("WARNING: neglect hydrometeor weight in conversion from specific to absolute quantities, because not given as input (in __general_utilities.q2abs() )")
     p_Pa = p*100.
     q2abs = spec_var*p/(constants["r_d"]*(1.+(constants["r_v"]/constants["r_d"]-1.)*qv-q_all_hydro)*t)
     return q2abs
@@ -253,7 +254,7 @@ def rh2mixr(RH,p,T):
     Lv = 2.5e6 # heat release for condensation of water vapour [J kg-1]
     eps = Mw/Md
     es = esat(T)
-    print "es",es,"RH",RH,"p",p
+    print("es",es,"RH",RH,"p",p)
     return Mw/Md*RH*es/(p-RH*es)
 def esat(T):
     ''' get sateration pressure (units [Pa]) for a given air temperature (units [K])'''

@@ -18,7 +18,7 @@ from functions import __postprocess_PAMTRA
 from matplotlib import rc
 
 
-def plot_histograms(ax,SP,var="diam",color="r",linestyle="-",run_name=""):
+def plot_histograms(ax,SP,var="diam",color="r",linestyle="-",run_name="",logx=False):
     '''
     plot histogram at selected heights
     INPUT:
@@ -28,6 +28,7 @@ def plot_histograms(ax,SP,var="diam",color="r",linestyle="-",run_name=""):
         var: variable from SP dictionary which should be plotted
         linestyle: linestyle for the plot (to distinguish different simulations)
         run_name: name of the run/simulation
+        logx: use log on x-scale
     '''
     #select heights
     #h1_bounds = [[4900,5000],[2400,2600],[0,100]]
@@ -39,8 +40,13 @@ def plot_histograms(ax,SP,var="diam",color="r",linestyle="-",run_name=""):
         bins=np.linspace(0,0.05,100) 
         xlabel=r"$D_{max}$ [m]"
     elif var=="mm":
-        bins=np.linspace(1,1000,100)
+        bins=np.linspace(0.01,100,101)
         xlabel=r"$N_{mono}$ [m]"
+    elif var=="mmsmall":
+        #bins=np.linspace(0.,10.5,11)
+        bins=np.linspace(0.01,10,11)
+        xlabel=r"$N_{mono}$ [m]"
+        var="mm"
     elif var=="vt":
         bins=np.linspace(0.0,2.5,16)
         xlabel=r"$v_{term}$ [m s-1]"
@@ -55,10 +61,12 @@ def plot_histograms(ax,SP,var="diam",color="r",linestyle="-",run_name=""):
            
         #compute and plot the histogram
         hist,bin_edges = np.histogram(prop_in_bin, bins=bins, density=True)
+        #debug()
         bin_center=bin_edges[:-1]+np.diff(bin_edges)
-        b=0
         ax.plot(bin_center,hist,c=colors[i_height],linestyle=linestyle,
             label=run_name + "height=[" + str(height_bound[0])+ "-" + str(height_bound[1]) + "] max=" + str(np.max(prop_in_bin)))
+        if logx:
+            ax.set_xscale("log")
         a=0
         ax.set_xlabel(xlabel) 
         ax.set_ylabel(ylabel) 
@@ -117,7 +125,7 @@ def plot_agg_rates(ax,SP,which_coll="all"):
 
 if __name__ == "__main__":
     #prepare plotting          
-    number_of_rows = 3
+    number_of_rows = 4
     #optimize the appearance of the plot (figure size, fonts)
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_rows,aspect_ratio=1./7.,legend_fontsize='medium')
      
@@ -265,12 +273,13 @@ if __name__ == "__main__":
                     labellist=["Atlas: ","power law: "]
                 else:
                     labellist=["","",""]
-                plot_histograms(axes[0],SP,var="mm",linestyle=linestyles[i_run],run_name=labellist[i_run])
+                plot_histograms(axes[0],SP,var="mmsmall",linestyle=linestyles[i_run],run_name=labellist[i_run],logx=False)
+                plot_histograms(axes[1],SP,var="mm",linestyle=linestyles[i_run],run_name=labellist[i_run],logx=False)
                 #D_max
-                plot_histograms(axes[1],SP,var="diam",linestyle=linestyles[i_run],run_name=labellist[i_run])
+                plot_histograms(axes[2],SP,var="diam",linestyle=linestyles[i_run],run_name=labellist[i_run])
 
                 #vterm
-                plot_histograms(axes[2],SP,var="vt",linestyle=linestyles[i_run],run_name=labellist[i_run])
+                plot_histograms(axes[3],SP,var="vt",linestyle=linestyles[i_run],run_name=labellist[i_run])
 
        
 

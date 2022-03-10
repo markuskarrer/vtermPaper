@@ -69,7 +69,7 @@ def read_data(read_all=True):
     with open("/home/mkarrer/Dokumente/plots/fit_results.txt","rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
         fit_param_reader = csv.reader(txtfile, delimiter='&', quoting=csv.QUOTE_NONE, lineterminator=os.linesep, escapechar=" ") #quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
         for i_row,row_content in enumerate(fit_param_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
-            if row_content[0] in ["plate_prec","dendrite_prec","needle_prec","column_prec","bullet_prec","rosette_prec","mixcoldend1_prec","mixcolumndend_prec"] : #skip header and low precision data
+            if "prec" in row_content[0]: # in ["plate_prec","dendrite_prec","needle_prec","column_prec","bullet_prec","rosette_prec","mixcoldend1_prec","mixcolumndend_prec"] : #skip header and low precision data
                 data_dic["fit_dic"]["particle_type"] = np.append(data_dic["fit_dic"]["particle_type"],row_content[0][:-5])
                 data_dic["fit_dic"]["mass_allagg_coeff"] = np.append(data_dic["fit_dic"]["mass_allagg_coeff"],[float(row_content[-4]),float(row_content[-3])]) #python indices start with 0
                 data_dic["fit_dic"]["area_allagg_coeff"] = np.append(data_dic["fit_dic"]["area_allagg_coeff"],[float(row_content[-2]),float(row_content[-1])])
@@ -78,6 +78,7 @@ def read_data(read_all=True):
                 data_dic["fit_dic"]["area_Nmono1_coeff"] = np.append(data_dic["fit_dic"]["area_Nmono1_coeff"],[float(row_content[7]),float(row_content[10])])
 
     print data_dic["fit_dic"]
+
     #calculate the m/A-D array for each particle_type
     for prop in ["mass","area"]:
         for i_particle_type,particle_type in enumerate(data_dic["fit_dic"]["particle_type"]):
@@ -137,8 +138,8 @@ def read_data(read_all=True):
     #Locatelli & Hobbs 
     #####
     data_dic["LH74"] = dict()
-    data_dic["LH74"]["particle_type"] = ["dendrite","mixed","sideplanes"]
-    data_dic["LH74"]["particle_type_label"] = ["dendrite","mixed","side planes"]
+    data_dic["LH74"]["particle_type"] = ["dendrite","mixed","sideplanes","ldgraupel","hdgraupel"]
+    data_dic["LH74"]["particle_type_label"] = ["dendrite","mixed","side planes","l.d. graupel","h.d. graupel"]
     data_dic["LH74"]["mass_coeff_dendrite"] = [0.073*10.**(3*1.4-6.),1.4,2e-3,10e-3]
     data_dic["LH74"]["vterm_coeff_dendrite"] = [0.8*10.**(3*0.16),0.16,2e-3,10e-3]
 
@@ -148,6 +149,12 @@ def read_data(read_all=True):
     data_dic["LH74"]["mass_coeff_sideplanes"] = [0.04*10.**(3*1.4-6.),1.4,0.5e-3,4.0e-3]
     data_dic["LH74"]["vterm_coeff_sideplanes"] = [0.82*10.**(3*0.12),0.12,0.5e-3,4.0e-3]
 
+    data_dic["LH74"]["mass_coeff_ldgraupel"] = [0.042*10.**(3*3.0-6.),3.0,0.5e-3,2.0e-3]
+    data_dic["LH74"]["vterm_coeff_ldgraupel"] = [1.16*10.**(3*0.46),0.46,0.5e-3,2.0e-3]
+    
+    data_dic["LH74"]["mass_coeff_hdgraupel"] = [0.14*10.**(3*2.7-6.),2.7,0.5e-3,1.0e-3]
+    data_dic["LH74"]["vterm_coeff_hdgraupel"] = [1.5*10.**(3*0.37),0.37,0.5e-3,210e-3]
+        
     #calculate mass and vterm array of geometric properties
     for key in data_dic["LH74"]["particle_type"]:
         for prop in ["mass","vterm"]:
@@ -481,23 +488,20 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
         ax.plot(np.nan,np.nan,linestyle='',label="this study:") #add a title in the legend
     for i_particle_type,particle_type in enumerate(data_dic["fit_dic"]["particle_type"]):
         if not "Nmono1" in prop: #aggregates
-            colors=    ["g","g" ,"g","g","black","black"]
             if particle_type=="mixcolumndend":
                 particle_type_label="Mix2"
             elif particle_type=="mixcoldend1":
                 particle_type_label="Mix1"
             else:
                 particle_type_label=particle_type
-            #print particle_type_label; raw_input()
         else:#monomers
-            colors=    ["b","b" ,"b","b","b"]
             if particle_type in ("mixcolumndend","mixcoldend1"):
                 break
             particle_type_label=particle_type
         #         plate,dendrite,column,needle,mix1,mix2
-        linestyles=["-","--",      ":",  "-.",    "-","-"]
-        markers=   ["", ""  ,      "" ,   ""  ,   "o","x"]
-        #print particle_type_label,linestyles[i_particle_type],markers[i_particle_type]; raw_input()
+        linestyles= ["-","--",      ":",  "-.",    "-",   "-"      ,"--"     ,"-"        ,"--"   ,"-"]
+        markers=    ["", ""  ,      "" ,   ""  ,   "x",    ""      ,""       ,"x"        ,"x"    ,"o"]
+        colorlist = ["g","g",       "g",    "g", "g" ,"magenta","magenta","magenta","magenta","magenta"]
         if "density" in prop:
             print prop + particle_type
             if "spheredensity" in prop:
@@ -505,10 +509,8 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
                     data_dic["fit_dic"][prop + "_" + particle_type] = data_dic["fit_dic"]["mass_" + particle_type]/(np.pi/6.*data_dic["diam"]**3)
                 else:
                     data_dic["fit_dic"][prop + "_" + particle_type] = data_dic["fit_dic"]["mass_Nmono1_" + particle_type]/(np.pi/6.*data_dic["diam"]**3)
-            #elif "oblatespheroiddensity" in prop:
-            #data_dic["fit_dic"][prop + "_" + particle_type] = data_dic["fit_dic"]["mass_" + particle_type]/(np.pi/6.*data_dic["diam"]**3*)
-
-        ax.loglog(data_dic["diam"],data_dic["fit_dic"][prop +"_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=5,markevery=50,color=colors[i_particle_type],label=particle_type_label,linewidth=1.0,fillstyle='none')
+        print linestyles[i_particle_type],markers[i_particle_type],colorlist[i_particle_type],particle_type_label
+        ax.loglog(data_dic["diam"],data_dic["fit_dic"][prop +"_" + particle_type],linestyle=linestyles[i_particle_type],marker=markers[i_particle_type],markersize=5,markevery=50,color=colorlist[i_particle_type],label=particle_type_label,linewidth=1.0,fillstyle='none')
     if show_lit:
         #get a title for the observations in the legend
         ax.plot(np.nan,np.nan, linestyle='',color='none',label="  ") #one emtpy one
@@ -516,7 +518,7 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
         #Mitchell (1996)
         for i_particle_type,particle_type in enumerate(data_dic["M96"]["particle_type"]):
             diam_flagged = np.where(((data_dic["diam"]>(data_dic["M96"]["mass_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["M96"]["mass_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-            ax.loglog(diam_flagged,data_dic["M96"][prop + "_" + particle_type],linestyle=["-.",":","-",":",":"][i_particle_type],color="r",label="M96 " + particle_type,linewidth=1.0)
+            ax.loglog(diam_flagged,data_dic["M96"][prop + "_" + particle_type],linestyle=["-.",":","-",":",":"][i_particle_type],color="dodgerblue",label="M96 " + particle_type,linewidth=2.0)
             if get_reldiff:
                             np.set_printoptions(precision=1)
                             ##get the relative deviations
@@ -533,7 +535,11 @@ def comp_prop(data_dic,ax,prop="mass",get_reldiff=False,show_lit=True):
             #LH74
             for i_particle_type,particle_type in enumerate(data_dic["LH74"]["particle_type"]):
                 diam_flagged = np.where(((data_dic["diam"]>(data_dic["LH74"][prop +"_coeff_" + particle_type][2])) & (data_dic["diam"]<(data_dic["LH74"][prop +"_coeff_" + particle_type][3]))),data_dic["diam"],np.nan)
-                ax.loglog(diam_flagged,data_dic["LH74"][prop +"_" + particle_type],linestyle=["--","-.",":",":",":"][i_particle_type],color="orange",label="LH74 " + particle_type,linewidth=1.0)
+                if "graupel" in particle_type:
+                    color="k"
+                else:
+                    color="blue"
+                ax.loglog(diam_flagged,data_dic["LH74"][prop +"_" + particle_type],linestyle=["--","-.",":","-","--"][i_particle_type],color=color,label="LH74 " + particle_type,linewidth=2.0)
                 if get_reldiff:
                     np.set_printoptions(precision=1)
                     ##get the relative deviations

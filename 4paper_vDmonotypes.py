@@ -41,8 +41,11 @@ def stylize_axes(ax, title, xlabel, ylabel, xticks, yticks, xticklabels, ytickla
 #define the figure grid
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3)) #for bigger labels decrease figsize
 
+vterm_model = "vterm_bohm"
+#vterm_model = "vterm_HW10"
+#vterm_model = "vterm_KC05"
 ax = processing_Jussis_aggregate_model_plots4paper_aggvDfits.read_and_plot([ax],hydro_model
-    ="vterm_bohm",forw_mod=False)[0]
+    =vterm_model,forw_mod=False)[0]
 
 titles = ['', '', '', '']
 '''
@@ -76,9 +79,9 @@ for i, axes in enumerate([ax]):
 ###########
 plt.tight_layout()
 dir_save = '/home/mkarrer/Dokumente/plots/4paper/'
-out_filestring = "vDmonotypes"
+out_filestring = "vDmonotypes" + vterm_model
 
 plt.savefig(dir_save + out_filestring + '.pdf', dpi=400)
 plt.savefig(dir_save + out_filestring + '.png', dpi=100)
 print 'The pdf is at: ' + dir_save + out_filestring + '.pdf'
-subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])
+#subprocess.Popen(['evince',dir_save + out_filestring + '.pdf'])

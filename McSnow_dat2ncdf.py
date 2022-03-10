@@ -16,7 +16,6 @@ import time
 import __postprocess_McSnow
 
 def main(MC=True,SB=True):
-
     experiment = os.environ["experiment"] #experiment name (this also contains a lot of information about the run)
     testcase = os.environ["testcase"] #"more readable" string of the experiment specifications
     av_tstep = int(os.environ["av_tstep"]) #average window for the McSnow output
@@ -26,7 +25,7 @@ def main(MC=True,SB=True):
     directory = MC_expdir + "/experiments/"
 
     #read timestep from string
-    print "EXP",experiment
+    print("EXP",experiment)
     dtc = int(re.search(r'dtc(.*?)_nrp', experiment).group(1)) #this line gets the values after dtc and before _nrp -> timestep of collision in s
     if MC:
         #read variables passed by shell script
@@ -41,7 +40,7 @@ def main(MC=True,SB=True):
         #while t_after_full<av_tstep: #1. merge all timesteps <av_tstep in one tuple
         for i_tstep,tstep_now in enumerate(range(tstep,tstep_end,tstep_step)):
             filestring_mass2fr = directory + experiment + "/mass2fr_" + str(tstep_now).zfill(4) + 'min_' + str(t_after_full).zfill(2) + 's' + ".dat"
-            print 'reading: ' + filestring_mass2fr
+            print('reading: ' + filestring_mass2fr)
             if i_tstep==0:
                 SP_nonaveraged = (__postprocess_McSnow.read_mass2frdat(experiment,filestring_mass2fr),) #save first timestep to SP_nonaveraged
             else:
@@ -73,7 +72,7 @@ def main(MC=True,SB=True):
                 dataset.createVariable(key,np.float32,('dim_SP_all_av' +str((num_timesteps)*dtc),)); dataset.variables[key].units = unit[i]
                 dataset.variables[key][:] = SP[key]
 
-            print output_file,dataset.history
+            print(output_file,dataset.history)
             dataset.close()
     if SB:
         #################################################
@@ -95,7 +94,7 @@ def main(MC=True,SB=True):
 
         #create netCDF4 file
         dataset = Dataset(directory + experiment + '/twomom_d.ncdf', 'w',  format='NETCDF4_CLASSIC')
-        print directory + experiment + '/twomom_d.ncdf'
+        print(directory + experiment + '/twomom_d.ncdf')
 
         #Global attributes
         dataset.description = 'Output of SB twomoment-scheme (embedded in McSnow) converted to netCDF4'
@@ -118,7 +117,7 @@ def main(MC=True,SB=True):
             dataset.createVariable(key,np.float32,('time','height')); #dataset.variables[key].units = unit[i]
             dataset.variables[key][:] = twomom[key]
 
-        print "twomom_d file created at: ",dataset.history,directory + experiment + '/twomom_d.ncdf'
+        print("twomom_d file created at: ",dataset.history,directory + experiment + '/twomom_d.ncdf')
         dataset.close()
 
 if __name__=="__main__":

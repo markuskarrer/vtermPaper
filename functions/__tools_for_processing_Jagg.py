@@ -6,7 +6,7 @@ from numpy import pi, r_
 import matplotlib.pyplot as plt
 from scipy import optimize
 import sys
-from IPython.core.debugger import Tracer ; debug=Tracer()
+from IPython.core.debugger import set_trace
 
 def init_particle_dict():
     '''
@@ -173,10 +173,60 @@ def calc_mD_AD_coeffs(mono_type,skip_mono=False):
         c_theor=np.pi/2.
         d_theor=2.
     else:
+        a_theor = 1e-100
+        b_theor= 1e-100
+        c_theor= 1e-100
+        d_theor= 1e-100
         print mono_type + 'not defined in tools_for_processing_Jagg.calc_mD_AD_coeffs'
-        sys.exit()
+        #sys.exit()
     print mono_type,a_theor,b_theor,c_theor,d_theor
     return a_theor,b_theor,c_theor,d_theor
+
+def read_particle_prop_files_rimed(prop_file_folder,particle_type):
+    '''
+    read the particle property files and save them in the "particle_dic" dictionary
+    INPUT:  
+            prop_file_folder: absolute path of the aggregates property file
+            particle_type: habit
+    OUTPUT: particle_dic: dictionary containing the properties of the individual simulated particles
+    '''
+    import os
+    import glob
+    import re
+    import csv
+    import sys
+    particle_dic = init_particle_dict() #initialize dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the   
+    print "processing " + particle_type 
+
+    if not os.path.exists(prop_file_folder): #check if folder exists
+        print prop_file_folder, " doesnt exist (exit in __tools_for_processing_Jagg.py"
+        sys.exit(1)
+        njk
+    if len(glob.glob(prop_file_folder +  particle_type + '*properties.txt'))==0: #check if any file of this habit is there
+        print prop_file_folder + "*", " doesnt exist (exit in __tools_for_processing_Jagg.py"
+        sys.exit(1)
+        fby 
+    i_file=0
+    for filename in glob.glob(prop_file_folder +  particle_type + '*properties.txt'): #loop over all property files (with different mean sizes)
+        #verbose reading of files
+        print "reading: " + filename
+        with open(filename,"rb") as txtfile: #http://effbot.org/zone/python-with-statement.htm explains what if is doing; open is a python build in
+            prop_reader = csv.reader(filter(lambda row: row[0]!='D',txtfile), delimiter=' ', quoting=csv.QUOTE_NONNUMERIC, lineterminator=os.linesep) #row[0]!='#': skip the header; quoting avoids '' for formatted string; lineterminator avoids problems with system dependend lineending format https://unix.stackexchange.com/questions/309154/strings-are-missing-after-concatenating-two-or-more-variable-string-in-bash?answertab=active#tab-top
+            particle_dic["particle_type"] = np.append(particle_dic["particle_type"],particle_type)
+            for i_row,row_content in enumerate(prop_reader):
+                particle_dic["mass"] = np.append(particle_dic["mass"],row_content[1])
+
+                particle_dic["diam"] = np.append(particle_dic["diam"],row_content[0])
+
+                particle_dic["area"] = np.append(particle_dic["area"],row_content[2]) 
+                particle_dic["N_monomer"] = np.append(particle_dic["N_monomer"],2.0) #dummy: all are aggregates 
+    if False: 
+        print "no particles found"
+        sys.exit(1)                    
+    N_mono_list = np.append(np.append(np.array(range(1,10)),np.array(range(10,100,10))),np.array(range(100,1001,100))) #the full monomer number list
+    return particle_dic,N_mono_list
+
+
 
 def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregates_bugfixedrotation/',
                                                 D_small_notuse=1e-4, #ATTENTION: particle smaller than D_small_notuse are not considered (e.g. because of resolution issues)
@@ -206,11 +256,10 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
     import sys
     particle_dic = init_particle_dict() #initialize dictionary which contains information about the type of the pristine crystals (dentrites, needles, plates, ...) the underlying distribution of the   
     for grid_res in grid_res_array: #loop over different grid-resolutions in order to have small monomer numbers modelled woth higher resolution
-        print "processing" + particle_type + " with resolution: ",grid_res
+        print "processing " + particle_type + " with resolution: ",grid_res
         sensrun_folder = 'res_'+ str(int(grid_res*1e6)) + 'mum/'
-
         if not os.path.exists(prop_file_folder + sensrun_folder): #check if folder exists
-            print prop_file_folder + sensrun_folder, " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
+            print prop_file_folder + sensrun_folder, " doesnt exist (exit in __tools_for_processing_Jagg.py"
             sys.exit()
         if len(glob.glob(prop_file_folder + sensrun_folder +  particle_type + '*properties.txt'))==0: #check if any file of this habit is there
             print prop_file_folder + sensrun_folder + particle_type + "*", " doesnt exist (exit in process_Jussis_aggregate_model_mod_powerlaw.py"
@@ -258,10 +307,8 @@ def read_particle_prop_files(prop_file_folder=  '/data/optimice/Jussis_aggregate
                     N_mono_list_tmp = np.array(np.append(np.append(range(1,11,1),np.array(range(10,101,10))),range(200,1001,100)))
                 for i_row,row_content in enumerate(prop_reader): #TODO: the row is not any more equal to the monomer number #read the row with N_mono_now (the currently considered monomer number)
                     if forKamil and len(row_content)<6:
-                        #debug()
                         pass
-                        #if row_content[2]>1e-4:
-                        #    print row_content[2]; continue
+
                     ################
                     ##limit N_mono##
                     ################
@@ -869,8 +916,8 @@ def fit_2D_rational_function_transformwrapper(diam,Nmono,ydata,func='powerlaw',m
 
     if "powerlaw" in func:
         fitcoeffs = fit_2D_rational_powerlaw_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop,guess=guess,ftol=ftol)
-    elif "rational" in func: #ATTENTION: THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!), #functions for this method are currently commented
-        fitcoeffs = fit_2D_rational_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop)
+    #elif "rational" in func: #ATTENTION: THIS IS FOR FITTING A RATIONAL FUNCTION to m/m_mono (NOT CONSERVING THE POWER-LAW!), #functions for this method are currently commented
+    #    fitcoeffs = fit_2D_rational_function(np.array([diam_log,Nmono_log]),ydata_normed,func=func,method='lm',weight=weight,habit=habit,prop=prop)
 
     return fitcoeffs
 

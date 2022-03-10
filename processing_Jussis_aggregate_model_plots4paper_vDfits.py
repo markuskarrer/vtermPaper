@@ -9,6 +9,8 @@ import subprocess
 import random
 import csv
 #import other self-defined functions
+import sys
+sys.path.insert(0,'functions')
 import __postprocess_SB
 import __fallspeed_relations
 import __tools_for_processing_Jagg
@@ -529,6 +531,8 @@ if __name__ == '__main__':
     [fig,axes] = __plotting_functions.proper_font_and_fig_size(number_of_plots,legend_fontsize='medium')
     #axes = read_and_plot(fig,axes,["plate","dendrite","column","needle","rosette","mixcolumndend","mixcoldend1"],powerlawAtlas="powerlaw",hydro_model="all")
     #axes = read_and_plot(fig,axes,["mixcolumndend"],powerlawAtlas="Atlas",hydro_model="all")
+    #axes = read_and_plot(fig,axes,["mixcolumndend"],powerlawAtlas="Atlas",hydro_model="all")
     axes = read_and_plot(fig,axes,["dendrite"],powerlawAtlas="Atlas",hydro_model="all")
+
     
    
